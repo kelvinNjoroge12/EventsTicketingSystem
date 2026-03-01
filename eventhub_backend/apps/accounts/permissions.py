@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+from rest_framework.permissions import BasePermission
+
+
+class IsOrganizerRole(BasePermission):
+    """Allows any user whose role is 'organizer', regardless of approval status.
+    Use this for creating/editing draft events so unapproved organizers can still
+    manage their content; use IsOrganizer for publishing.
+    """
+    message = "You must have an organizer account to perform this action."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and getattr(user, "role", None) == "organizer"
+        )
+
+
+class IsOrganizer(BasePermission):
+    """Requires both organizer role AND admin approval.
+    Used on actions that make content publicly visible (e.g. publish).
+    """
+    message = (
+        "Your organizer account is pending approval. Once approved by an admin "
+        "you will be able to publish events. You can still save drafts."
+    )
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and getattr(user, "role", None) == "organizer"
+            and getattr(getattr(user, "organizer_profile", None), "is_approved", False)
+        )
+
+
+class IsAdmin(BasePermission):
+    message = "Only administrators can perform this action."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and getattr(user, "role", None) == "admin")
+
+
+class IsAttendee(BasePermission):
+    message = "Only attendees can perform this action."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and getattr(user, "role", None) == "attendee")
+
+
+class IsOwnerOrAdmin(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if getattr(user, "role", None) == "admin":
+            return True
+        owner = getattr(obj, "user", None) or getattr(obj, "attendee", None)
+        return owner == user
+
+
+class IsEmailVerified(BasePermission):
+    message = "Please verify your email address before performing this action."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and getattr(user, "is_email_verified", False))
+

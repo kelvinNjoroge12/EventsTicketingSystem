@@ -1,0 +1,601 @@
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Palette } from 'lucide-react';
+import CustomInput from '../ui/CustomInput';
+import CustomButton from '../ui/CustomButton';
+
+// ── Shared Image Upload Helper ──────────────────────────────────────────────
+const ImageUploader = ({ label, preview, onFile, size = 'md', hint }) => {
+  const inputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onloadend = () => onFile(file, reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const sizeClasses = {
+    sm: 'w-20 h-20 rounded-full',
+    md: 'w-full h-40 rounded-xl',
+    lg: 'w-full aspect-video rounded-xl',
+  };
+
+  return (
+    <div>
+      {label && <p className="text-sm font-medium text-[#0F172A] mb-2">{label}</p>}
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
+        className={`${sizeClasses[size]} relative cursor-pointer overflow-hidden border-2 border-dashed transition-all flex items-center justify-center ${isDragging ? 'border-[#1E4DB7] bg-[#EFF6FF]' : 'border-[#E2E8F0] hover:border-[#1E4DB7]/60 bg-[#F8FAFC]'}`}
+      >
+        {preview ? (
+          <>
+            <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+              <p className="text-white text-xs font-medium">Click to change</p>
+            </div>
+          </>
+        ) : (
+          <div className="text-center p-3">
+            <ImagePlus className="w-6 h-6 text-[#94A3B8] mx-auto mb-1" />
+            {hint && <p className="text-xs text-[#94A3B8]">{hint}</p>}
+          </div>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+      </div>
+    </div>
+  );
+};
+
+// ── Step 1: Basic Info ──────────────────────────────────────────────────────
+export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
+  <div className="space-y-6">
+    <CustomInput
+      label="Event Title"
+      value={data.title}
+      onChange={(e) => onChange('title', e.target.value)}
+      error={errors.title}
+      placeholder="Give your event a catchy title"
+      required
+    />
+
+    <div>
+      <label className="block text-sm font-medium text-[#0F172A] mb-2">Category</label>
+      <select
+        value={data.category}
+        onChange={(e) => onChange('category', e.target.value)}
+        className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] ${errors.category ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
+      >
+        <option value="">Select a category</option>
+        {categories.map((cat) => (
+          <option key={cat.id} value={cat.id}>{cat.name}</option>
+        ))}
+      </select>
+      {errors.category && <p className="mt-1.5 text-sm text-[#DC2626]">{errors.category}</p>}
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-[#0F172A] mb-2">Tags</label>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {data.tags.map((tag, index) => (
+          <span key={index} className="inline-flex items-center gap-1 px-3 py-1 bg-[#EFF6FF] text-[#1E4DB7] rounded-full text-sm">
+            {tag}
+            <button onClick={() => onChange('tags', data.tags.filter((_, i) => i !== index))} className="hover:text-[#DC2626]">
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      <input
+        type="text"
+        placeholder="Type a tag and press Enter"
+        className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const value = e.target.value.trim();
+            if (value && !data.tags.includes(value)) {
+              onChange('tags', [...data.tags, value]);
+              e.target.value = '';
+            }
+          }
+        }}
+      />
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-[#0F172A] mb-2">Event Type</label>
+        <div className="flex gap-2">
+          {['Public', 'Private'].map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onChange('eventType', type.toLowerCase())}
+              className={`flex-1 py-2 px-4 rounded-lg border font-medium text-sm ${data.eventType === type.toLowerCase() ? 'border-[#1E4DB7] bg-[#EFF6FF] text-[#1E4DB7]' : 'border-[#E2E8F0] text-[#64748B] hover:border-[#1E4DB7]/50'}`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-[#0F172A] mb-2">Format</label>
+        <select
+          value={data.format}
+          onChange={(e) => onChange('format', e.target.value)}
+          className="w-full px-4 py-2.5 bg-white border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+        >
+          <option value="In-Person">In-Person</option>
+          <option value="Online">Online</option>
+          <option value="Hybrid">Hybrid</option>
+        </select>
+      </div>
+    </div>
+
+    {/* Brand Colors */}
+    <div className="p-5 bg-gradient-to-r from-[#F8FAFC] to-[#EFF6FF] rounded-xl border border-[#E2E8F0]">
+      <div className="flex items-center gap-2 mb-4">
+        <Palette className="w-4 h-4 text-[#1E4DB7]" />
+        <h3 className="text-sm font-semibold text-[#0F172A]">Event Branding Colors</h3>
+        <span className="ml-auto text-xs text-[#64748B]">Customize your event page</span>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-2">Theme Color (primary)</label>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input
+                type="color"
+                value={data.themeColor || '#1E4DB7'}
+                onChange={(e) => onChange('themeColor', e.target.value)}
+                className="w-10 h-10 rounded-lg cursor-pointer border border-[#E2E8F0] p-0.5"
+              />
+            </div>
+            <input
+              type="text"
+              value={data.themeColor || '#1E4DB7'}
+              onChange={(e) => onChange('themeColor', e.target.value)}
+              className="flex-1 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+              placeholder="#1E4DB7"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-2">Accent Color (secondary)</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={data.accentColor || '#7C3AED'}
+              onChange={(e) => onChange('accentColor', e.target.value)}
+              className="w-10 h-10 rounded-lg cursor-pointer border border-[#E2E8F0] p-0.5"
+            />
+            <input
+              type="text"
+              value={data.accentColor || '#7C3AED'}
+              onChange={(e) => onChange('accentColor', e.target.value)}
+              className="flex-1 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+              placeholder="#7C3AED"
+            />
+          </div>
+        </div>
+      </div>
+      {/* Color Preview */}
+      <div
+        className="mt-4 h-10 rounded-lg w-full"
+        style={{ background: `linear-gradient(90deg, ${data.themeColor || '#1E4DB7'}, ${data.accentColor || '#7C3AED'})` }}
+      />
+    </div>
+  </div>
+);
+
+// ── Step 2: Date, Time & Location ──────────────────────────────────────────
+export const DateLocationStep = ({ data, onChange, errors }) => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-2 gap-4">
+      <CustomInput label="Start Date" type="date" value={data.startDate} onChange={(e) => onChange('startDate', e.target.value)} error={errors.startDate} required />
+      <CustomInput label="Start Time" type="time" value={data.startTime} onChange={(e) => onChange('startTime', e.target.value)} error={errors.startTime} required />
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <CustomInput label="End Date" type="date" value={data.endDate} onChange={(e) => onChange('endDate', e.target.value)} error={errors.endDate} required />
+      <CustomInput label="End Time" type="time" value={data.endTime} onChange={(e) => onChange('endTime', e.target.value)} error={errors.endTime} required />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-[#0F172A] mb-2">Timezone</label>
+      <select
+        value={data.timezone}
+        onChange={(e) => onChange('timezone', e.target.value)}
+        className="w-full px-4 py-2.5 bg-white border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+      >
+        <option value="EAT">East Africa Time (EAT)</option>
+        <option value="GMT">Greenwich Mean Time (GMT)</option>
+        <option value="WAT">West Africa Time (WAT)</option>
+        <option value="SAST">South Africa Standard Time (SAST)</option>
+      </select>
+    </div>
+
+    {(data.format === 'In-Person' || data.format === 'Hybrid') && (
+      <div className="space-y-4">
+        <CustomInput label="Venue Name" value={data.venueName} onChange={(e) => onChange('venueName', e.target.value)} error={errors.venueName} placeholder="e.g., Sarit Centre" />
+        <CustomInput label="Address" value={data.address} onChange={(e) => onChange('address', e.target.value)} error={errors.address} placeholder="Street address" />
+        <div className="grid grid-cols-2 gap-4">
+          <CustomInput label="City" value={data.city} onChange={(e) => onChange('city', e.target.value)} error={errors.city} placeholder="e.g., Nairobi" />
+          <CustomInput label="Country" value={data.country} onChange={(e) => onChange('country', e.target.value)} error={errors.country} placeholder="e.g., Kenya" />
+        </div>
+      </div>
+    )}
+
+    {(data.format === 'Online' || data.format === 'Hybrid') && (
+      <CustomInput label="Streaming Link" value={data.streamingLink} onChange={(e) => onChange('streamingLink', e.target.value)} error={errors.streamingLink} placeholder="e.g., Zoom or YouTube link" />
+    )}
+  </div>
+);
+
+// ── Step 3: Description & Media ────────────────────────────────────────────
+export const DescriptionStep = ({ data, onChange }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onloadend = () => onChange('coverImagePreview', reader.result);
+    reader.readAsDataURL(file);
+    onChange('coverImage', file);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-[#0F172A] mb-2">Description</label>
+        <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
+          <div className="flex items-center gap-1 p-2 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><Bold className="w-4 h-4" /></button>
+            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><Italic className="w-4 h-4" /></button>
+            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><List className="w-4 h-4" /></button>
+            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><Link className="w-4 h-4" /></button>
+          </div>
+          <textarea
+            value={data.description}
+            onChange={(e) => onChange('description', e.target.value)}
+            placeholder="Describe your event in detail..."
+            rows={8}
+            className="w-full px-4 py-3 resize-none focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-[#0F172A] mb-2">Cover Image</label>
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative border-2 border-dashed rounded-xl overflow-hidden text-center cursor-pointer transition-all ${isDragging ? 'border-[#1E4DB7] bg-[#EFF6FF]' : 'border-[#E2E8F0] hover:border-[#1E4DB7]/50'} ${data.coverImagePreview ? 'aspect-video' : 'p-8'}`}
+        >
+          {data.coverImagePreview ? (
+            <>
+              <img src={data.coverImagePreview} alt="Preview" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span className="text-white font-medium">Click to change</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <Upload className="w-10 h-10 mx-auto text-[#64748B] mb-3" />
+              <p className="text-sm text-[#64748B] mb-2">Drag and drop an image here, or <span className="text-[#1E4DB7] hover:underline">browse</span></p>
+              <p className="text-xs text-[#94A3B8]">Recommended: 1200x630px, JPG or PNG</p>
+            </>
+          )}
+          <input type="file" ref={fileInputRef} onChange={(e) => handleFile(e.target.files?.[0])} accept="image/*" className="hidden" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Step 4: Speakers & MC ──────────────────────────────────────────────────
+export const SpeakersStep = ({ data, onChange }) => {
+  const addSpeaker = () => onChange('speakers', [...data.speakers, { name: '', title: '', organization: '', bio: '', photo: null, photoPreview: '' }]);
+  const removeSpeaker = (i) => onChange('speakers', data.speakers.filter((_, idx) => idx !== i));
+  const updateSpeaker = (i, field, value) => {
+    const arr = [...data.speakers];
+    arr[i] = { ...arr[i], [field]: value };
+    onChange('speakers', arr);
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-[#64748B]">(Optional) Add speakers for your event</p>
+
+      <AnimatePresence>
+        {data.speakers.map((speaker, index) => (
+          <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-[#0F172A]">Speaker {index + 1}</h4>
+              <button type="button" onClick={() => removeSpeaker(index)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-start gap-4">
+              {/* Photo Upload */}
+              <ImageUploader
+                size="sm"
+                hint="Photo"
+                preview={speaker.photoPreview}
+                onFile={(file, preview) => {
+                  updateSpeaker(index, 'photo', file);
+                  updateSpeaker(index, 'photoPreview', preview);
+                }}
+              />
+              <div className="flex-1 grid grid-cols-2 gap-3">
+                <input type="text" placeholder="Full Name *" value={speaker.name} onChange={(e) => updateSpeaker(index, 'name', e.target.value)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                <input type="text" placeholder="Title / Role" value={speaker.title} onChange={(e) => updateSpeaker(index, 'title', e.target.value)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                <input type="text" placeholder="Organization" value={speaker.organization} onChange={(e) => updateSpeaker(index, 'organization', e.target.value)}
+                  className="col-span-2 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+              </div>
+            </div>
+
+            <textarea placeholder="Short bio..." value={speaker.bio} onChange={(e) => updateSpeaker(index, 'bio', e.target.value)} rows={3}
+              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      <CustomButton type="button" variant="outline" onClick={addSpeaker} leftIcon={Plus} fullWidth>
+        Add Speaker
+      </CustomButton>
+
+      {/* MC Section */}
+      <div className="pt-6 border-t border-[#E2E8F0]">
+        <div className="flex items-center gap-2 mb-4">
+          <input type="checkbox" id="hasMC" checked={data.hasMC} onChange={(e) => onChange('hasMC', e.target.checked)} className="w-4 h-4 rounded border-[#E2E8F0] text-[#1E4DB7] focus:ring-[#1E4DB7]" />
+          <label htmlFor="hasMC" className="text-sm font-semibold text-[#0F172A]">Add an MC / Host</label>
+        </div>
+
+        {data.hasMC && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            className="p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-4"
+          >
+            <div className="flex items-start gap-4">
+              <ImageUploader
+                size="sm"
+                hint="MC Photo"
+                preview={data.mcPhotoPreview}
+                onFile={(file, preview) => { onChange('mcPhoto', file); onChange('mcPhotoPreview', preview); }}
+              />
+              <div className="flex-1 space-y-3">
+                <input type="text" placeholder="MC / Host Name *" value={data.mcName} onChange={(e) => onChange('mcName', e.target.value)}
+                  className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                <textarea placeholder="MC Bio / Introduction" value={data.mcBio} onChange={(e) => onChange('mcBio', e.target.value)} rows={3}
+                  className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Step 5: Schedule ────────────────────────────────────────────────────────
+export const ScheduleStep = ({ data, onChange }) => {
+  const addItem = () => onChange('schedule', [...data.schedule, { time: '', title: '', description: '', speaker: '' }]);
+  const removeItem = (i) => onChange('schedule', data.schedule.filter((_, idx) => idx !== i));
+  const updateItem = (i, field, value) => {
+    const arr = [...data.schedule];
+    arr[i] = { ...arr[i], [field]: value };
+    onChange('schedule', arr);
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-[#64748B]">(Optional) Build the agenda / schedule for your event</p>
+
+      <AnimatePresence>
+        {data.schedule.map((item, index) => (
+          <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-[#1E4DB7] text-white flex items-center justify-center text-xs font-bold">{index + 1}</div>
+                <h4 className="font-semibold text-[#0F172A]">Schedule Item</h4>
+              </div>
+              <button type="button" onClick={() => removeItem(index)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                <input type="time" value={item.time} onChange={(e) => updateItem(index, 'time', e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+              </div>
+              <input type="text" placeholder="Session Title *" value={item.title} onChange={(e) => updateItem(index, 'title', e.target.value)}
+                className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+            </div>
+            <input type="text" placeholder="Speaker / Presenter (optional)" value={item.speaker} onChange={(e) => updateItem(index, 'speaker', e.target.value)}
+              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+            <textarea placeholder="Session description..." value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} rows={2}
+              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      <CustomButton type="button" variant="outline" onClick={addItem} leftIcon={Plus} fullWidth>
+        Add Schedule Item
+      </CustomButton>
+    </div>
+  );
+};
+
+// ── Step 6: Sponsors ───────────────────────────────────────────────────────
+export const SponsorsStep = ({ data, onChange }) => {
+  const addSponsor = () => onChange('sponsors', [...data.sponsors, { name: '', website: '', tier: 'Bronze', logo: null, logoPreview: '' }]);
+  const removeSponsor = (i) => onChange('sponsors', data.sponsors.filter((_, idx) => idx !== i));
+  const updateSponsor = (i, field, value) => {
+    const arr = [...data.sponsors];
+    arr[i] = { ...arr[i], [field]: value };
+    onChange('sponsors', arr);
+  };
+
+  const tierColors = { Platinum: '#E5E7EB', Gold: '#FCD34D', Silver: '#9CA3AF', Bronze: '#CD7F32', Partner: '#1E4DB7' };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-[#64748B]">(Optional) Add sponsors for your event</p>
+
+      <AnimatePresence>
+        {data.sponsors.map((sponsor, index) => (
+          <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full" style={{ backgroundColor: tierColors[sponsor.tier] || '#ccc' }} />
+                <h4 className="font-semibold text-[#0F172A]">Sponsor {index + 1}</h4>
+              </div>
+              <button type="button" onClick={() => removeSponsor(index)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-start gap-4">
+              {/* Logo Upload */}
+              <ImageUploader size="sm" hint="Logo" preview={sponsor.logoPreview}
+                onFile={(file, preview) => { updateSponsor(index, 'logo', file); updateSponsor(index, 'logoPreview', preview); }}
+              />
+              <div className="flex-1 grid grid-cols-2 gap-3">
+                <input type="text" placeholder="Sponsor Name *" value={sponsor.name} onChange={(e) => updateSponsor(index, 'name', e.target.value)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                <select value={sponsor.tier} onChange={(e) => updateSponsor(index, 'tier', e.target.value)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm"
+                >
+                  {Object.keys(tierColors).map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input type="url" placeholder="Website URL" value={sponsor.website} onChange={(e) => updateSponsor(index, 'website', e.target.value)}
+                  className="col-span-2 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      <CustomButton type="button" variant="outline" onClick={addSponsor} leftIcon={Plus} fullWidth>
+        Add Sponsor
+      </CustomButton>
+    </div>
+  );
+};
+
+// ── Step 7: Tickets ────────────────────────────────────────────────────────
+export const TicketsStep = ({ data, onChange, errors }) => {
+  const addTicket = () => onChange('tickets', [...data.tickets, { type: 'Standard', price: 0, quantity: 100, description: '' }]);
+  const removeTicket = (i) => { if (data.tickets.length === 1) return; onChange('tickets', data.tickets.filter((_, idx) => idx !== i)); };
+  const updateTicket = (i, field, value) => {
+    const arr = [...data.tickets];
+    arr[i] = { ...arr[i], [field]: value };
+    onChange('tickets', arr);
+  };
+
+  const typeIcons = { Standard: '🎟', VIP: '⭐', 'Early Bird': '🐦', Free: '🎁', Donation: '❤️' };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-[#64748B]">Add at least one ticket type for your event</p>
+      {errors.tickets && <p className="text-sm text-[#DC2626]">{errors.tickets}</p>}
+
+      <AnimatePresence>
+        {data.tickets.map((ticket, index) => (
+          <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{typeIcons[ticket.type] || '🎟'}</span>
+                <h4 className="font-semibold text-[#0F172A]">{ticket.type || 'Ticket'} – Ticket {index + 1}</h4>
+              </div>
+              {data.tickets.length > 1 && (
+                <button type="button" onClick={() => removeTicket(index)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Type</label>
+                <select value={ticket.type} onChange={(e) => updateTicket(index, 'type', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm"
+                >
+                  {['Standard', 'VIP', 'Early Bird', 'Free', 'Donation'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#64748B] mb-1">Price (KES)</label>
+                <input type="number" placeholder="0" value={ticket.price} onChange={(e) => updateTicket(index, 'price', parseInt(e.target.value) || 0)}
+                  disabled={ticket.type === 'Free'}
+                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] disabled:bg-[#F1F5F9] text-sm" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#64748B] mb-1">Quantity Available</label>
+              <input type="number" placeholder="100" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', parseInt(e.target.value) || 0)}
+                className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Description (optional)</label>
+              <textarea placeholder="What's included, access level, perks..." value={ticket.description} onChange={(e) => updateTicket(index, 'description', e.target.value)} rows={2}
+                className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      <CustomButton type="button" variant="outline" onClick={addTicket} leftIcon={Plus} fullWidth>
+        Add Another Ticket Type
+      </CustomButton>
+
+      {/* Refund Policy */}
+      <div className="pt-6 border-t border-[#E2E8F0]">
+        <label className="block text-sm font-semibold text-[#0F172A] mb-3">Refund Policy</label>
+        <div className="grid grid-cols-2 gap-2">
+          {['No Refund', '48 Hours', '7 Days', 'Custom'].map((policy) => (
+            <button
+              key={policy}
+              type="button"
+              onClick={() => onChange('refundPolicy', policy)}
+              className={`py-2.5 px-4 rounded-xl border text-sm font-medium transition-all ${data.refundPolicy === policy ? 'border-[#1E4DB7] bg-[#EFF6FF] text-[#1E4DB7]' : 'border-[#E2E8F0] text-[#64748B] hover:border-[#1E4DB7]/50'}`}
+            >
+              {policy}
+            </button>
+          ))}
+        </div>
+        {data.refundPolicy === 'Custom' && (
+          <textarea placeholder="Describe your custom refund policy..." rows={3}
+            className="w-full mt-3 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm"
+            value={data.customRefundPolicy || ''}
+            onChange={(e) => onChange('customRefundPolicy', e.target.value)}
+          />
+        )}
+      </div>
+    </div>
+  );
+};

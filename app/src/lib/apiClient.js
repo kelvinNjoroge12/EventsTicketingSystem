@@ -1,0 +1,150 @@
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+const getAuthTokens = () => {
+  try {
+    const raw = localStorage.getItem("eventhub_auth");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveAuthTokens = (payload) => {
+  if (!payload) return;
+  localStorage.setItem("eventhub_auth", JSON.stringify(payload));
+};
+
+const clearAuthTokens = () => {
+  localStorage.removeItem("eventhub_auth");
+};
+
+// Flag to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let refreshPromise = null;
+
+const refreshAccessToken = async () => {
+  const stored = getAuthTokens();
+  const refresh = stored?.tokens?.refresh;
+  if (!refresh) throw new Error("No refresh token available");
+
+  const res = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    clearAuthTokens();
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  // Update stored tokens with new access token (and possibly new refresh token)
+  const newTokens = {
+    ...stored,
+    tokens: {
+      ...stored.tokens,
+      access: data?.data?.access || data?.access,
+      ...(data?.data?.refresh ? { refresh: data.data.refresh } : {}),
+      ...(data?.refresh ? { refresh: data.refresh } : {}),
+    },
+  };
+  saveAuthTokens(newTokens);
+  return newTokens.tokens.access;
+};
+
+async function request(path, options = {}, retry = true) {
+  const url = `${API_BASE_URL}${path}`;
+  const tokens = getAuthTokens();
+
+  const headers = {
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+    ...(options.headers || {}),
+  };
+
+  if (tokens?.tokens?.access && !headers.Authorization) {
+    headers.Authorization = `Bearer ${tokens.tokens.access}`;
+  }
+
+  const res = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  // Auto-refresh on 401 and retry once
+  if (res.status === 401 && retry && tokens?.tokens?.refresh) {
+    try {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        refreshPromise = refreshAccessToken().finally(() => {
+          isRefreshing = false;
+        });
+      }
+      const newAccessToken = await refreshPromise;
+
+      // Retry the original request with fresh token
+      return request(
+        path,
+        {
+          ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${newAccessToken}`,
+          },
+        },
+        false // don't retry again
+      );
+    } catch {
+      clearAuthTokens();
+      // Re-throw so callers (e.g. login redirect) can handle
+      const error = new Error("Session expired. Please log in again.");
+      error.status = 401;
+      throw error;
+    }
+  }
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok || data?.success === false) {
+    const message =
+      data?.error?.message ||
+      data?.detail ||
+      "Something went wrong. Please try again.";
+    const error = new Error(message);
+    error.response = data;
+    error.status = res.status;
+    throw error;
+  }
+
+  // Our backend wraps successful responses as { success, data, message? }
+  return data?.data ?? data;
+}
+
+export const api = {
+  request,
+  get: (path) => request(path),
+  post: (path, body) =>
+    request(path, { method: "POST", body: JSON.stringify(body) }),
+  put: (path, body) =>
+    request(path, { method: "PUT", body: JSON.stringify(body) }),
+  patch: (path, body) =>
+    request(path, { method: "PATCH", body: JSON.stringify(body) }),
+  delete: (path) => request(path, { method: "DELETE" }),
+  postForm: (path, formData) =>
+    request(path, {
+      method: "POST",
+      body: formData,
+      headers: {}, // Let browser set Content-Type for multipart/form-data
+    }),
+  patchForm: (path, formData) =>
+    request(path, {
+      method: "PATCH",
+      body: formData,
+      headers: {},
+    }),
+  getAuthTokens,
+  saveAuthTokens,
+  clearAuthTokens,
+};
