@@ -14,8 +14,9 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (  # noqa: F405
     "common.renderers.EventHubJSONRenderer",
 )
 
-# CSRF security
+# CSRF and CORS security
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["https://*.render.com", "https://*.vercel.app"])
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=True)
 
 # Security headers
 SECURE_HSTS_SECONDS = 31536000
