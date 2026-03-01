@@ -35,10 +35,10 @@ DATABASES["default"]["CONN_MAX_AGE"] = CONN_MAX_AGE  # noqa: F405
 # Use django-storages + boto3 to persist images to Supabase
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
-AWS_ACCESS_KEY_ID = env("SB_STORAGE_ACCESS_KEY")
-AWS_SECRET_ACCESS_KEY = env("SB_STORAGE_SECRET_KEY")
+AWS_ACCESS_KEY_ID = env("SB_STORAGE_ACCESS_KEY", default="")
+AWS_SECRET_ACCESS_KEY = env("SB_STORAGE_SECRET_KEY", default="")
 AWS_STORAGE_BUCKET_NAME = env("SB_STORAGE_BUCKET", default="media")
-AWS_S3_ENDPOINT_URL = env("SB_STORAGE_ENDPOINT")
+AWS_S3_ENDPOINT_URL = env("SB_STORAGE_ENDPOINT", default="")
 AWS_S3_REGION_NAME = env("SB_STORAGE_REGION", default="us-east-1")
 
 # URL construction (no auth required for public links)
