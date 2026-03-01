@@ -4,7 +4,7 @@ from .base import *  # noqa: F403
 DEBUG = False
 
 # Render.com / Vercel domain allow-listing
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[".render.com"])  # noqa: F405
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])  # noqa: F405
 
 # Use WhiteNoise for static files (CSS/JS)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
@@ -15,7 +15,7 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (  # noqa: F405
 )
 
 # CSRF and CORS security
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["https://*.render.com", "https://*.vercel.app"])
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["https://*.onrender.com", "https://*.render.com", "https://*.vercel.app"])
 CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=True)
 
 # Security headers
