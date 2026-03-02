@@ -8,7 +8,7 @@ const StickyMobileBar = ({ event, onGetTickets, themeColor }) => {
 
   return (
     <motion.div
-      className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E2E8F0] p-4 md:hidden z-30"
+      className="fixed bottom-0 left-0 w-full max-w-[100vw] bg-white border-t border-[#E2E8F0] p-4 md:hidden z-30 overflow-x-hidden"
       initial={{ y: 100 }}
       animate={{ y: 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.5 }}

@@ -96,31 +96,31 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full overflow-hidden">
       {Object.entries(byTier).map(([tier, items]) => (
         <div key={tier}>
           <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-semibold mb-4 ${tierStyles[tier]}`}>
             <Building2 className="w-4 h-4" />
             {tier} Sponsor{items.length > 1 ? 's' : ''}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             {items.map((sponsor, i) => (
               <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
                 {sponsor.website ? (
                   <a href={sponsor.website} target="_blank" rel="noopener noreferrer"
-                    className="block bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-100 transition-all group min-h-[100px] min-w-0 w-full overflow-hidden">
+                    className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-100 transition-all group min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
                       <img src={sponsor.logo} alt={sponsor.name} className="h-10 max-w-full object-contain" />
                     ) : (
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
                     )}
-                    <div className="flex items-center gap-1 text-xs text-[#94A3B8] group-hover:text-[#1E4DB7]">
+                    <div className="flex items-center gap-1 text-xs text-[#94A3B8] group-hover:text-[#1E4DB7] truncate w-full justify-center">
                       {sponsor.name} <ExternalLink className="w-3 h-3" />
                     </div>
                   </a>
                 ) : (
-                  <div className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center justify-center gap-2 min-h-[100px] min-w-0 w-full overflow-hidden">
+                  <div className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
                       <img src={sponsor.logo} alt={sponsor.name} className="h-10 max-w-full object-contain" />
                     ) : (
@@ -390,15 +390,15 @@ const EventDetailPage = () => {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full overflow-hidden">
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
-          <div className="lg:col-span-2 space-y-10">
+          <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden">
 
             {/* ── TABS ── */}
-            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] -mx-4 px-4 sm:-mx-6 sm:px-6">
-              <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]">
+              <div className="flex gap-1 overflow-x-auto hide-scrollbar">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -457,7 +457,7 @@ const EventDetailPage = () => {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="flex items-start gap-5 p-5 rounded-2xl border"
+                          className="flex items-start gap-3 sm:gap-5 p-4 sm:p-5 rounded-2xl border"
                           style={{ borderColor: `${accentColor}40`, background: `${accentColor}08` }}
                         >
                           {event.mc.avatar || event.mc.photo ? (
@@ -469,8 +469,8 @@ const EventDetailPage = () => {
                               <Mic2 className="w-7 h-7" />
                             </div>
                           )}
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
                               <h4 className="font-bold text-[#0F172A]">{event.mc.name}</h4>
                               <span className="px-2 py-0.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: accentColor }}>
                                 MC / Host
@@ -542,9 +542,9 @@ const EventDetailPage = () => {
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         Organized By
                       </h2>
-                      <div className="flex items-start gap-5 p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0]">
+                      <div className="flex items-start gap-3 sm:gap-5 p-4 sm:p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0]">
                         <CustomAvatar src={event.organizer.avatar} name={event.organizer.name} size="lg" fallbackColor={event.organizer.brandColor} />
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-[#0F172A] text-lg">{event.organizer.name}</h4>
                           {event.organizer.bio && (
                             <p className="text-sm text-[#64748B] mt-1 line-clamp-2">{event.organizer.bio}</p>

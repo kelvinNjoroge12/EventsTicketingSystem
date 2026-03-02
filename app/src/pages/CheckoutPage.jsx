@@ -189,7 +189,7 @@ const CheckoutPage = () => {
 
   return (
     <PageWrapper>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[100vw] overflow-hidden">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
 
         {/* Header */}
         <div className="mb-8">
@@ -225,7 +225,7 @@ const CheckoutPage = () => {
         <div className="grid lg:grid-cols-3 gap-8">
 
           {/* ── Main Content ── */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 min-w-0">
             <AnimatePresence mode="wait">
               {currentStep === 0 && (
                 <AttendeeForm
@@ -305,7 +305,7 @@ const CheckoutPage = () => {
           </div>
 
           {/* ── Order Summary Sidebar ── */}
-          <aside className="lg:col-span-1">
+          <aside className="lg:col-span-1 min-w-0">
             <div className="sticky top-24">
               <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
                 {/* Coloured header bar */}

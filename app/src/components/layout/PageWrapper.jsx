@@ -1,14 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const PageWrapper = ({ 
-  children, 
+const PageWrapper = ({
+  children,
   className = '',
   animate = true,
 }) => {
+  const baseClasses = `min-h-screen bg-white w-full max-w-[100vw] overflow-x-hidden ${className}`;
+
   if (!animate) {
     return (
-      <main id="main-content" className={`min-h-screen bg-white ${className}`}>
+      <main id="main-content" className={baseClasses}>
         {children}
       </main>
     );
@@ -17,7 +19,7 @@ const PageWrapper = ({
   return (
     <motion.main
       id="main-content"
-      className={`min-h-screen bg-white ${className}`}
+      className={baseClasses}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

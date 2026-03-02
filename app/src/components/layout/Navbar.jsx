@@ -64,7 +64,7 @@ const Navbar = () => {
 
       <motion.header
         className={`
-          fixed top-0 left-0 w-full z-40 bg-white
+          fixed top-0 left-0 w-full z-40 bg-white max-w-[100vw] overflow-x-hidden
           transition-shadow duration-300
           ${isScrolled ? 'shadow-md' : ''}
         `}
