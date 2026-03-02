@@ -252,7 +252,7 @@ const EventDetailPage = () => {
   return (
     <PageWrapper>
       {/* ── HERO SECTION ── */}
-      <div className="relative h-[320px] md:h-[480px] overflow-hidden">
+      <div className="relative w-full h-[320px] md:h-[480px] overflow-hidden">
         {/* Background */}
         <div className="absolute inset-0" style={{
           background: event.bannerImage
@@ -437,10 +437,10 @@ const EventDetailPage = () => {
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         About This Event
                       </h2>
-                      <div className="prose prose-slate max-w-none">
+                      <div className="prose prose-slate max-w-none break-words overflow-hidden">
                         {event.description
                           ? event.description.split('\n\n').map((para, i) => (
-                            <p key={i} className="text-[#475569] leading-relaxed mb-4">{para}</p>
+                            <p key={i} className="text-[#475569] leading-relaxed mb-4 break-words">{para}</p>
                           ))
                           : <p className="text-[#64748B]">No description provided.</p>
                         }
