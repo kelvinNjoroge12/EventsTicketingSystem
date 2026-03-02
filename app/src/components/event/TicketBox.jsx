@@ -130,17 +130,21 @@ const TicketBox = ({
                       : 'border-[#E2E8F0] hover:border-[#1E4DB7]/30'}
                   `}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="font-medium text-[#0F172A]">{ticket.type || ticket.name}</p>
-                      <p className="text-xs text-[#64748B]">
+                  <div className="flex items-start justify-between mb-3 gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[#0F172A] break-words leading-tight mb-1">
+                        {ticket.type || ticket.name}
+                      </p>
+                      <p className="text-xs text-[#64748B] break-words">
                         {ticket.remaining > 0 ? `${ticket.remaining} remaining` : 'Sold out'}
                         {ticket.description && ` · ${ticket.description}`}
                       </p>
                     </div>
-                    <p className="font-semibold text-[#1E4DB7] whitespace-nowrap">
-                      {ticket.price === 0 ? 'Free' : `${event.currency} ${ticket.price.toLocaleString()}`}
-                    </p>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="font-semibold text-[#1E4DB7] whitespace-nowrap">
+                        {ticket.price === 0 ? 'Free' : `${event.currency} ${ticket.price.toLocaleString()}`}
+                      </p>
+                    </div>
                   </div>
                   {/* Quantity controls */}
                   <div className="flex items-center gap-3">

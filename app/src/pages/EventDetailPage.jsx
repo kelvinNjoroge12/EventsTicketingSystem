@@ -252,7 +252,7 @@ const EventDetailPage = () => {
   return (
     <PageWrapper>
       {/* ── HERO SECTION ── */}
-      <div className="relative w-full h-[320px] md:h-[480px]" style={{ overflow: 'clip' }}>
+      <div className="relative w-full h-[320px] md:h-[480px]" style={{ overflow: 'hidden' }}>
         {/* Background */}
         <div className="absolute inset-0" style={{
           background: event.bannerImage
@@ -390,14 +390,14 @@ const EventDetailPage = () => {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full" style={{ overflowX: 'clip' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full" style={{ overflowX: 'hidden' }}>
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden">
 
             {/* ── TABS ── */}
-            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]" style={{ maxWidth: '100vw', overflowX: 'clip' }}>
+            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
               <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full">
                 {tabs.map((tab) => (
                   <button
