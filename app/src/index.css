@@ -35,6 +35,8 @@ html {
   width: 100% !important;
   max-width: 100vw !important;
   position: relative;
+  margin: 0;
+  padding: 0;
 }
 
 body {
@@ -48,44 +50,52 @@ body {
   width: 100% !important;
   max-width: 100vw !important;
   position: relative;
+  margin: 0;
+  padding: 0;
   touch-action: pan-y;
 }
 
-#root {
-  width: 100%;
-  max-width: 100vw;
-  max-width: 100dvw;
-  overflow-x: clip;
+#root,
+.App,
+main,
+.page-wrapper {
+  overflow-x: clip !important;
+  width: 100% !important;
+  max-width: 100vw !important;
   position: relative;
 }
 
-/* Mobile Overflow Safeguard - Aggressive Fix */
+/* Aggressive GLOBAL guard against horizontal overflow */
+* {
+  box-sizing: border-box !important;
+  max-width: 100vw !important;
+}
+
+/* Specifically allow horizontal scrolling where intended */
+.overflow-x-auto,
+.overflow-x-scroll,
+.scroll-container {
+  max-width: none !important;
+}
+
 @media (max-width: 768px) {
 
+  /* Extra mobile-only cleanup to ensure the page is "locked" */
   html,
-  body,
+  body {
+    position: fixed;
+    height: 100%;
+    overflow: hidden;
+  }
+
   #root,
   .App,
-  .page-wrapper,
-  main {
+  main,
+  .page-wrapper {
+    height: 100%;
+    overflow-y: auto;
     overflow-x: hidden !important;
-    position: relative !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    margin-right: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  /* Prevent any element from being wider than the viewport */
-  * {
-    max-width: 100vw !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Except for scrollable areas we explicitly want */
-  .overflow-x-auto,
-  .overflow-x-scroll {
-    max-width: none !important;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
