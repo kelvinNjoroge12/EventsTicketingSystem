@@ -4,8 +4,8 @@ import { Check } from 'lucide-react';
 
 const StepIndicator = ({ steps, currentStep, themeColor }) => {
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between">
+    <div className="w-full max-w-full overflow-hidden">
+      <div className="flex items-center justify-between w-full max-w-full">
         {steps.map((step, index) => {
           const isCompleted = index < currentStep;
           const isCurrent = index === currentStep;
@@ -19,14 +19,14 @@ const StepIndicator = ({ steps, currentStep, themeColor }) => {
                   className={`
                     w-10 h-10 rounded-full flex items-center justify-center
                     font-semibold text-sm
-                    ${isCompleted 
-                      ? 'text-white' 
-                      : isCurrent 
-                        ? 'text-white' 
+                    ${isCompleted
+                      ? 'text-white'
+                      : isCurrent
+                        ? 'text-white'
                         : 'text-[#64748B] bg-[#F1F5F9] border-2 border-[#E2E8F0]'}
                   `}
-                  style={{ 
-                    backgroundColor: isCompleted || isCurrent ? themeColor : undefined 
+                  style={{
+                    backgroundColor: isCompleted || isCurrent ? themeColor : undefined
                   }}
                   initial={false}
                   animate={{
