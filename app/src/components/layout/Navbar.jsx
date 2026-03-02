@@ -64,13 +64,14 @@ const Navbar = () => {
 
       <motion.header
         className={`
-          fixed top-0 left-0 w-full z-40 bg-white max-w-[100vw] overflow-x-hidden
+          fixed top-0 left-0 w-full z-40 bg-white
           transition-shadow duration-300
           ${isScrolled ? 'shadow-md' : ''}
         `}
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.3 }}
+        style={{ overflowX: 'clip', maxWidth: '100vw' }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">

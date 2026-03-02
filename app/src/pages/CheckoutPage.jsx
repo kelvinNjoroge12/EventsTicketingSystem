@@ -189,7 +189,7 @@ const CheckoutPage = () => {
 
   return (
     <PageWrapper>
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ overflowX: 'clip' }}>
 
         {/* Header */}
         <div className="mb-8">

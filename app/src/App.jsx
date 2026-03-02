@@ -274,7 +274,9 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Router>
-          <AnimatedRoutes />
+          <div style={{ width: '100vw', maxWidth: '100vw', overflowX: 'clip', position: 'relative', minHeight: '100vh' }}>
+            <AnimatedRoutes />
+          </div>
         </Router>
       </CartProvider>
     </AuthProvider>

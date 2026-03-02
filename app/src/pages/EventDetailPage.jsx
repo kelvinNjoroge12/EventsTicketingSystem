@@ -252,7 +252,7 @@ const EventDetailPage = () => {
   return (
     <PageWrapper>
       {/* ── HERO SECTION ── */}
-      <div className="relative w-full h-[320px] md:h-[480px] overflow-hidden">
+      <div className="relative w-full h-[320px] md:h-[480px]" style={{ overflow: 'clip' }}>
         {/* Background */}
         <div className="absolute inset-0" style={{
           background: event.bannerImage
@@ -390,7 +390,7 @@ const EventDetailPage = () => {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full" style={{ overflowX: 'clip' }}>
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
