@@ -18,7 +18,7 @@ import EventCard from '../components/cards/EventCard';
 import CategoryPill from '../components/cards/CategoryPill';
 import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
-import { fetchEvents } from '../lib/eventsApi';
+import { fetchEvents, fetchEventsWithSWR, prefetchEventsBatch, preloadRoutes } from '../lib/eventsApi';
 import { categories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
 import useSavedEvents from '../hooks/useSavedEvents';
@@ -87,19 +87,48 @@ const HomePage = () => {
 
   useEffect(() => {
     let isMounted = true;
-    (async () => {
-      try {
-        const events = await fetchEvents({ ordering: 'start_date' });
-        if (isMounted) {
-          // No slicing, render all events
-          setAllEvents(events);
-        }
-      } catch (e) {
-        console.error("Failed to load upcoming events", e);
-      } finally {
-        if (isMounted) setIsLoading(false);
+
+    // 1. Try to render from cache immediately (stale-while-revalidate)
+    const cached = fetchEventsWithSWR({ ordering: 'start_date' }, (freshEvents) => {
+      if (isMounted) {
+        setAllEvents(freshEvents);
+        // Prefetch details of first 6 visible events for instant detail page loads
+        prefetchEventsBatch(freshEvents.slice(0, 6).map(e => e.slug), 2);
       }
-    })();
+    });
+
+    if (cached) {
+      setAllEvents(cached);
+      setIsLoading(false);
+      // Still prefetch details even from cache
+      prefetchEventsBatch(cached.slice(0, 6).map(e => e.slug), 2);
+    }
+
+    // 2. If no cache, do a full fetch
+    if (!cached) {
+      (async () => {
+        try {
+          const events = await fetchEvents({ ordering: 'start_date' });
+          if (isMounted) {
+            setAllEvents(events);
+            // Prefetch details of first 6 visible events
+            prefetchEventsBatch(events.slice(0, 6).map(e => e.slug), 2);
+          }
+        } catch (e) {
+          console.error("Failed to load upcoming events", e);
+        } finally {
+          if (isMounted) setIsLoading(false);
+        }
+      })();
+    }
+
+    // 3. Pre-warm the EventsPage cache (default params) in the background
+    //    so navigating to /events is instant
+    fetchEvents({}).catch(() => { });
+
+    // 4. Preload route JS chunks after the page is interactive
+    preloadRoutes();
+
     return () => {
       isMounted = false;
     };

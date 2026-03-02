@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import PageWrapper from '../components/layout/PageWrapper';
 import EventCard from '../components/cards/EventCard';
 import CustomButton from '../components/ui/CustomButton';
-import { fetchEvents } from '../lib/eventsApi';
+import { fetchEvents, fetchEventsWithSWR } from '../lib/eventsApi';
 import { categories } from '../data/categories';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
@@ -57,24 +57,33 @@ const EventsPage = () => {
     sort: 'popular', // popular, upcoming, newest, price-low, price-high
   });
 
-  // Initial load from backend
+  // Initial load — uses SWR cache from HomePage if available
   useEffect(() => {
     let isMounted = true;
-    (async () => {
-      try {
-        const data = await fetchEvents();
-        if (isMounted) {
-          setAllEvents(data);
+
+    // 1. Try to serve from cache immediately
+    const cached = fetchEventsWithSWR({}, (freshEvents) => {
+      if (isMounted) setAllEvents(freshEvents);
+    });
+
+    if (cached) {
+      setAllEvents(cached);
+      setIsLoading(false);
+    } else {
+      // 2. No cache — full network fetch
+      (async () => {
+        try {
+          const data = await fetchEvents();
+          if (isMounted) setAllEvents(data);
+        } catch (e) {
+          console.error('Failed to load events', e);
+        } finally {
+          if (isMounted) setIsLoading(false);
         }
-      } catch (e) {
-        console.error('Failed to load events', e);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
+      })();
+    }
+
+    return () => { isMounted = false; };
   }, []);
 
   // Filter and sort events

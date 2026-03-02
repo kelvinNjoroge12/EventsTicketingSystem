@@ -9,8 +9,10 @@ import useScrollTop from './hooks/useScrollTop';
 import useToast from './hooks/useToast';
 import Toast from './components/ui/Toast';
 
-// Lazy load pages for code splitting
-const HomePage = lazy(() => import('./pages/HomePage'));
+// HomePage is eager-loaded (entry point — no spinner on first visit)
+import HomePage from './pages/HomePage';
+
+// Other pages are lazy-loaded; JS chunks are preloaded in background by HomePage
 const EventsPage = lazy(() => import('./pages/EventsPage'));
 const EventDetailPage = lazy(() => import('./pages/EventDetailPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
@@ -74,11 +76,9 @@ const AnimatedRoutes = () => {
           <Route
             path="/"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <HomePage />
-                </AnimatedPage>
-              </Suspense>
+              <AnimatedPage>
+                <HomePage />
+              </AnimatedPage>
             }
           />
           <Route

@@ -1,12 +1,18 @@
 import { api } from "./apiClient";
 
+// ── Cache Configuration ────────────────────────────────────────────────────
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes — data considered fresh
+const eventCache = new Map();     // slug → { data, timestamp }
+const listCache = new Map();      // cacheKey → { data, timestamp }
+
+// ── Mappers ────────────────────────────────────────────────────────────────
+
 // Map backend event list item to the shape used by EventCard, HomePage, EventsPage
 const mapListEvent = (e) => {
   const base = {
     id: e.id,
     slug: e.slug,
     title: e.title,
-    // Frontend expects category as string, not object
     category:
       (e.category && typeof e.category === "object" ? e.category.name : null) ||
       e.category_name ||
@@ -24,7 +30,6 @@ const mapListEvent = (e) => {
     stickers: e.stickers || [],
     format: e.format || "",
     coverImage: e.cover_image || null,
-    // Guard: list endpoint does not return tags or description — prevent crashes in filter
     tags: [],
     description: "",
     organizer: {
@@ -46,7 +51,7 @@ const mapListEvent = (e) => {
   return {
     ...base,
     isFree,
-    isAlmostSoldOut: false, // refined from ticket types in detail view
+    isAlmostSoldOut: false,
     currency: "KES",
     price: Number(price || 0),
   };
@@ -81,7 +86,6 @@ const mapDetailEvent = (e) => {
     format: e.format || "",
     bannerImage: e.gallery_images && e.gallery_images.length > 0 ? e.gallery_images[0] : (e.cover_image || null),
     location,
-    // Tags: backend returns [{id, name, slug}] — map to string array
     tags: Array.isArray(e.tags)
       ? e.tags.map((t) => (t && typeof t === "object" ? t.name : t || ""))
       : [],
@@ -103,7 +107,7 @@ const mapDetailEvent = (e) => {
     promoCodes: e.promo_codes || [],
     speakers: (e.speakers || []).map(s => ({
       ...s,
-      avatar: s.avatar_url || s.avatar // handle case where backend might send either
+      avatar: s.avatar_url || s.avatar
     })),
     mc: e.mc ? {
       ...e.mc,
@@ -115,7 +119,6 @@ const mapDetailEvent = (e) => {
       logo: s.logo_url || s.logo,
       tier: s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Partner'
     })),
-    // Override organizer with richer detail data
     organizer: {
       id: e.organizer?.id,
       name:
@@ -131,7 +134,27 @@ const mapDetailEvent = (e) => {
   };
 };
 
+// ── List Cache Key Builder ─────────────────────────────────────────────────
+const buildListCacheKey = (params = {}) => {
+  const sorted = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .sort(([a], [b]) => a.localeCompare(b));
+  return sorted.length === 0 ? "__all__" : JSON.stringify(sorted);
+};
+
+// ── Fetch Events (with SWR-style caching) ──────────────────────────────────
+// Returns cached data immediately if available, and refreshes in background
+// if stale. This means HomePage → EventsPage navigation is instant.
 export const fetchEvents = async (params = {}) => {
+  const cacheKey = buildListCacheKey(params);
+  const cached = listCache.get(cacheKey);
+
+  // If we have fresh cached data, return immediately
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
+  // Build query
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -139,15 +162,41 @@ export const fetchEvents = async (params = {}) => {
     }
   });
   const query = searchParams.toString();
-  const data = await api.get(`/api/events/${query ? "?" + query : ""}`);
-  return Array.isArray(data?.results)
-    ? data.results.map(mapListEvent)
-    : data.map(mapListEvent);
+
+  // Fetch fresh data
+  const rawData = await api.get(`/api/events/${query ? "?" + query : ""}`);
+  const events = Array.isArray(rawData?.results)
+    ? rawData.results.map(mapListEvent)
+    : rawData.map(mapListEvent);
+
+  // Store in cache
+  listCache.set(cacheKey, { data: events, timestamp: Date.now() });
+
+  return events;
 };
 
-const eventCache = new Map();
-const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+// Stale-while-revalidate variant: returns cached data AND refreshes in bg
+// Calls onUpdate when fresh data arrives
+export const fetchEventsWithSWR = (params = {}, onUpdate) => {
+  const cacheKey = buildListCacheKey(params);
+  const cached = listCache.get(cacheKey);
 
+  if (cached) {
+    // Return stale data immediately
+    const isStale = Date.now() - cached.timestamp >= CACHE_TTL;
+
+    if (isStale && onUpdate) {
+      // Refresh in background
+      fetchEvents(params).then(onUpdate).catch(() => { });
+    }
+
+    return cached.data; // Return synchronously
+  }
+
+  return null; // No cache, caller should await fetchEvents
+};
+
+// ── Prefetch Event Detail (fire-and-forget) ────────────────────────────────
 export const prefetchEvent = async (slug) => {
   if (eventCache.has(slug)) {
     const cached = eventCache.get(slug);
@@ -162,6 +211,7 @@ export const prefetchEvent = async (slug) => {
   }
 };
 
+// ── Fetch Single Event Detail (cache-first) ────────────────────────────────
 export const fetchEvent = async (slug) => {
   if (eventCache.has(slug)) {
     const cached = eventCache.get(slug);
@@ -175,6 +225,35 @@ export const fetchEvent = async (slug) => {
   return mapped;
 };
 
+// ── Batch Prefetch Event Details ────────────────────────────────────────────
+// Prefetches details for multiple events with concurrency control.
+// Called after the event list loads to warm the cache for instant detail views.
+export const prefetchEventsBatch = (slugs, concurrency = 3) => {
+  let index = 0;
+
+  const next = () => {
+    if (index >= slugs.length) return;
+    const slug = slugs[index++];
+
+    // Skip if already cached
+    if (eventCache.has(slug)) {
+      const cached = eventCache.get(slug);
+      if (Date.now() - cached.timestamp < CACHE_TTL) {
+        next();
+        return;
+      }
+    }
+
+    prefetchEvent(slug).finally(next);
+  };
+
+  // Start N concurrent workers
+  for (let i = 0; i < Math.min(concurrency, slugs.length); i++) {
+    next();
+  }
+};
+
+// ── Related Events ─────────────────────────────────────────────────────────
 export const fetchRelatedEvents = async (slug) => {
   const data = await api.get(`/api/events/${slug}/related/`);
   return data.map(mapListEvent);
@@ -200,12 +279,11 @@ export const fetchCategories = async () => {
 };
 
 // ── Analytics ───────────────────────────────────────────────────────────────
-/** Fire a page-view ping when an event detail page loads (best-effort, no await needed). */
 export const trackEventView = (slug) => {
   api.post(`/api/events/${slug}/analytics/view/`, {}).catch(() => { });
 };
 
-// ── Event sub-resources (standalone helpers for lazy loading) ───────────────
+// ── Event sub-resources ────────────────────────────────────────────────────
 export const fetchEventSpeakers = async (slug) => {
   return api.get(`/api/events/${slug}/speakers/`);
 };
@@ -235,4 +313,29 @@ export const markNotificationRead = async (id) => {
 
 export const markAllNotificationsRead = async () => {
   return api.post("/api/notifications/read-all/", {});
+};
+
+// ── Route Preloading ───────────────────────────────────────────────────────
+// Preloads the JS bundles for EventsPage and EventDetailPage so navigation
+// is instant. Called once after the HomePage first renders.
+let hasPreloadedRoutes = false;
+export const preloadRoutes = () => {
+  if (hasPreloadedRoutes) return;
+  hasPreloadedRoutes = true;
+
+  // Use requestIdleCallback or setTimeout to avoid blocking main thread
+  const preload = () => {
+    // Preload EventsPage chunk
+    import(/* webpackPrefetch: true */ '../pages/EventsPage');
+    // Preload EventDetailPage chunk
+    import(/* webpackPrefetch: true */ '../pages/EventDetailPage');
+    // Preload CheckoutPage chunk
+    import(/* webpackPrefetch: true */ '../pages/CheckoutPage');
+  };
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(preload, { timeout: 3000 });
+  } else {
+    setTimeout(preload, 1000);
+  }
 };
