@@ -49,7 +49,7 @@ const ScheduleTimeline = ({ schedule, themeColor }) => (
 
 // ── Speakers Grid ──────────────────────────────────────────────────────────
 const SpeakersGrid = ({ speakers, themeColor }) => (
-  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
     {speakers.map((speaker, i) => (
       <motion.div
         key={i}
@@ -98,12 +98,12 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
   return (
     <div className="space-y-8 w-full overflow-hidden">
       {Object.entries(byTier).map(([tier, items]) => (
-        <div key={tier}>
-          <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-semibold mb-4 ${tierStyles[tier]}`}>
+        <div key={tier} className="w-full">
+          <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs sm:text-sm font-semibold mb-4 max-w-full ${tierStyles[tier]}`}>
             <Building2 className="w-4 h-4" />
             {tier} Sponsor{items.length > 1 ? 's' : ''}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             {items.map((sponsor, i) => (
               <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
                 {sponsor.website ? (
@@ -282,7 +282,7 @@ const EventDetailPage = () => {
         <div className="absolute inset-0 flex flex-col justify-end">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
             {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-white/70 text-xs mb-4">
+            <nav className="flex flex-wrap items-center gap-1 sm:gap-2 text-white/70 text-[10px] sm:text-xs mb-4">
               <Link to="/" className="hover:text-white transition-colors">Home</Link>
               <ChevronRight className="w-3 h-3" />
               <Link to="/events" className="hover:text-white transition-colors">Events</Link>
@@ -291,7 +291,7 @@ const EventDetailPage = () => {
             </nav>
 
             {/* Category + Format badge */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: `${themeColor}CC` }}>
                 {event.category}
               </span>
@@ -305,7 +305,7 @@ const EventDetailPage = () => {
 
             {/* Title */}
             <motion.h1
-              className="text-3xl md:text-5xl font-bold text-white mb-4 max-w-3xl leading-tight"
+              className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 max-w-full sm:max-w-3xl leading-tight break-words"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -397,8 +397,8 @@ const EventDetailPage = () => {
           <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden">
 
             {/* ── TABS ── */}
-            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]">
-              <div className="flex gap-1 overflow-x-auto hide-scrollbar">
+            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]" style={{ maxWidth: '100vw', overflowX: 'clip' }}>
+              <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -488,7 +488,7 @@ const EventDetailPage = () => {
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         Event Details
                       </h2>
-                      <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {[
                           { icon: <Calendar className="w-5 h-5" />, label: 'Date', value: formatDate(event.date) },
                           { icon: <Clock className="w-5 h-5" />, label: 'Time', value: `${event.time}${event.endTime ? ` – ${event.endTime}` : ''}` },
@@ -501,7 +501,7 @@ const EventDetailPage = () => {
                             </div>
                             <div>
                               <p className="text-xs text-[#94A3B8] mb-0.5">{label}</p>
-                              <p className="font-semibold text-[#0F172A] text-sm">{value}</p>
+                              <p className="font-semibold text-[#0F172A] text-sm break-words">{value}</p>
                             </div>
                           </div>
                         ))}
