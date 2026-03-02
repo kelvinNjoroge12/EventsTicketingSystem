@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import CustomButton from '../ui/CustomButton';
 
 const StickyMobileBar = ({ event, onGetTickets, themeColor }) => {
@@ -7,12 +6,9 @@ const StickyMobileBar = ({ event, onGetTickets, themeColor }) => {
   const hasMultipleTickets = event.tickets.length > 1;
 
   return (
-    <motion.div
-      className="fixed bottom-0 left-0 w-full bg-white border-t border-[#E2E8F0] p-4 md:hidden z-30"
-      style={{ maxWidth: '100vw', overflowX: 'clip' }}
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.5 }}
+    <div
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E2E8F0] p-4 md:hidden z-30"
+      style={{ overflowX: 'hidden' }}
     >
       <div className="flex items-center justify-between gap-4">
         {/* Price Info */}
@@ -36,7 +32,7 @@ const StickyMobileBar = ({ event, onGetTickets, themeColor }) => {
           Get Tickets
         </CustomButton>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

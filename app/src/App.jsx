@@ -1,6 +1,5 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/layout/Navbar';
@@ -30,239 +29,50 @@ const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage')
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
 const OrganizerDashboardPage = lazy(() => import('./pages/OrganizerDashboardPage'));
 
-// Loading fallback
+// Loading fallback — plain CSS spinner, no framer-motion transforms
 const PageLoader = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
-    <motion.div
-      className="w-16 h-16 border-4 border-[#1E4DB7] border-t-transparent rounded-full"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-    />
+    <div className="w-16 h-16 border-4 border-[#1E4DB7] border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
-// Animated page wrapper
-const AnimatedPage = ({ children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    transition={{ duration: 0.3 }}
-  >
-    {children}
-  </motion.div>
-);
-
-// Scroll to top component
+// Scroll to top on route change
 const ScrollToTop = () => {
   useScrollTop();
   return null;
 };
 
-// Routes with AnimatePresence
-const AnimatedRoutes = () => {
-  const location = useLocation();
+// All routes — NO motion wrappers around pages (motion transforms break fixed positioning on iOS)
+const AppRoutes = () => {
   const { toasts, removeToast } = useToast();
 
   return (
     <>
       <ScrollToTop />
       <Navbar />
-
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route
-            path="/"
-            element={
-              <AnimatedPage>
-                <HomePage />
-              </AnimatedPage>
-            }
-          />
-          <Route
-            path="/events"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <EventsPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/events/:slug"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <EventDetailPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/checkout/:slug"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <CheckoutPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/confirmation/:orderId"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <ConfirmationPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/search"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <SearchResultsPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/organizers/:id"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <OrganizerProfilePage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/edit-event/:slug"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <CreateEventPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/create-event"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <CreateEventPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/login"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <LoginPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/signup"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <SignUpPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/forgot-password"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <ForgotPasswordPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/reset-password"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <ResetPasswordPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/organizer-profile"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <OrganizerProfilePage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/my-tickets"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <MyTicketsPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <AccountSettingsPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/organizer-dashboard"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <OrganizerDashboardPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="/verify-email"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <EmailVerificationPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-          <Route
-            path="*"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AnimatedPage>
-                  <NotFoundPage />
-                </AnimatedPage>
-              </Suspense>
-            }
-          />
-        </Routes>
-      </AnimatePresence>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/events" element={<Suspense fallback={<PageLoader />}><EventsPage /></Suspense>} />
+        <Route path="/events/:slug" element={<Suspense fallback={<PageLoader />}><EventDetailPage /></Suspense>} />
+        <Route path="/checkout/:slug" element={<Suspense fallback={<PageLoader />}><CheckoutPage /></Suspense>} />
+        <Route path="/confirmation/:orderId" element={<Suspense fallback={<PageLoader />}><ConfirmationPage /></Suspense>} />
+        <Route path="/search" element={<Suspense fallback={<PageLoader />}><SearchResultsPage /></Suspense>} />
+        <Route path="/organizers/:id" element={<Suspense fallback={<PageLoader />}><OrganizerProfilePage /></Suspense>} />
+        <Route path="/edit-event/:slug" element={<Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>} />
+        <Route path="/create-event" element={<Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>} />
+        <Route path="/login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
+        <Route path="/signup" element={<Suspense fallback={<PageLoader />}><SignUpPage /></Suspense>} />
+        <Route path="/forgot-password" element={<Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense>} />
+        <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense>} />
+        <Route path="/organizer-profile" element={<Suspense fallback={<PageLoader />}><OrganizerProfilePage /></Suspense>} />
+        <Route path="/my-tickets" element={<Suspense fallback={<PageLoader />}><MyTicketsPage /></Suspense>} />
+        <Route path="/settings" element={<Suspense fallback={<PageLoader />}><AccountSettingsPage /></Suspense>} />
+        <Route path="/organizer-dashboard" element={<Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>} />
+        <Route path="/verify-email" element={<Suspense fallback={<PageLoader />}><EmailVerificationPage /></Suspense>} />
+        <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense>} />
+      </Routes>
 
       <Footer />
     </>
@@ -274,9 +84,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Router>
-          <div style={{ width: '100vw', maxWidth: '100vw', overflowX: 'clip', position: 'relative', minHeight: '100vh' }}>
-            <AnimatedRoutes />
-          </div>
+          <AppRoutes />
         </Router>
       </CartProvider>
     </AuthProvider>
