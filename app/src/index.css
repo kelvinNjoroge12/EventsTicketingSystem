@@ -46,6 +46,14 @@ body {
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
+  position: relative;
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
 }
 
 /* Custom scrollbar */
