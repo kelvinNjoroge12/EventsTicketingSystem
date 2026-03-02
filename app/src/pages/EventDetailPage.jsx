@@ -36,11 +36,11 @@ const ScheduleTimeline = ({ schedule, themeColor }) => (
           style={{ borderColor: themeColor }}>
           <Clock className="w-4 h-4" style={{ color: themeColor }} />
         </div>
-        <div className="pb-8 flex-1">
-          <p className="text-sm font-semibold mb-0.5" style={{ color: themeColor }}>{item.time}</p>
-          <h4 className="font-semibold text-[#0F172A] mb-1">{item.title}</h4>
-          {item.speaker && <p className="text-sm text-[#64748B] mb-1">🎤 {item.speaker}</p>}
-          {item.description && <p className="text-sm text-[#64748B]">{item.description}</p>}
+        <div className="pb-8 flex-1 min-w-0">
+          <p className="text-sm font-semibold mb-0.5 break-words" style={{ color: themeColor }}>{item.time}</p>
+          <h4 className="font-semibold text-[#0F172A] mb-1 break-words">{item.title}</h4>
+          {item.speaker && <p className="text-sm text-[#64748B] mb-1 break-words">🎤 {item.speaker}</p>}
+          {item.description && <p className="text-sm text-[#64748B] break-words">{item.description}</p>}
         </div>
       </motion.div>
     ))}
@@ -58,7 +58,7 @@ const SpeakersGrid = ({ speakers, themeColor }) => (
         viewport={{ once: true }}
         transition={{ delay: i * 0.08 }}
         whileHover={{ y: -4 }}
-        className="bg-white rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center text-center hover:shadow-lg hover:border-blue-100 transition-all"
+        className="bg-white rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center text-center hover:shadow-lg hover:border-blue-100 transition-all min-w-0"
       >
         {speaker.photo || speaker.avatar ? (
           <img src={speaker.photo || speaker.avatar} alt={speaker.name}
@@ -69,10 +69,10 @@ const SpeakersGrid = ({ speakers, themeColor }) => (
             {speaker.name?.charAt(0) || '?'}
           </div>
         )}
-        <h4 className="font-semibold text-[#0F172A] mb-0.5">{speaker.name}</h4>
-        {speaker.title && <p className="text-sm font-medium mb-0.5" style={{ color: themeColor }}>{speaker.title}</p>}
-        {speaker.organization && <p className="text-xs text-[#94A3B8]">{speaker.organization}</p>}
-        {speaker.bio && <p className="text-xs text-[#64748B] mt-2 line-clamp-3">{speaker.bio}</p>}
+        <h4 className="font-semibold text-[#0F172A] mb-0.5 break-words w-full">{speaker.name}</h4>
+        {speaker.title && <p className="text-sm font-medium mb-0.5 break-words w-full" style={{ color: themeColor }}>{speaker.title}</p>}
+        {speaker.organization && <p className="text-xs text-[#94A3B8] break-words w-full">{speaker.organization}</p>}
+        {speaker.bio && <p className="text-xs text-[#64748B] mt-2 line-clamp-3 break-words w-full">{speaker.bio}</p>}
       </motion.div>
     ))}
   </div>
@@ -108,7 +108,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
               <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
                 {sponsor.website ? (
                   <a href={sponsor.website} target="_blank" rel="noopener noreferrer"
-                    className="block bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-100 transition-all group min-h-[100px]">
+                    className="block bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-100 transition-all group min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
                       <img src={sponsor.logo} alt={sponsor.name} className="h-10 max-w-full object-contain" />
                     ) : (
@@ -120,7 +120,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                     </div>
                   </a>
                 ) : (
-                  <div className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                  <div className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center justify-center gap-2 min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
                       <img src={sponsor.logo} alt={sponsor.name} className="h-10 max-w-full object-contain" />
                     ) : (
