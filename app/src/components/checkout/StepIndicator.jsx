@@ -41,7 +41,7 @@ const StepIndicator = ({ steps, currentStep, themeColor }) => {
                   )}
                 </motion.div>
                 <span className={`
-                  mt-2 text-xs font-medium
+                  mt-2 text-[10px] sm:text-xs font-medium text-center break-words max-w-[60px] sm:max-w-none
                   ${isCompleted || isCurrent ? 'text-[#0F172A]' : 'text-[#64748B]'}
                 `}>
                   {step.label}
@@ -50,7 +50,7 @@ const StepIndicator = ({ steps, currentStep, themeColor }) => {
 
               {/* Connector Line */}
               {index < steps.length - 1 && (
-                <div className="flex-1 h-px mx-4 bg-[#E2E8F0] relative">
+                <div className="flex-1 h-px mx-2 sm:mx-4 bg-[#E2E8F0] relative min-w-[10px]">
                   <motion.div
                     className="absolute inset-y-0 left-0"
                     style={{ backgroundColor: themeColor }}

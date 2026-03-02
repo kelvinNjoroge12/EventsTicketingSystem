@@ -4,9 +4,9 @@ import { CreditCard, Smartphone, Lock } from 'lucide-react';
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
 
-const PaymentForm = ({ 
-  event, 
-  cart, 
+const PaymentForm = ({
+  event,
+  cart,
   onSubmit,
   themeColor,
   isProcessing,
@@ -138,8 +138,8 @@ const PaymentForm = ({
             leftIcon={CreditCard}
             required
           />
-          
-          <div className="grid grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <CustomInput
               label="Expiry Date"
               placeholder="MM/YY"
@@ -159,7 +159,7 @@ const PaymentForm = ({
               required
             />
           </div>
-          
+
           <CustomInput
             label="Cardholder Name"
             placeholder="John Doe"
@@ -183,7 +183,7 @@ const PaymentForm = ({
               You will receive an M-Pesa prompt on your phone to complete the payment.
             </p>
           </div>
-          
+
           <CustomInput
             label="M-Pesa Phone Number"
             placeholder="254 712 345 678"
