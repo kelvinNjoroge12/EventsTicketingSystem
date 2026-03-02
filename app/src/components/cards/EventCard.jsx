@@ -10,6 +10,7 @@ import {
   BookmarkCheck
 } from 'lucide-react';
 import useSavedEvents from '../../hooks/useSavedEvents';
+import { prefetchEvent } from '../../lib/eventsApi';
 import CustomAvatar from '../ui/CustomAvatar';
 import CustomBadge from '../ui/CustomBadge';
 
@@ -63,7 +64,12 @@ const EventCard = ({
   const badge = getBadge();
 
   return (
-    <Link to={`/events/${event.slug}`} className="block h-full group">
+    <Link
+      to={`/events/${event.slug}`}
+      className="block h-full group"
+      onMouseEnter={() => prefetchEvent(event.slug)}
+      onTouchStart={() => prefetchEvent(event.slug)}
+    >
       <motion.article
         className="relative h-[320px] md:h-[380px] rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 shadow-xl flex flex-col justify-end transition-all duration-500"
         initial={{ opacity: 0, y: 20 }}

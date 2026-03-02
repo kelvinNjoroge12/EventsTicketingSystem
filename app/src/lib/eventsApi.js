@@ -145,9 +145,34 @@ export const fetchEvents = async (params = {}) => {
     : data.map(mapListEvent);
 };
 
+const eventCache = new Map();
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
+export const prefetchEvent = async (slug) => {
+  if (eventCache.has(slug)) {
+    const cached = eventCache.get(slug);
+    if (Date.now() - cached.timestamp < CACHE_TTL) return;
+  }
+  try {
+    const data = await api.get(`/api/events/${slug}/`);
+    const mapped = mapDetailEvent(data);
+    eventCache.set(slug, { data: mapped, timestamp: Date.now() });
+  } catch (e) {
+    // silently fail prefetch
+  }
+};
+
 export const fetchEvent = async (slug) => {
+  if (eventCache.has(slug)) {
+    const cached = eventCache.get(slug);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+  }
   const data = await api.get(`/api/events/${slug}/`);
-  return mapDetailEvent(data);
+  const mapped = mapDetailEvent(data);
+  eventCache.set(slug, { data: mapped, timestamp: Date.now() });
+  return mapped;
 };
 
 export const fetchRelatedEvents = async (slug) => {
