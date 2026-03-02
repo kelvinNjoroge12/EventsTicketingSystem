@@ -46,6 +46,14 @@ AWS_S3_REGION_NAME = env("SB_STORAGE_REGION", default="us-east-1")
 AWS_DEFAULT_ACL = "public-read"
 AWS_S3_FILE_OVERWRITE = False
 AWS_QUERYSTRING_AUTH = False 
+# Instruct boto3 not to use bucket names as subdomains, which can fail with non-AWS S3
+AWS_S3_ADDRESSING_STYLE = "path"
+
+# Make sure image URLs point directly to the Supabase object/public endpoint instead of S3 endpoint
+_domain = AWS_S3_ENDPOINT_URL.replace("https://", "").split("/")[0]
+if _domain:
+    AWS_S3_CUSTOM_DOMAIN = f"{_domain}/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
+
 # ─────────────────────────────────────────────────────────────
 
 # Logging
