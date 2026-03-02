@@ -3,6 +3,30 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
+from django.http import JsonResponse
+import threading
+import time
+import urllib.request
+import urllib.error
+
+def health_check(request):
+    """Simple endpoint to confirm the server is running."""
+    return JsonResponse({"status": "ok", "message": "Render instance is awake."})
+
+def keep_alive_ping():
+    """Background daemon to ping this server externally preventing Render sleep spin-down."""
+    while True:
+        try:
+            time.sleep(840)  # Ping every 14 minutes (Render sleeps after 15 mins of inactivity)
+            req = urllib.request.Request("https://eventsticketingsystem.onrender.com/api/health/")
+            urllib.request.urlopen(req, timeout=10)
+        except Exception:
+            pass
+
+# Start the keep-alive background daemon 
+# (Note: In Gunicorn with N workers, this spawns N threads. It is minimal network IO overhead.)
+ping_thread = threading.Thread(target=keep_alive_ping, daemon=True)
+ping_thread.start()
 
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -17,6 +41,8 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    # Health Check
+    path("api/health/", health_check, name="health-check"),
     # Core apps
     path("api/auth/", include("apps.accounts.urls")),
     path("api/events/", include("apps.events.urls")),

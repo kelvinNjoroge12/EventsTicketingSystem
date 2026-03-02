@@ -8,6 +8,8 @@ from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
 from .filters import EventFilter
@@ -27,9 +29,12 @@ class EventListView(generics.ListAPIView):
         cache_key = f"events:list:{request.get_full_path()}"
         cached = cache.get(cache_key)
         if cached:
-            return Response(cached)
+            response = Response(cached)
+            response["Cache-Control"] = "public, max-age=300"
+            return response
         response = super().list(request, *args, **kwargs)
         cache.set(cache_key, response.data, 300)  # 5 minutes
+        response["Cache-Control"] = "public, max-age=300"
         return response
 
 
@@ -68,14 +73,19 @@ class EventDetailView(generics.RetrieveAPIView):
             cached = cache.get(cache_key)
             if cached:
                 Event.objects.filter(slug=slug).update(view_count=F("view_count") + 1)
-                return Response(cached)
+                response = Response(cached)
+                response["Cache-Control"] = "public, max-age=600"
+                return response
             response = super().retrieve(request, *args, **kwargs)
             Event.objects.filter(slug=slug).update(view_count=F("view_count") + 1)
             cache.set(cache_key, response.data, 600)  # 10 minutes
+            response["Cache-Control"] = "public, max-age=600"
             return response
         # Draft/pending events — no cache, no view count
         serializer = self.get_serializer(event)
-        return Response(serializer.data)
+        response = Response(serializer.data)
+        response["Cache-Control"] = "no-store, no-cache, private"
+        return response
 
 
 class EventCreateView(generics.CreateAPIView):
@@ -170,9 +180,12 @@ class FeaturedEventsView(generics.ListAPIView):
         cache_key = "events:featured"
         cached = cache.get(cache_key)
         if cached:
-            return Response(cached)
+            response = Response(cached)
+            response["Cache-Control"] = "public, max-age=900"
+            return response
         response = super().list(request, *args, **kwargs)
         cache.set(cache_key, response.data, 900)  # 15 minutes
+        response["Cache-Control"] = "public, max-age=900"
         return response
 
 
