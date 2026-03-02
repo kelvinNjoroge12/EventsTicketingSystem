@@ -16,7 +16,9 @@ from .serializers import CategorySerializer, EventCreateSerializer, EventDetailS
 
 
 class EventListView(generics.ListAPIView):
-    queryset = Event.objects.filter(status="published")
+    queryset = Event.objects.filter(status="published").select_related(
+        "category", "organizer", "organizer__organizer_profile"
+    ).prefetch_related("ticket_types")
     serializer_class = EventListSerializer
     permission_classes = [permissions.AllowAny]
     filterset_class = EventFilter
@@ -38,14 +40,24 @@ class EventDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         """Allow organizers to view their own draft/pending events."""
-        qs = Event.objects.filter(status__in=["published", "completed"])
+        qs = Event.objects.select_related(
+            "category", "organizer", "organizer__organizer_profile"
+        ).prefetch_related(
+            "tags",
+            "ticket_types",
+            "promo_codes",
+            "speakers",
+            "schedule_items__speaker",
+            "event_sponsors"
+        )
+        qs_pub = qs.filter(status__in=["published", "completed"])
         user = self.request.user
         if user.is_authenticated:
-            qs = qs | Event.objects.filter(
+            qs_pub = qs_pub | qs.filter(
                 organizer=user,
                 status__in=["draft", "pending"],
             )
-        return qs.distinct()
+        return qs_pub.distinct()
 
     def retrieve(self, request, *args, **kwargs):
         slug = kwargs.get(self.lookup_field)
@@ -129,7 +141,9 @@ class OrganizerEventListView(generics.ListAPIView):
 
     def get_queryset(self):
         organizer_id = self.kwargs["id"]
-        return Event.objects.filter(organizer_id=organizer_id, status="published")
+        return Event.objects.filter(organizer_id=organizer_id, status="published").select_related(
+            "category", "organizer", "organizer__organizer_profile"
+        ).prefetch_related("ticket_types")
 
 
 class MyEventsListView(generics.ListAPIView):
@@ -138,7 +152,9 @@ class MyEventsListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def get_queryset(self):
-        return Event.objects.filter(organizer=self.request.user).order_by("-created_at")
+        return Event.objects.filter(organizer=self.request.user).select_related(
+            "category", "organizer", "organizer__organizer_profile"
+        ).prefetch_related("ticket_types").order_by("-created_at")
 
 
 class FeaturedEventsView(generics.ListAPIView):
@@ -146,7 +162,9 @@ class FeaturedEventsView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        return Event.objects.filter(status="published", is_featured=True)
+        return Event.objects.filter(status="published", is_featured=True).select_related(
+            "category", "organizer", "organizer__organizer_profile"
+        ).prefetch_related("ticket_types")
 
     def list(self, request, *args, **kwargs):
         cache_key = "events:featured"
@@ -185,6 +203,8 @@ def related_events(request, slug: str):
     
     qs = (
         Event.objects.filter(category=event.category, status="published")
+        .select_related("category", "organizer", "organizer__organizer_profile")
+        .prefetch_related("ticket_types")
         .exclude(id=event.id)
         .order_by("-attendee_count")[:4]
     )

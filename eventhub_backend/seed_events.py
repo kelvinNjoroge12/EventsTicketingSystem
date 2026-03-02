@@ -433,111 +433,146 @@ EVENTS = [
     }
 ]
 
+EVENTS_EXTENDED = []
+for i in range(2):
+    for ev in EVENTS:
+        new_ev = ev.copy()
+        if i > 0:
+            new_ev["title"] = f"{new_ev['title']} (Upcoming Edition)"
+            new_ev["start_date"] = "2026-05-15"
+            new_ev["end_date"] = "2026-05-16"
+        EVENTS_EXTENDED.append(new_ev)
+
+EVENTS = EVENTS_EXTENDED
 
 # ── Main ──────────────────────────────────────────────────────────────────
 print("=" * 60)
 print("EventHub Seed Script")
 print("=" * 60)
 
-# Get organizer
-organizer = User.objects.filter(is_superuser=True).first() or User.objects.first()
+# Get or create users
+organizer = User.objects.filter(email="admin@eventhub.test").first()
 if not organizer:
-    sys.exit("❌  No users found. Create a superuser first: python manage.py createsuperuser")
+    print("Creating admin user admin@eventhub.test...")
+    organizer = User.objects.create_superuser(
+        first_name="Admin",
+        last_name="User",
+        email="admin@eventhub.test",
+        password="password123",
+        is_active=True,
+    )
+    # For some models
+    if hasattr(organizer, 'is_verified'):
+        organizer.is_verified = True
+        organizer.save()
+
+kelvin = User.objects.filter(email="kelvin@eventhub.test").first()
+if not kelvin:
+    print("Creating regular user kelvin@eventhub.test...")
+    kelvin = User.objects.create_user(
+        first_name="Kelvin",
+        last_name="Njoroge",
+        email="kelvin@eventhub.test",
+        password="password123",
+        is_active=True,
+    )
+    if hasattr(kelvin, 'is_verified'):
+        kelvin.is_verified = True
+        kelvin.save()
 
 print(f"Using organizer: {organizer.email}\n")
 
-# Delete all events (DISABLED to prevent deleting user events)
-# print("🗑  Deleting existing events…")
-# count, _ = Event.objects.all().delete()
-# print(f"   Deleted {count} records.\n")
+# Delete all events
+print("🗑  Deleting existing events…")
+count, _ = Event.objects.all().delete()
+print(f"   Deleted {count} records.\n")
 
 for idx, ev in enumerate(EVENTS, 1):
     print(f"[{idx}/{len(EVENTS)}] {ev['title']}")
-    with transaction.atomic():
-        cat = get_or_make_cat(ev["category"])
+    cat = get_or_make_cat(ev["category"])
 
-        event = Event.objects.create(
-            organizer=organizer,
-            title=ev["title"],
-            description=ev["description"],
-            category=cat,
-            format=ev["format"],
-            event_type="public",
-            status="published",
-            start_date=date.fromisoformat(ev["start_date"]),
-            start_time=dtime.fromisoformat(ev["start_time"]),
-            end_date=date.fromisoformat(ev["end_date"]),
-            end_time=dtime.fromisoformat(ev["end_time"]),
-            timezone="Africa/Nairobi",
-            venue_name=ev.get("venue_name", ""),
-            venue_address=ev.get("address", ""),
-            city=ev.get("city", "Nairobi"),
-            country=ev.get("country", "Kenya"),
-            streaming_link=ev.get("streaming_link", ""),
-            theme_color=ev["theme_color"],
-            accent_color=ev["accent_color"],
-            refund_policy=ev.get("refund_policy", "no_refund"),
-            is_featured=ev.get("is_featured", False),
-            attendee_count=ev.get("attendee_count", 0),
-            published_at=timezone.now(),
-            stickers=[],
+    event = Event.objects.create(
+        organizer=organizer,
+        title=ev["title"],
+        description=ev["description"],
+        category=cat,
+        format=ev["format"],
+        event_type="public",
+        status="published",
+        start_date=date.fromisoformat(ev["start_date"]),
+        start_time=dtime.fromisoformat(ev["start_time"]),
+        end_date=date.fromisoformat(ev["end_date"]),
+        end_time=dtime.fromisoformat(ev["end_time"]),
+        timezone="Africa/Nairobi",
+        venue_name=ev.get("venue_name", ""),
+        venue_address=ev.get("address", ""),
+        city=ev.get("city", "Nairobi"),
+        country=ev.get("country", "Kenya"),
+        streaming_link=ev.get("streaming_link", ""),
+        theme_color=ev["theme_color"],
+        accent_color=ev["accent_color"],
+        refund_policy=ev.get("refund_policy", "no_refund"),
+        is_featured=ev.get("is_featured", False),
+        attendee_count=ev.get("attendee_count", 0),
+        published_at=timezone.now(),
+        stickers=[],
+    )
+
+    # Cover image
+    print("  📸  Downloading cover image…", end=" ", flush=True)
+    img = dl(ev["cover_url"], f"cover_{event.id}.jpg")
+    if img:
+        event.cover_image.save(f"cover_{event.id}.jpg", img, save=True)
+        print("✓")
+    else:
+        print("skipped")
+
+    # Tickets
+    for t in ev["tickets"]:
+        TicketType.objects.create(
+            event=event, name=t["name"], ticket_class=t["cls"],
+            price=t["price"], quantity=t["qty"],
+            description=t.get("desc", ""), currency="KES", is_active=True,
         )
+    print(f"  🎟  {len(ev['tickets'])} ticket types created")
 
-        # Cover image
-        print("  📸  Downloading cover image…", end=" ", flush=True)
-        img = dl(ev["cover_url"], f"cover_{event.id}.jpg")
-        if img:
-            event.cover_image.save(f"cover_{event.id}.jpg", img, save=True)
-            print("✓")
-        else:
-            print("skipped")
+    # Speakers / MC
+    for sp in ev["speakers"]:
+        s = Speaker.objects.create(
+            event=event, name=sp["name"], title=sp.get("title", ""),
+            organization=sp.get("org", ""), bio=sp.get("bio", ""),
+            is_mc=sp.get("mc", False),
+        )
+        avatar_url = f"https://picsum.photos/seed/{sp['img_seed']}/300/300"
+        avatar = dl(avatar_url, f"spk_{s.id}.jpg")
+        if avatar:
+            s.avatar.save(f"spk_{s.id}.jpg", avatar, save=True)
+    print(f"  🎤  {len(ev['speakers'])} speakers created")
 
-        # Tickets
-        for t in ev["tickets"]:
-            TicketType.objects.create(
-                event=event, name=t["name"], ticket_class=t["cls"],
-                price=t["price"], quantity=t["qty"],
-                description=t.get("desc", ""), currency="KES", is_active=True,
-            )
-        print(f"  🎟  {len(ev['tickets'])} ticket types created")
+    # Schedule
+    for i, item in enumerate(ev["schedule"]):
+        ScheduleItem.objects.create(
+            event=event, title=item["title"],
+            description=item.get("desc", ""),
+            start_time=dtime.fromisoformat(item["start"]),
+            end_time=dtime.fromisoformat(item["end"]),
+            session_type=item.get("type", ""),
+            sort_order=i, day=1,
+        )
+    print(f"  📅  {len(ev['schedule'])} schedule items created")
 
-        # Speakers / MC
-        for sp in ev["speakers"]:
-            s = Speaker.objects.create(
-                event=event, name=sp["name"], title=sp.get("title", ""),
-                organization=sp.get("org", ""), bio=sp.get("bio", ""),
-                is_mc=sp.get("mc", False),
-            )
-            avatar_url = f"https://picsum.photos/seed/{sp['img_seed']}/300/300"
-            avatar = dl(avatar_url, f"spk_{s.id}.jpg")
-            if avatar:
-                s.avatar.save(f"spk_{s.id}.jpg", avatar, save=True)
-        print(f"  🎤  {len(ev['speakers'])} speakers created")
+    # Sponsors
+    for sp in ev["sponsors"]:
+        sponsor = Sponsor.objects.create(
+            event=event, name=sp["name"], tier=sp["tier"],
+            website=sp.get("web", ""),
+        )
+        logo_url = f"https://picsum.photos/seed/logo{sp['seed']}/200/100"
+        logo = dl(logo_url, f"logo_{sponsor.id}.jpg")
+        if logo:
+            sponsor.logo.save(f"logo_{sponsor.id}.jpg", logo, save=True)
+    print(f"  🏢  {len(ev['sponsors'])} sponsors created")
 
-        # Schedule
-        for i, item in enumerate(ev["schedule"]):
-            ScheduleItem.objects.create(
-                event=event, title=item["title"],
-                description=item.get("desc", ""),
-                start_time=dtime.fromisoformat(item["start"]),
-                end_time=dtime.fromisoformat(item["end"]),
-                session_type=item.get("type", ""),
-                sort_order=i, day=1,
-            )
-        print(f"  📅  {len(ev['schedule'])} schedule items created")
-
-        # Sponsors
-        for sp in ev["sponsors"]:
-            sponsor = Sponsor.objects.create(
-                event=event, name=sp["name"], tier=sp["tier"],
-                website=sp.get("web", ""),
-            )
-            logo_url = f"https://picsum.photos/seed/logo{sp['seed']}/200/100"
-            logo = dl(logo_url, f"logo_{sponsor.id}.jpg")
-            if logo:
-                sponsor.logo.save(f"logo_{sponsor.id}.jpg", logo, save=True)
-        print(f"  🏢  {len(ev['sponsors'])} sponsors created")
-
-        print(f"  ✅  Done → slug: {event.slug}\n")
+    print(f"  ✅  Done → slug: {event.slug}\n")
 
 print(f"🎉  All {len(EVENTS)} events seeded successfully!")

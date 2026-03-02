@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
 
-const AuthForm = ({ 
+const AuthForm = ({
   mode = 'login',
   role = 'attendee',
   onSubmit,
@@ -112,6 +112,7 @@ const AuthForm = ({
         onChange={(e) => handleChange('email', e.target.value)}
         error={errors.email}
         leftIcon={Mail}
+        autoComplete="email"
         required
       />
 
@@ -134,6 +135,7 @@ const AuthForm = ({
           onChange={(e) => handleChange('password', e.target.value)}
           error={errors.password}
           leftIcon={Lock}
+          autoComplete={isSignup ? "new-password" : "current-password"}
           required
         />
         <button
@@ -155,6 +157,7 @@ const AuthForm = ({
             onChange={(e) => handleChange('confirmPassword', e.target.value)}
             error={errors.confirmPassword}
             leftIcon={Lock}
+            autoComplete="new-password"
             required
           />
           <button
@@ -188,8 +191,8 @@ const AuthForm = ({
 
       {!isSignup && (
         <div className="flex justify-end">
-          <Link 
-            to="/forgot-password" 
+          <Link
+            to="/forgot-password"
             className="text-sm text-[#1E4DB7] hover:underline"
           >
             Forgot Password?
