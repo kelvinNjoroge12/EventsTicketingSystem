@@ -19,11 +19,12 @@ import stripe
 
 
 class StripeCreatePaymentIntentView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         order_number = request.data.get("order_number")
-        order = Order.objects.filter(order_number=order_number, attendee=request.user, status="pending").first()
+        attendee = request.user if request.user.is_authenticated else None
+        order = Order.objects.filter(order_number=order_number, attendee=attendee, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not payable."}, status=status.HTTP_400_BAD_REQUEST)
         service = StripeService()
@@ -37,13 +38,14 @@ class FreeOrderConfirmView(APIView):
     Accepts: { "order_number": "EH..." }
     Only works if order.total == 0 and payment_method == "free"
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         order_number = request.data.get("order_number")
+        attendee = request.user if request.user.is_authenticated else None
         order = Order.objects.filter(
             order_number=order_number, 
-            attendee=request.user, 
+            attendee=attendee, 
             status="pending"
         ).first()
 
@@ -157,12 +159,13 @@ def stripe_webhook(request: HttpRequest) -> HttpResponse:
 
 
 class MpesaInitiateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         order_number = request.data.get("order_number")
         phone = request.data.get("phone")
-        order = Order.objects.filter(order_number=order_number, attendee=request.user, status="pending").first()
+        attendee = request.user if request.user.is_authenticated else None
+        order = Order.objects.filter(order_number=order_number, attendee=attendee, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not payable."}, status=status.HTTP_400_BAD_REQUEST)
         if not phone:
@@ -186,7 +189,7 @@ def mpesa_callback(request: HttpRequest) -> HttpResponse:
 
 
 class MpesaQueryView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         checkout_request_id = request.data.get("checkout_request_id")
@@ -196,7 +199,10 @@ class MpesaQueryView(APIView):
             payment = Payment.objects.select_related("order").get(mpesa_checkout_request_id=checkout_request_id)
         except Payment.DoesNotExist:
             return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
-        if payment.order.attendee != request.user:
+        
+        attendee = request.user if request.user.is_authenticated else None
+        if payment.order.attendee != attendee:
             return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        
         return Response({"status": payment.status}, status=status.HTTP_200_OK)
 

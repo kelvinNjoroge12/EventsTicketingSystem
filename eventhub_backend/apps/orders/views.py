@@ -13,7 +13,7 @@ from .serializers import OrderCreateSerializer, OrderDetailSerializer
 
 class OrderCreateView(generics.GenericAPIView):
     serializer_class = OrderCreateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, context={"request": request})
@@ -31,11 +31,12 @@ class OrderCreateView(generics.GenericAPIView):
 
 class OrderDetailView(generics.RetrieveAPIView):
     serializer_class = OrderDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     lookup_field = "order_number"
 
     def get_queryset(self):
-        return Order.objects.filter(attendee=self.request.user)
+        attendee = self.request.user if self.request.user.is_authenticated else None
+        return Order.objects.filter(attendee=attendee)
 
 
 class OrderListView(generics.ListAPIView):
