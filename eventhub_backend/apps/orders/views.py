@@ -19,18 +19,7 @@ class OrderCreateView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        sys.stderr.write(f"\n[DEBUG] >> START POST\n")
-        sys.stderr.flush()
-        if "ping" in request.data:
-            return Response({"success": "ping ok"}, status=200)
-            
-        try:
-            sys.stderr.write("[DEBUG] >> INSTANT RETURN TEST\n")
-            sys.stderr.flush()
-            # return request.data directly
-            return Response({"success": True, "message": "INSTANT_RETURN", "data": request.data}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"success": False, "error": str(e)}, status=400)
+        return Response({"success": True, "message": "hello"}, status=200)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
