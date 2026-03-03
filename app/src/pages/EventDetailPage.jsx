@@ -159,13 +159,25 @@ const EventDetailPage = () => {
     (async () => {
       try {
         trackEventView(slug);
-        const [data, related] = await Promise.all([fetchEvent(slug), fetchRelatedEvents(slug)]);
-        if (isMounted) { setEvent(data); setRelatedEvents(related); }
+
+        // 1. Load Main Event instantly (it will hit cache thanks to preloader)
+        const data = await fetchEvent(slug);
+        if (isMounted) {
+          setEvent(data);
+          setIsLoading(false); // Drop the loading skeleton IMMEDIATELY
+        }
+
+        // 2. Load Related Events quietly in the background
+        fetchRelatedEvents(slug).then(related => {
+          if (isMounted) setRelatedEvents(related);
+        }).catch(e => console.error('Failed to load related events', e));
+
       } catch (e) {
         console.error('Failed to load event', e);
-        if (isMounted) setEvent(null);
-      } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setEvent(null);
+          setIsLoading(false);
+        }
       }
     })();
     return () => { isMounted = false; };
