@@ -180,12 +180,23 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
-# Email (SendGrid via Anymail)
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@eventhub.local")
-EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
-ANYMAIL = {
-    "SENDGRID_API_KEY": env("SENDGRID_API_KEY", default=""),
-}
+# ── Email System Configuration ──
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="njoroge.kelvin@strathmore.edu")
+
+# Automatically switch to standard SMTP if a host is provided (for Microsoft 365, Google, etc)
+if env("EMAIL_HOST", default=""):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = env("EMAIL_HOST")
+    EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+    EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="njoroge.kelvin@strathmore.edu")
+    EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+else:
+    # Fallback to pure Sendgrid via API if no generic SMTP host is configured
+    EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
+    ANYMAIL = {
+        "SENDGRID_API_KEY": env("SENDGRID_API_KEY", default=""),
+    }
 
 # Stripe
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
