@@ -209,25 +209,26 @@ END:VCALENDAR`;
           </motion.p>
         </div>
 
-        {/* QR Ticket */}
+        {/* Email Sent Banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="mb-8"
+          className="mb-8 p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-center"
         >
-          <QRTicket
-            event={event || { themeColor: '#1E4DB7', title: 'Event' }}
-            orderDetails={{
-              ticketType: stateData?.cart?.ticketType || finalOrder?.items?.[0]?.ticket_type_name || 'General Admission',
-              quantity: stateData?.cart?.quantity || finalOrder?.items?.[0]?.quantity || 1,
-              attendeeName: stateData?.attendeeData
-                ? `${stateData.attendeeData.firstName} ${stateData.attendeeData.lastName}`
-                : `${finalOrder?.attendee_first_name} ${finalOrder?.attendee_last_name}`,
-            }}
-            orderId={orderId}
-            themeColor={event?.themeColor || '#1E4DB7'}
-          />
+          <div className="w-12 h-12 bg-[#EFF6FF] text-[#1E4DB7] rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2"></path>
+              <path d="m22 6-10 7L2 6"></path>
+              <path d="M22 18c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2"></path>
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Check your inbox</h3>
+          <p className="text-[#64748B]">
+            We've sent your official tickets to <span className="font-medium text-[#0F172A]">
+              {stateData?.attendeeData?.email || finalOrder?.attendee_email || 'your email'}
+            </span>. Please check your inbox (and spam folder) to download or print your tickets.
+          </p>
         </motion.div>
 
         {/* Action Buttons */}

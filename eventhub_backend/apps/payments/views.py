@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.orders.models import Order, Ticket
+from apps.orders.utils import send_ticket_email
 from apps.notifications.serializers import create_notification
 from .models import Payment
 from .mpesa_service import MpesaService
@@ -87,6 +88,8 @@ class FreeOrderConfirmView(APIView):
                 event=order.event,
                 action_url=f"/confirmation/{order.order_number}",
             )
+            
+        send_ticket_email(order)
 
         return Response({"success": True, "message": "Free order confirmed."})
 
@@ -147,6 +150,8 @@ def stripe_webhook(request: HttpRequest) -> HttpResponse:
                     event=order.event,
                     action_url=f"/confirmation/{order.order_number}",
                 )
+            
+            send_ticket_email(order)
 
     return HttpResponse(status=200)
 

@@ -10,6 +10,7 @@ from rest_framework import serializers
 from apps.events.models import Event
 from apps.tickets.models import PromoCode, TicketType
 from .models import Order, OrderItem, Ticket
+from .utils import send_ticket_email
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -173,6 +174,9 @@ class OrderCreateSerializer(serializers.Serializer):
                         attendee_name=f"{order.attendee_first_name} {order.attendee_last_name}",
                         attendee_email=order.attendee_email,
                     )
+            
+            # Dispatch email containing the tickets
+            send_ticket_email(order)
 
         return order
 

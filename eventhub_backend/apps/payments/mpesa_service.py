@@ -10,6 +10,9 @@ from django.conf import settings
 from django.core.cache import cache
 
 from apps.orders.models import Order
+from apps.orders.models import Ticket
+from apps.orders.utils import send_ticket_email
+from apps.notifications.serializers import create_notification
 from .models import Payment
 
 
@@ -142,7 +145,43 @@ class MpesaService:
             if order.status != "confirmed":
                 order.status = "confirmed"
                 order.save(update_fields=["status"])
-                # TODO: create Ticket rows + send emails (Celery)
+                
+                # Create Ticket rows for each item in the order
+                tickets_to_create = []
+                for item in order.items.all():
+                    for _ in range(item.quantity):
+                        tickets_to_create.append(
+                            Ticket(
+                                order=order,
+                                order_item=item,
+                                event=order.event,
+                                ticket_type=item.ticket_type,
+                                attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
+                                attendee_email=order.attendee_email,
+                                status="valid",
+                            )
+                        )
+                if tickets_to_create:
+                    Ticket.objects.bulk_create(tickets_to_create)
+
+                # Fire in-app notification
+                if order.attendee:
+                    create_notification(
+                        recipient=order.attendee,
+                        notification_type="ticket_confirmed",
+                        title="Your MPesa tickets are confirmed! 🎉",
+                        message=(
+                            f"Your order #{order.order_number} for "
+                            f"{order.event.title if order.event else 'the event'} has been confirmed. "
+                            f"Check your tickets below."
+                        ),
+                        event=order.event,
+                        action_url=f"/confirmation/{order.order_number}",
+                    )
+
+                # Dispatch email containing the tickets
+                send_ticket_email(order)
+
         else:
             payment.status = "failed"
             payment.raw_response = data
