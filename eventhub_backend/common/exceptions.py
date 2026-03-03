@@ -17,11 +17,8 @@ def _to_error_payload(code: str, message: str, details: Any | None = None) -> di
 
 def eventhub_exception_handler(exc, context):
     import traceback
-    with open('drf_exception.log', 'a') as f:
-        f.write(f"\n--- Exception at {context['request'].path} ---\n")
-        traceback.print_exc(file=f)
-        if hasattr(exc, 'detail'):
-            f.write(f"Detail: {exc.detail}\n")
+    if hasattr(exc, 'detail'):
+        traceback.print_exc()
     """
     Ensures a consistent error envelope for all DRF exceptions:
     {
