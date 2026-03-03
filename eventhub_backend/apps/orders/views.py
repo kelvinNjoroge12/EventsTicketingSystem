@@ -22,30 +22,15 @@ class OrderCreateView(generics.GenericAPIView):
         sys.stderr.write(f"\n[DEBUG] >> START POST\n")
         sys.stderr.flush()
         if "ping" in request.data:
-            from django.db import connection
-            try:
-                with connection.cursor() as c:
-                    c.execute("SELECT pid, state, query, wait_event_type, wait_event FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = current_database() AND state != 'idle'")
-                    active = c.fetchall()
-            except Exception as e:
-                active = str(e)
-            return Response({"success": True, "active": active}, status=200)
-        
+            return Response({"success": "ping ok"}, status=200)
+            
         try:
-            sys.stderr.write("[DEBUG] >> BEFORE serializer init\n"); sys.stderr.flush()
-            serializer = self.get_serializer(data=request.data, context={"request": request})
-            sys.stderr.write("[DEBUG] >> BEFORE is_valid\n"); sys.stderr.flush()
-            serializer.is_valid(raise_exception=True)
-            
-            # COMPLETELY BYPASS ALL DB LOCKING AND SAVING FOR THIS TEST
-            sys.stderr.write("[DEBUG] >> BYPASSING ALL DATABASE WRITES\n"); sys.stderr.flush()
-            
-            return Response({"success": True, "message": "TEST_BYPASS"}, status=status.HTTP_201_CREATED)
+            sys.stderr.write("[DEBUG] >> INSTANT RETURN TEST\n")
+            sys.stderr.flush()
+            # return request.data directly
+            return Response({"success": True, "message": "INSTANT_RETURN", "data": request.data}, status=status.HTTP_201_CREATED)
         except Exception as e:
-            sys.stderr.write(f"[DEBUG] >> CAUGHT EXCEPTION: {e}\n"); sys.stderr.flush()
-            import traceback
-            tb = traceback.format_exc()
-            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": tb}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"success": False, "error": str(e)}, status=400)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
