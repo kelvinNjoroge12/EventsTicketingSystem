@@ -16,6 +16,7 @@ class OrderCreateView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+        raise ValueError("TEST ERROR DJANGO")
         try:
             serializer = self.get_serializer(data=request.data, context={"request": request})
             serializer.is_valid(raise_exception=True)
