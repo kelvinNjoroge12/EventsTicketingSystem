@@ -17,6 +17,9 @@ class OrderCreateView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+        if request.data.get("ping") == "pong":
+            return Response({"success": True, "ping": "pong"}, status=200)
+        
         t0 = time.time()
         try:
             serializer = self.get_serializer(data=request.data, context={"request": request})
