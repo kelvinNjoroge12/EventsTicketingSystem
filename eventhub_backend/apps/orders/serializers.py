@@ -40,7 +40,7 @@ class OrderCreateSerializer(serializers.Serializer):
         ticket_ids = [str(i["ticket_type_id"]) for i in items]
         tickets_by_id: dict[str, TicketType] = {
             str(t.id): t
-            for t in TicketType.objects.filter(event=event, id__in=ticket_ids, is_active=True).select_for_update()
+            for t in TicketType.objects.filter(event=event, id__in=ticket_ids, is_active=True)
         }
         if len(tickets_by_id) != len(ticket_ids):
             raise serializers.ValidationError({"items": "One or more ticket types are invalid for this event."})
@@ -71,7 +71,7 @@ class OrderCreateSerializer(serializers.Serializer):
         discount_amount = Decimal("0")
         if promo_code:
             try:
-                promo_obj = PromoCode.objects.select_for_update().get(
+                promo_obj = PromoCode.objects.get(
                     event=event, code__iexact=promo_code.strip(), is_active=True
                 )
             except PromoCode.DoesNotExist:
