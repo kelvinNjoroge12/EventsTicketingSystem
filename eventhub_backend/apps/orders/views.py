@@ -10,32 +10,39 @@ from apps.tickets.models import TicketType
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderDetailSerializer
 from .utils import send_ticket_email
-
+import time
 
 class OrderCreateView(generics.GenericAPIView):
     serializer_class = OrderCreateSerializer
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+        t0 = time.time()
         try:
             serializer = self.get_serializer(data=request.data, context={"request": request})
             serializer.is_valid(raise_exception=True)
+            
+            t1 = time.time()
             with transaction.atomic():
-                # lock ticket types for this event
                 event = serializer.validated_data["event"]
                 items = serializer.validated_data["items"]
                 ticket_ids = [i["ticket_type_id"] for i in items]
                 list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
+                
+                t2 = time.time()
                 order = serializer.save()
-            # Send email AFTER the transaction is committed — never inside atomic()
-            # to avoid holding a Postgres row-lock while waiting for SMTP.
+            
+            t3 = time.time()
             if order.status == "confirmed":
                 send_ticket_email(order)
+            
+            t4 = time.time()
             data = OrderDetailSerializer(order).data
-            return Response(data, status=status.HTTP_201_CREATED)
+            return Response({"data": data, "times": [t1-t0, t2-t1, t3-t2, t4-t3]}, status=status.HTTP_201_CREATED)
         except Exception as e:
             import traceback
-            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": traceback.format_exc()}}, status=status.HTTP_400_BAD_REQUEST)
+            tb = traceback.format_exc()
+            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": tb, "time": time.time()-t0}}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
