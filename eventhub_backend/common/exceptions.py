@@ -29,7 +29,7 @@ def eventhub_exception_handler(exc, context):
     response = exception_handler(exc, context)
     if response is None:
         return Response(
-            {"success": False, "error": _to_error_payload("SERVER_ERROR", "Unexpected server error")},
+            {"success": False, "error": _to_error_payload("SERVER_ERROR", f"Unexpected server error: {str(exc)} {exc.__class__.__name__}")},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
