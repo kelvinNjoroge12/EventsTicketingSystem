@@ -31,9 +31,12 @@ CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
-# Database performance
-CONN_MAX_AGE = env.int("CONN_MAX_AGE", default=60)
-DATABASES["default"]["CONN_MAX_AGE"] = CONN_MAX_AGE  # noqa: F405
+# CONN_MAX_AGE=0 is critical on Render because persistent connections
+# survive Gunicorn SIGKILL events (e.g. worker timeouts) and carry over
+# aborted/uncommitted transactions to the next request, causing row-lock
+# deadlocks and 30-second hangs for every subsequent request.
+CONN_MAX_AGE = 0
+DATABASES["default"]["CONN_MAX_AGE"] = 0  # noqa: F405
 
 # ── SUPABASE STORAGE CONFIGURATION (S3-Compatible) ───────────
 # Use django-storages + boto3 to persist images to Supabase
