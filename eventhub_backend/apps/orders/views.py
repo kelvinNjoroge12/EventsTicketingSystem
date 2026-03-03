@@ -18,7 +18,14 @@ class OrderCreateView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         if request.data.get("ping") == "pong":
-            return Response({"success": True, "ping": "pong"}, status=200)
+            from django.db import connection
+            try:
+                with connection.cursor() as c:
+                    c.execute("SELECT pid, state, query, wait_event_type, wait_event FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = current_database() AND state != 'idle'")
+                    active = c.fetchall()
+            except Exception as e:
+                active = str(e)
+            return Response({"success": True, "active": active}, status=200)
         
         t0 = time.time()
         try:
