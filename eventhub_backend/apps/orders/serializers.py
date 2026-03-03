@@ -107,9 +107,13 @@ class OrderCreateSerializer(serializers.Serializer):
             ip_addr = ip_addr.split(",")[0].strip()
         else:
             ip_addr = request.META.get("REMOTE_ADDR", "").split(",")[0].strip()
+        try:
+            attendee = request.user if request.user.is_authenticated else None
+        except Exception:
+            attendee = None
         
         order = Order.objects.create(
-            attendee=request.user if request.user.is_authenticated else None,
+            attendee=attendee,
             event=event,
             status="pending",
             subtotal=subtotal,

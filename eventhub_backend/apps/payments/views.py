@@ -23,7 +23,10 @@ class StripeCreatePaymentIntentView(APIView):
 
     def post(self, request):
         order_number = request.data.get("order_number")
-        attendee = request.user if request.user.is_authenticated else None
+        try:
+            attendee = request.user if request.user.is_authenticated else None
+        except Exception:
+            attendee = None
         order = Order.objects.filter(order_number=order_number, attendee=attendee, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not payable."}, status=status.HTTP_400_BAD_REQUEST)
@@ -42,7 +45,10 @@ class FreeOrderConfirmView(APIView):
 
     def post(self, request):
         order_number = request.data.get("order_number")
-        attendee = request.user if request.user.is_authenticated else None
+        try:
+            attendee = request.user if request.user.is_authenticated else None
+        except Exception:
+            attendee = None
         order = Order.objects.filter(
             order_number=order_number, 
             attendee=attendee, 
@@ -166,7 +172,10 @@ class MpesaInitiateView(APIView):
     def post(self, request):
         order_number = request.data.get("order_number")
         phone = request.data.get("phone")
-        attendee = request.user if request.user.is_authenticated else None
+        try:
+            attendee = request.user if request.user.is_authenticated else None
+        except Exception:
+            attendee = None
         order = Order.objects.filter(order_number=order_number, attendee=attendee, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not payable."}, status=status.HTTP_400_BAD_REQUEST)
@@ -205,7 +214,10 @@ class MpesaQueryView(APIView):
         except Payment.DoesNotExist:
             return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
         
-        attendee = request.user if request.user.is_authenticated else None
+        try:
+            attendee = request.user if request.user.is_authenticated else None
+        except Exception:
+            attendee = None
         if payment.order.attendee != attendee:
             return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
         

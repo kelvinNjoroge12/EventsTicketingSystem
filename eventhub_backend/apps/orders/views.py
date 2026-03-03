@@ -35,7 +35,10 @@ class OrderDetailView(generics.RetrieveAPIView):
     lookup_field = "order_number"
 
     def get_queryset(self):
-        attendee = self.request.user if self.request.user.is_authenticated else None
+        try:
+            attendee = self.request.user if self.request.user.is_authenticated else None
+        except Exception:
+            attendee = None
         return Order.objects.filter(attendee=attendee)
 
 
