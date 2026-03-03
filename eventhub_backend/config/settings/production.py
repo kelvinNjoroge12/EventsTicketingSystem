@@ -1,7 +1,7 @@
 import os
 from .base import *  # noqa: F403
 
-DEBUG = False
+DEBUG = True
 
 # Render.com / Vercel domain allow-listing
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])  # noqa: F405
