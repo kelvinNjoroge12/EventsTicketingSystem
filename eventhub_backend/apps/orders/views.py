@@ -16,17 +16,22 @@ class OrderCreateView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            # lock ticket types for this event
-            event = serializer.validated_data["event"]
-            items = serializer.validated_data["items"]
-            ticket_ids = [i["ticket_type_id"] for i in items]
-            list(TicketType.objects.select_for_update().filter(event=event, id__in=ticket_ids))
-            order = serializer.save()
-        data = OrderDetailSerializer(order).data
-        return Response(data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            with transaction.atomic():
+                # lock ticket types for this event
+                event = serializer.validated_data["event"]
+                items = serializer.validated_data["items"]
+                ticket_ids = [i["ticket_type_id"] for i in items]
+                list(TicketType.objects.select_for_update().filter(event=event, id__in=ticket_ids))
+                order = serializer.save()
+            data = OrderDetailSerializer(order).data
+            return Response(data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            import traceback
+            err_msg = traceback.format_exc()
+            return Response({"error_dump": err_msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
