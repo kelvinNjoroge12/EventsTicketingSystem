@@ -9,6 +9,7 @@ from apps.events.models import Event
 from apps.tickets.models import TicketType
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderDetailSerializer
+from .utils import send_ticket_email
 
 
 class OrderCreateView(generics.GenericAPIView):
@@ -26,10 +27,15 @@ class OrderCreateView(generics.GenericAPIView):
                 ticket_ids = [i["ticket_type_id"] for i in items]
                 list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
                 order = serializer.save()
+            # Send email AFTER the transaction is committed — never inside atomic()
+            # to avoid holding a Postgres row-lock while waiting for SMTP.
+            if order.status == "confirmed":
+                send_ticket_email(order)
             data = OrderDetailSerializer(order).data
             return Response(data, status=status.HTTP_201_CREATED)
-        except Exception:
-            return Response({"TEST_ERROR": "CAUGHT_EXCEPTION"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import traceback
+            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": traceback.format_exc()}}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDetailView(generics.RetrieveAPIView):

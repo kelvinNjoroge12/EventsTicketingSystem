@@ -1,7 +1,7 @@
 import os
 from .base import *  # noqa: F403
 
-DEBUG = True
+DEBUG = False
 
 # Render.com / Vercel domain allow-listing
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])  # noqa: F405
@@ -22,7 +22,10 @@ CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=True)
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+# Render's load balancer handles SSL termination externally.
+# Setting SECURE_SSL_REDIRECT=True causes SecurityMiddleware to issue a 301
+# redirect on incoming HTTP (internal) requests — before CORS headers are set.
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
