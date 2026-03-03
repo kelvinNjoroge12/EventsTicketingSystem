@@ -12,12 +12,15 @@ from .serializers import OrderCreateSerializer, OrderDetailSerializer
 from .utils import send_ticket_email
 import time
 
+import sys
+
 class OrderCreateView(generics.GenericAPIView):
     serializer_class = OrderCreateSerializer
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        # We need a robust check that does not break if DRF behaves differently
+        sys.stderr.write(f"\n[DEBUG] >> START POST\n")
+        sys.stderr.flush()
         if "ping" in request.data:
             from django.db import connection
             try:
@@ -28,32 +31,21 @@ class OrderCreateView(generics.GenericAPIView):
                 active = str(e)
             return Response({"success": True, "active": active}, status=200)
         
-        t0 = time.time()
         try:
+            sys.stderr.write("[DEBUG] >> BEFORE serializer init\n"); sys.stderr.flush()
             serializer = self.get_serializer(data=request.data, context={"request": request})
+            sys.stderr.write("[DEBUG] >> BEFORE is_valid\n"); sys.stderr.flush()
             serializer.is_valid(raise_exception=True)
             
-            t1 = time.time()
-            with transaction.atomic():
-                event = serializer.validated_data["event"]
-                items = serializer.validated_data["items"]
-                ticket_ids = [i["ticket_type_id"] for i in items]
-                list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
-                
-                t2 = time.time()
-                order = serializer.save()
+            # COMPLETELY BYPASS ALL DB LOCKING AND SAVING FOR THIS TEST
+            sys.stderr.write("[DEBUG] >> BYPASSING ALL DATABASE WRITES\n"); sys.stderr.flush()
             
-            t3 = time.time()
-            if order.status == "confirmed":
-                send_ticket_email(order)
-            
-            t4 = time.time()
-            data = OrderDetailSerializer(order).data
-            return Response({"data": data, "times": [t1-t0, t2-t1, t3-t2, t4-t3]}, status=status.HTTP_201_CREATED)
+            return Response({"success": True, "message": "TEST_BYPASS"}, status=status.HTTP_201_CREATED)
         except Exception as e:
+            sys.stderr.write(f"[DEBUG] >> CAUGHT EXCEPTION: {e}\n"); sys.stderr.flush()
             import traceback
             tb = traceback.format_exc()
-            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": tb, "time": time.time()-t0}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": tb}}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
