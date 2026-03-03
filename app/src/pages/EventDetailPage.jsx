@@ -100,8 +100,8 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
       {Object.entries(byTier).map(([tier, items]) => (
         <div key={tier} className="w-full">
           <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs sm:text-sm font-semibold mb-4 max-w-full ${tierStyles[tier]}`}>
-            <Building2 className="w-4 h-4" />
-            {tier} Sponsor{items.length > 1 ? 's' : ''}
+            <Building2 className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">{tier} Sponsor{items.length > 1 ? 's' : ''}</span>
           </div>
           <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             {items.map((sponsor, i) => (
@@ -115,8 +115,9 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
                     )}
-                    <div className="flex items-center gap-1 text-xs text-[#94A3B8] group-hover:text-[#1E4DB7] truncate w-full justify-center">
-                      {sponsor.name} <ExternalLink className="w-3 h-3" />
+                    <div className="flex items-center justify-center gap-1 text-xs text-[#94A3B8] group-hover:text-[#1E4DB7] w-full mt-2">
+                      <span className="truncate">{sponsor.name}</span>
+                      <ExternalLink className="w-3 h-3 flex-shrink-0" />
                     </div>
                   </a>
                 ) : (
@@ -127,7 +128,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
                     )}
-                    <p className="text-xs text-[#64748B]">{sponsor.name}</p>
+                    <p className="text-xs text-[#64748B] text-center mt-2 truncate w-full px-2">{sponsor.name}</p>
                   </div>
                 )}
               </motion.div>
@@ -397,13 +398,13 @@ const EventDetailPage = () => {
           <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden">
 
             {/* ── TABS ── */}
-            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
-              <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full">
+            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
+              <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full flex-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab.id ? 'text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
+                    className={`relative flex-shrink-0 flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab.id ? 'text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
                   >
                     {tab.icon}
                     {tab.label}
