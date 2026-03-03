@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import datetime
+import uuid
 from decimal import Decimal
 from typing import Any
 
@@ -159,6 +160,7 @@ class MpesaService:
                                 attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
                                 attendee_email=order.attendee_email,
                                 status="valid",
+                                qr_code_data=uuid.uuid4(),
                             )
                         )
                 if tickets_to_create:

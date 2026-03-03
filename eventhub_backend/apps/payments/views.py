@@ -16,7 +16,7 @@ from .stripe_service import StripeService
 
 import json
 import stripe
-
+import uuid
 
 class StripeCreatePaymentIntentView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -71,6 +71,7 @@ class FreeOrderConfirmView(APIView):
                         attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
                         attendee_email=order.attendee_email,
                         status="valid",
+                        qr_code_data=uuid.uuid4(),
                     )
                 )
         if tickets_to_create:
@@ -133,6 +134,7 @@ def stripe_webhook(request: HttpRequest) -> HttpResponse:
                             attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
                             attendee_email=order.attendee_email,
                             status="valid",
+                            qr_code_data=uuid.uuid4(),
                         )
                     )
             if tickets_to_create:
@@ -171,8 +173,11 @@ class MpesaInitiateView(APIView):
         if not phone:
             return Response({"detail": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
         service = MpesaService()
-        payment = service.stk_push(order, phone_number=phone)
-        return Response({"checkout_request_id": payment.mpesa_checkout_request_id}, status=status.HTTP_200_OK)
+        try:
+            payment = service.stk_push(order, phone_number=phone)
+            return Response({"checkout_request_id": payment.mpesa_checkout_request_id}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": f"Mpesa Service unavailable: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @csrf_exempt
