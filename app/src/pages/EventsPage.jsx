@@ -61,20 +61,40 @@ const EventsPage = () => {
   useEffect(() => {
     let isMounted = true;
 
+    // Helper: quietly background-load ALL details for instant navigation
+    const prefetchEverything = (eventsList) => {
+      if (!isMounted || !eventsList || eventsList.length === 0) return;
+      const slugs = eventsList.map((e) => e.slug);
+      // Wait for the browser to idle (or a short timeout) to prevent blocking main thread
+      setTimeout(() => {
+        // dynamic import of prefetchEventsBatch to avoid top-level bundle size if not used
+        import('../lib/eventsApi').then(({ prefetchEventsBatch }) => {
+          prefetchEventsBatch(slugs, 2);
+        });
+      }, 500);
+    };
+
     // 1. Try to serve from cache immediately
     const cached = fetchEventsWithSWR({}, (freshEvents) => {
-      if (isMounted) setAllEvents(freshEvents);
+      if (isMounted) {
+        setAllEvents(freshEvents);
+        prefetchEverything(freshEvents);
+      }
     });
 
     if (cached) {
       setAllEvents(cached);
       setIsLoading(false);
+      prefetchEverything(cached);
     } else {
       // 2. No cache — full network fetch
       (async () => {
         try {
           const data = await fetchEvents();
-          if (isMounted) setAllEvents(data);
+          if (isMounted) {
+            setAllEvents(data);
+            prefetchEverything(data);
+          }
         } catch (e) {
           console.error('Failed to load events', e);
         } finally {

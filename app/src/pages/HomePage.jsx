@@ -88,20 +88,28 @@ const HomePage = () => {
   useEffect(() => {
     let isMounted = true;
 
+    // Helper: quietly background-load ALL details for instant navigation
+    const prefetchEverything = (eventsList) => {
+      if (!isMounted || !eventsList || eventsList.length === 0) return;
+      const slugs = eventsList.map((e) => e.slug);
+      // Wait for the browser to idle (or a short timeout) to prevent blocking main thread
+      setTimeout(() => {
+        prefetchEventsBatch(slugs, 2); // 2 concurrent to not overwhelm network
+      }, 500);
+    };
+
     // 1. Try to render from cache immediately (stale-while-revalidate)
     const cached = fetchEventsWithSWR({ ordering: 'start_date' }, (freshEvents) => {
       if (isMounted) {
         setAllEvents(freshEvents);
-        // Prefetch details of first 6 visible events for instant detail page loads
-        prefetchEventsBatch(freshEvents.slice(0, 6).map(e => e.slug), 2);
+        prefetchEverything(freshEvents);
       }
     });
 
     if (cached) {
       setAllEvents(cached);
       setIsLoading(false);
-      // Still prefetch details even from cache
-      prefetchEventsBatch(cached.slice(0, 6).map(e => e.slug), 2);
+      prefetchEverything(cached);
     }
 
     // 2. If no cache, do a full fetch
@@ -111,8 +119,7 @@ const HomePage = () => {
           const events = await fetchEvents({ ordering: 'start_date' });
           if (isMounted) {
             setAllEvents(events);
-            // Prefetch details of first 6 visible events
-            prefetchEventsBatch(events.slice(0, 6).map(e => e.slug), 2);
+            prefetchEverything(events);
           }
         } catch (e) {
           console.error("Failed to load upcoming events", e);
@@ -122,11 +129,15 @@ const HomePage = () => {
       })();
     }
 
-    // 3. Pre-warm the EventsPage cache (default params) in the background
-    //    so navigating to /events is instant
-    fetchEvents({}).catch(() => { });
+    // 3. Ultra-Aggressive Pre-warm: Preload the entire catalog in the background,
+    //    then download every single detail page.
+    setTimeout(() => {
+      fetchEvents({}).then(allEvents => {
+        if (isMounted) prefetchEverything(allEvents);
+      }).catch(() => { });
+    }, 2000);
 
-    // 4. Preload route JS chunks after the page is interactive
+    // 4. Preload React Route JS chunks so JS execution is instant 
     preloadRoutes();
 
     return () => {
