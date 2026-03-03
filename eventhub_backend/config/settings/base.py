@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     "apps.accounts.apps.AccountsConfig",
     "apps.events",
     "apps.tickets",
-    "apps.orders",
+    "apps.orders.apps.OrdersConfig",
     "apps.payments",
     "apps.speakers.apps.SpeakersConfig",
     "apps.schedules.apps.SchedulesConfig",
