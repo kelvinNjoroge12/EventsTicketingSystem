@@ -28,10 +28,8 @@ class OrderCreateView(generics.GenericAPIView):
                 order = serializer.save()
             data = OrderDetailSerializer(order).data
             return Response(data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            import traceback
-            err_msg = traceback.format_exc()
-            return Response({"error_dump": err_msg}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response({"TEST_ERROR": "CAUGHT_EXCEPTION"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
