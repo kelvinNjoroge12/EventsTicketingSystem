@@ -16,39 +16,31 @@ def _to_error_payload(code: str, message: str, details: Any | None = None) -> di
 
 
 def eventhub_exception_handler(exc, context):
-    import traceback
-    if hasattr(exc, 'detail'):
-        traceback.print_exc()
-    """
-    Ensures a consistent error envelope for all DRF exceptions:
-    {
-      "success": false,
-      "error": { "code": "...", "message": "...", "details": {...} }
-    }
-    """
-    response = exception_handler(exc, context)
-    if response is None:
-        return Response(
-            {"success": False, "error": _to_error_payload("SERVER_ERROR", f"Unexpected server error: {str(exc)} {exc.__class__.__name__}")},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-    # DRF typically returns dict of field errors or {"detail": "..."}
-    data = response.data
-    code = "ERROR"
-    message = "Request failed"
-    details = None
-
-    if isinstance(data, dict):
-        if "detail" in data and isinstance(data["detail"], (str,)):
-            message = str(data["detail"])
-        else:
-            code = "VALIDATION_ERROR" if response.status_code == status.HTTP_400_BAD_REQUEST else "ERROR"
-            message = "Validation error" if code == "VALIDATION_ERROR" else "Request failed"
-            details = data
-    else:
+    try:
+        response = exception_handler(exc, context)
+        if response is None:
+            return Response(
+                {"success": False, "error": {"code": "SERVER_ERROR", "message": f"{exc.__class__.__name__}: {str(exc)}"}},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        
+        data = response.data
+        code = "ERROR"
+        message = "Request failed"
         details = data
-
-    response.data = {"success": False, "error": _to_error_payload(code, message, details)}
-    return response
+        
+        if isinstance(data, dict):
+            if "detail" in data:
+                message = str(data["detail"])
+            else:
+                code = "VALIDATION_ERROR" if response.status_code == 400 else "ERROR"
+                message = "Validation error" if code == "VALIDATION_ERROR" else "Request failed"
+        
+        response.data = {
+            "success": False, 
+            "error": {"code": code, "message": message, "details": details}
+        }
+        return response
+    except Exception as e:
+        return Response({"success": False, "error": {"code": "FATAL", "message": f"Exception handler crashed: {str(e)}"}}, status=500)
 
