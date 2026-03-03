@@ -102,6 +102,12 @@ class OrderCreateSerializer(serializers.Serializer):
         service_fee = (subtotal - discount_amount) * Decimal(service_percent) / Decimal("100")
         total = subtotal - discount_amount + service_fee
 
+        ip_addr = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if ip_addr:
+            ip_addr = ip_addr.split(",")[0].strip()
+        else:
+            ip_addr = request.META.get("REMOTE_ADDR", "").split(",")[0].strip()
+        
         order = Order.objects.create(
             attendee=request.user if request.user.is_authenticated else None,
             event=event,
@@ -118,7 +124,7 @@ class OrderCreateSerializer(serializers.Serializer):
             attendee_email=validated_data["attendee_email"],
             attendee_phone=validated_data.get("attendee_phone", ""),
             payment_method=validated_data["payment_method"],
-            ip_address=request.META.get("REMOTE_ADDR"),
+            ip_address=ip_addr if ip_addr else None,
         )
 
         for item in items_data:

@@ -23,7 +23,7 @@ class OrderCreateView(generics.GenericAPIView):
             event = serializer.validated_data["event"]
             items = serializer.validated_data["items"]
             ticket_ids = [i["ticket_type_id"] for i in items]
-            TicketType.objects.select_for_update().filter(event=event, id__in=ticket_ids)
+            list(TicketType.objects.select_for_update().filter(event=event, id__in=ticket_ids))
             order = serializer.save()
         data = OrderDetailSerializer(order).data
         return Response(data, status=status.HTTP_201_CREATED)
