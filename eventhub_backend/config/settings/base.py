@@ -61,7 +61,6 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "common.middleware_debug.ExceptionLoggingMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -192,6 +191,7 @@ if env("EMAIL_HOST", default=""):
     EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
     EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="kelvinnjorogeke@gmail.com")
     EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+    EMAIL_TIMEOUT = 5
 else:
     # Fallback to pure Sendgrid via API if no generic SMTP host is configured
     EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
