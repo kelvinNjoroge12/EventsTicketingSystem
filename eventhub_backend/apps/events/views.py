@@ -51,8 +51,7 @@ class EventDetailView(generics.RetrieveAPIView):
             "tags",
             "ticket_types",
             "promo_codes",
-            "speakers",
-            "schedule_items__speaker",
+            "speakers", # still need this for 'mc' check
             "event_sponsors"
         )
         qs_pub = qs.filter(status__in=["published", "completed"])

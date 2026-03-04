@@ -166,9 +166,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
     organizer = OrganizerMiniSerializer(read_only=True)
     tickets = serializers.SerializerMethodField()
     promo_codes = serializers.SerializerMethodField()
-    speakers = serializers.SerializerMethodField()
     mc = serializers.SerializerMethodField()
-    schedule = serializers.SerializerMethodField()
     sponsors = serializers.SerializerMethodField()
 
     class Meta:
@@ -211,9 +209,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "organizer",
             "tickets",
             "promo_codes",
-            "speakers",
             "mc",
-            "schedule",
             "sponsors",
         ]
 
@@ -248,19 +244,11 @@ class EventDetailSerializer(serializers.ModelSerializer):
             for p in obj.promo_codes.filter(is_active=True)
         ]
 
-    def get_speakers(self, obj: Event):
-        qs = obj.speakers.filter(is_mc=False).order_by("sort_order", "name")
-        return SpeakerSerializer(qs, many=True, context=self.context).data
-
     def get_mc(self, obj: Event):
         mc = obj.speakers.filter(is_mc=True).first()
         if mc:
             return SpeakerSerializer(mc, context=self.context).data
         return None
-
-    def get_schedule(self, obj: Event):
-        qs = obj.schedule_items.select_related("speaker").order_by("day", "sort_order", "start_time")
-        return ScheduleItemSerializer(qs, many=True, context=self.context).data
 
     def get_sponsors(self, obj: Event):
         qs = obj.event_sponsors.order_by("tier", "sort_order", "name")

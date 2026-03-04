@@ -11,7 +11,7 @@ import TicketBox from '../components/event/TicketBox';
 import StickyMobileBar from '../components/event/StickyMobileBar';
 import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
-import { fetchEvent, fetchRelatedEvents, trackEventView } from '../lib/eventsApi';
+import { fetchEvent, fetchRelatedEvents, trackEventView, fetchEventSpeakers, fetchEventSchedule } from '../lib/eventsApi';
 import { useCart } from '../context/CartContext';
 import useSavedEvents from '../hooks/useSavedEvents';
 
@@ -62,6 +62,7 @@ const SpeakersGrid = ({ speakers, themeColor }) => (
       >
         {speaker.photo || speaker.avatar ? (
           <img src={speaker.photo || speaker.avatar} alt={speaker.name}
+            loading="lazy"
             className="w-20 h-20 rounded-full object-cover mb-3 border-4 border-white shadow-md" />
         ) : (
           <div className="w-20 h-20 rounded-full mb-3 flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-md"
@@ -110,7 +111,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                   <a href={sponsor.website} target="_blank" rel="noopener noreferrer"
                     className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-100 transition-all group min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
-                      <img src={sponsor.logo} alt={sponsor.name} className="h-10 max-w-full object-contain" />
+                      <img src={sponsor.logo} alt={sponsor.name} loading="lazy" className="h-10 max-w-full object-contain" />
                     ) : (
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
@@ -123,7 +124,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                 ) : (
                   <div className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
-                      <img src={sponsor.logo} alt={sponsor.name} className="h-10 max-w-full object-contain" />
+                      <img src={sponsor.logo} alt={sponsor.name} loading="lazy" className="h-10 max-w-full object-contain" />
                     ) : (
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
@@ -171,6 +172,21 @@ const EventDetailPage = () => {
         fetchRelatedEvents(slug).then(related => {
           if (isMounted) setRelatedEvents(related);
         }).catch(e => console.error('Failed to load related events', e));
+
+        // 3. Optimistic Background Fetch for Speakers & Schedule
+        Promise.allSettled([
+          fetchEventSpeakers(slug),
+          fetchEventSchedule(slug)
+        ]).then(([speakersRes, scheduleRes]) => {
+          if (isMounted) {
+            setEvent(prev => {
+              if (!prev) return prev;
+              const speakers = speakersRes.status === 'fulfilled' ? speakersRes.value.map(s => ({ ...s, avatar: s.avatar_url || s.avatar })) : prev.speakers;
+              const schedule = scheduleRes.status === 'fulfilled' ? scheduleRes.value : prev.schedule;
+              return { ...prev, speakers, schedule };
+            });
+          }
+        });
 
       } catch (e) {
         console.error('Failed to load event', e);
@@ -475,6 +491,7 @@ const EventDetailPage = () => {
                         >
                           {event.mc.avatar || event.mc.photo ? (
                             <img src={event.mc.avatar || event.mc.photo} alt={event.mc.name}
+                              loading="lazy"
                               className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-md flex-shrink-0" />
                           ) : (
                             <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold border-4 border-white shadow-md flex-shrink-0"
