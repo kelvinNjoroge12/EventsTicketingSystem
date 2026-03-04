@@ -63,16 +63,13 @@ def send_ticket_email(order):
         )
         msg.attach_alternative(html_content, "text/html")
         
-        # Completely decouple SMTP from Gunicorn workers to prevent deadlocks and proxy 500s
-        import threading
-        def _send_email_thread():
-            try:
-                msg.send(fail_silently=False)
-                logger.info(f"Successfully sent ticket email for order {order.order_number} to {order.attendee_email}")
-            except Exception as inner_e:
-                logger.exception(f"Failed to send ticket email async for order {order.order_number}: {str(inner_e)}")
-                
-        threading.Thread(target=_send_email_thread, daemon=True).start()
+        try:
+            msg.send(fail_silently=False)
+            logger.info(f"Successfully sent ticket email for order {order.order_number} to {order.attendee_email}")
+        except Exception as inner_e:
+            logger.exception(f"Failed to send ticket email synchronously for order {order.order_number}: {str(inner_e)}")
+            raise inner_e
         
     except Exception as e:
         logger.error(f"Failed to prep ticket email for order {order.order_number}: {str(e)}")
+        raise e

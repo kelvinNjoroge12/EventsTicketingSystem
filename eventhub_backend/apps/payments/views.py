@@ -162,7 +162,10 @@ class SimulatePaymentConfirmView(APIView):
                 action_url=f"/confirmation/{order.order_number}",
             )
             
-        send_ticket_email(order)
+        try:
+            send_ticket_email(order)
+        except Exception as e:
+            return Response({"detail": f"Ticket recorded, but email failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"success": True, "message": "Demo order confirmed successfully."})
 
