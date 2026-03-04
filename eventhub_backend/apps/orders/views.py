@@ -9,18 +9,48 @@ from apps.events.models import Event
 from apps.tickets.models import TicketType
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderDetailSerializer
-from .utils import send_ticket_email
-import time
-
-import sys
 
 class OrderCreateView(generics.GenericAPIView):
     serializer_class = OrderCreateSerializer
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        return Response({"success": True, "message": "hello"}, status=200)
+        try:
+            serializer = self.get_serializer(data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            
+            with transaction.atomic():
+                event = serializer.validated_data["event"]
+                items = serializer.validated_data["items"]
+                ticket_ids = [i["ticket_type_id"] for i in items]
+                
+                # Lock rows to prevent overselling race conditions
+                # using nowait=True prevents gunicorn hanging if another worker is locking
+                list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
+                
+                order = serializer.save()
+            
+            # AFTER the transaction commits successfully, dispatch to CELERY queue
+            if order.status == "confirmed":
+                try:
+                    from .tasks import send_ticket_email_task
+                    send_ticket_email_task.delay(order.id)
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to dispatch Celery email task for order {order.order_number}: {e}")
 
+            data = OrderDetailSerializer(order).data
+            return Response({"data": data}, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            # We wrap this so any lock errors or validation errors get a clean payload
+            import traceback
+            tb = traceback.format_exc()
+            return Response(
+                {"success": False, "error": {"code": "VALIDATION_ERROR" if hasattr(e, "detail") else "SERVER_ERROR", "message": str(e), "details": getattr(e, "detail", str(e))}}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class OrderDetailView(generics.RetrieveAPIView):
     serializer_class = OrderDetailSerializer

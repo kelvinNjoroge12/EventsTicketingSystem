@@ -34,7 +34,8 @@ class RecordEventViewView(APIView):
             user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
             referrer=request.META.get("HTTP_REFERER", "")[:500],
         )
-        Event.objects.filter(pk=event.pk).update(view_count=event.view_count + 1)
+        from django.db.models import F
+        Event.objects.filter(pk=event.pk).update(view_count=F("view_count") + 1)
         return Response({"recorded": True}, status=status.HTTP_201_CREATED)
 
 

@@ -72,12 +72,10 @@ class EventDetailView(generics.RetrieveAPIView):
             cache_key = f"events:detail:{slug}"
             cached = cache.get(cache_key)
             if cached:
-                Event.objects.filter(slug=slug).update(view_count=F("view_count") + 1)
                 response = Response(cached)
                 response["Cache-Control"] = "public, max-age=600"
                 return response
             response = super().retrieve(request, *args, **kwargs)
-            Event.objects.filter(slug=slug).update(view_count=F("view_count") + 1)
             cache.set(cache_key, response.data, 600)  # 10 minutes
             response["Cache-Control"] = "public, max-age=600"
             return response
@@ -214,6 +212,11 @@ def related_events(request, slug: str):
     
     event = get_object_or_404(qs_base.distinct(), slug=slug)
     
+    cache_key = f"events:related:{slug}"
+    cached = cache.get(cache_key)
+    if cached:
+        return Response(cached)
+        
     qs = (
         Event.objects.filter(category=event.category, status="published")
         .select_related("category", "organizer", "organizer__organizer_profile")
@@ -222,5 +225,6 @@ def related_events(request, slug: str):
         .order_by("-attendee_count")[:4]
     )
     serializer = EventListSerializer(qs, many=True, context={"request": request})
+    cache.set(cache_key, serializer.data, 900)  # 15 minutes
     return Response(serializer.data)
 
