@@ -128,6 +128,7 @@ const CheckoutPage = () => {
             await api.post('/api/payments/simulate/confirm/', { order_number: currentOrderNumber });
           } catch (e) {
             console.error("Simulation fallback failed", e)
+            throw e;
           }
         }
         setIsProcessing(false);
@@ -150,6 +151,7 @@ const CheckoutPage = () => {
             await api.post('/api/payments/simulate/confirm/', { order_number: currentOrderNumber });
           } catch (e) {
             console.error("Simulation fallback failed", e)
+            throw e;
           }
         }
         setIsProcessing(false);
