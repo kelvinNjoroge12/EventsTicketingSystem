@@ -98,7 +98,19 @@ class FreeOrderConfirmView(APIView):
                 action_url=f"/confirmation/{order.order_number}",
             )
             
-        send_ticket_email(order)
+        try:
+            send_ticket_email(order)
+        except Exception as e:
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "SMTP_ERROR",
+                        "message": f"Tickets generated, but email failed: {str(e.__class__.__name__)} - {str(e)}"
+                    }
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         return Response({"success": True, "message": "Free order confirmed."})
 
@@ -165,7 +177,16 @@ class SimulatePaymentConfirmView(APIView):
         try:
             send_ticket_email(order)
         except Exception as e:
-            return Response({"detail": f"Ticket recorded, but email failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "SMTP_ERROR",
+                        "message": f"Ticket generated, but email failed: {str(e.__class__.__name__)} - {str(e)}"
+                    }
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         return Response({"success": True, "message": "Demo order confirmed successfully."})
 
