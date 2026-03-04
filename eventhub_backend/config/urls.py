@@ -37,7 +37,7 @@ from drf_spectacular.views import (
 
 urlpatterns = [
     path("", RedirectView.as_view(url="api/docs/", permanent=False)),
-    path("admin/", admin.site.urls),
+    path("hub-control-99/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
@@ -63,3 +63,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Import image optimization signal
+try:
+    import common.image_utils
+except ImportError:
+    pass

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, throttling
 from rest_framework.response import Response
 
 from apps.events.models import Event
@@ -17,6 +17,8 @@ import sys
 class OrderCreateView(generics.GenericAPIView):
     serializer_class = OrderCreateSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "checkout"
 
     def post(self, request, *args, **kwargs):
         try:

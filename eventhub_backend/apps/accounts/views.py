@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
+from rest_framework.throttling import ScopedRateThrottle
 
 from .serializers import (
     ChangePasswordSerializer,
@@ -32,6 +33,8 @@ User = get_user_model()
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     @method_decorator(ratelimit(key="ip", rate="10/h", block=True))
     def post(self, request: Request, *args, **kwargs):
@@ -45,6 +48,8 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     @method_decorator(ratelimit(key="ip", rate="5/m", block=True))
     def post(self, request: Request):
@@ -97,6 +102,8 @@ class ChangePasswordView(APIView):
 
 class ForgotPasswordView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     @method_decorator(ratelimit(key="ip", rate="3/h", block=True))
     def post(self, request: Request):
