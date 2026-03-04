@@ -19,7 +19,30 @@ class OrderCreateView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        return Response({"success": True, "message": "hello"}, status=200)
+        try:
+            serializer = self.get_serializer(data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            
+            with transaction.atomic():
+                event = serializer.validated_data["event"]
+                items = serializer.validated_data["items"]
+                ticket_ids = [i["ticket_type_id"] for i in items]
+                list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
+                order = serializer.save()
+            
+            if order.status == "confirmed":
+                try:
+                    send_ticket_email(order)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Failed to send email for order {order.order_number}: {e}")
+            
+            data = OrderDetailSerializer(order).data
+            return Response({"data": data}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": tb}}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDetailView(generics.RetrieveAPIView):

@@ -67,10 +67,10 @@ def send_ticket_email(order):
         import threading
         def _send_email_thread():
             try:
-                msg.send(fail_silently=True)
+                msg.send(fail_silently=False)
                 logger.info(f"Successfully sent ticket email for order {order.order_number} to {order.attendee_email}")
             except Exception as inner_e:
-                logger.error(f"Failed to send ticket email async for order {order.order_number}: {str(inner_e)}")
+                logger.exception(f"Failed to send ticket email async for order {order.order_number}: {str(inner_e)}")
                 
         threading.Thread(target=_send_email_thread, daemon=True).start()
         
