@@ -194,21 +194,26 @@ CELERY_TIMEZONE = TIME_ZONE
 # ── Email System Configuration ──
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="kelvinnjorogeke@gmail.com")
 
-# Automatically switch to standard SMTP if a host is provided (for Microsoft 365, Google, etc)
-if env("EMAIL_HOST", default=""):
+# SendGrid HTTP API takes priority over SMTP (works on Render free tier, SMTP is blocked).
+# If SENDGRID_API_KEY is set, use it regardless of EMAIL_HOST.
+_sendgrid_key = env("SENDGRID_API_KEY", default="")
+if _sendgrid_key:
+    EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
+    ANYMAIL = {
+        "SENDGRID_API_KEY": _sendgrid_key,
+    }
+elif env("EMAIL_HOST", default=""):
+    # Fallback: standard SMTP (only works if outbound port 587 is open)
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = env("EMAIL_HOST")
     EMAIL_PORT = env.int("EMAIL_PORT", default=587)
     EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
     EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="kelvinnjorogeke@gmail.com")
     EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-    EMAIL_TIMEOUT = 5
+    EMAIL_TIMEOUT = 10
 else:
-    # Fallback to pure Sendgrid via API if no generic SMTP host is configured
-    EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
-    ANYMAIL = {
-        "SENDGRID_API_KEY": env("SENDGRID_API_KEY", default=""),
-    }
+    # No email configured — log to console (dev/test)
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Stripe
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
