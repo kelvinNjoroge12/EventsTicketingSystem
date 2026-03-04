@@ -123,7 +123,12 @@ const CheckoutPage = () => {
             order_number: currentOrderNumber,
           });
         } catch {
-          // Stripe not configured yet — continue to confirmation in demo mode
+          // Stripe not configured yet — fallback to backend simulation
+          try {
+            await api.post('/api/payments/simulate/confirm/', { order_number: currentOrderNumber });
+          } catch (e) {
+            console.error("Simulation fallback failed", e)
+          }
         }
         setIsProcessing(false);
         navigate(`/confirmation/${currentOrderNumber}`, {
@@ -140,7 +145,12 @@ const CheckoutPage = () => {
             phone: paymentData.mpesaPhone,
           });
         } catch {
-          // M-Pesa not configured yet — continue to confirmation in demo mode
+          // M-Pesa not configured yet — fallback to backend simulation
+          try {
+            await api.post('/api/payments/simulate/confirm/', { order_number: currentOrderNumber });
+          } catch (e) {
+            console.error("Simulation fallback failed", e)
+          }
         }
         setIsProcessing(false);
         navigate(`/confirmation/${currentOrderNumber}`, {

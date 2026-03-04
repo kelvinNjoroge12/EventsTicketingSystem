@@ -7,6 +7,7 @@ from .views import (
     MpesaInitiateView,
     MpesaQueryView,
     StripeCreatePaymentIntentView,
+    SimulatePaymentConfirmView,
     mpesa_callback,
     stripe_webhook,
 )
@@ -18,5 +19,6 @@ urlpatterns = [
     path("mpesa/initiate/", MpesaInitiateView.as_view(), name="mpesa-initiate"),
     path("mpesa/callback/", mpesa_callback, name="mpesa-callback"),
     path("mpesa/query/", MpesaQueryView.as_view(), name="mpesa-query"),
+    path("simulate/confirm/", SimulatePaymentConfirmView.as_view(), name="simulate-confirm"),
 ]
 

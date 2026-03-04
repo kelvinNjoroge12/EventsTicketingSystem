@@ -102,6 +102,71 @@ class FreeOrderConfirmView(APIView):
 
         return Response({"success": True, "message": "Free order confirmed."})
 
+class SimulatePaymentConfirmView(APIView):
+    """
+    POST /api/payments/simulate/confirm/
+    Accepts: { "order_number": "EH..." }
+    For testing: Immediately forces an order to confirmed, generates tickets, and sends email regardless of price.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        order_number = request.data.get("order_number")
+        try:
+            attendee = request.user if request.user.is_authenticated else None
+        except Exception:
+            attendee = None
+        
+        order = Order.objects.filter(
+            order_number=order_number, 
+            status="pending"
+        ).first()
+
+        if not order:
+            return Response({"detail": "Order not found or not pending."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        order.status = "confirmed"
+        order.save(update_fields=["status"])
+        
+        # Create Ticket rows for each item in the order
+        tickets_to_create = []
+        for item in order.items.all():
+            for _ in range(item.quantity):
+                tickets_to_create.append(
+                    Ticket(
+                        order=order,
+                        order_item=item,
+                        event=order.event,
+                        ticket_type=item.ticket_type,
+                        attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
+                        attendee_email=order.attendee_email,
+                        status="valid",
+                        qr_code_data=uuid.uuid4(),
+                    )
+                )
+        if tickets_to_create:
+            Ticket.objects.bulk_create(tickets_to_create)
+
+        # Fire notification
+        if order.attendee:
+            create_notification(
+                recipient=order.attendee,
+                notification_type="ticket_confirmed",
+                title="Your tickets are confirmed! 🎉",
+                message=(
+                    f"Your order #{order.order_number} for "
+                    f"{order.event.title if order.event else 'the event'} has been confirmed. "
+                    f"Check your tickets below."
+                ),
+                event=order.event,
+                action_url=f"/confirmation/{order.order_number}",
+            )
+            
+        send_ticket_email(order)
+
+        return Response({"success": True, "message": "Demo order confirmed successfully."})
+
+
 
 @csrf_exempt
 def stripe_webhook(request: HttpRequest) -> HttpResponse:
