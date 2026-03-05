@@ -73,6 +73,7 @@ const AppRoutes = () => {
         <Route path="/organizer-dashboard" element={<Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>} />
         <Route path="/organizer/events/:slug/checkin" element={<Suspense fallback={<PageLoader />}><CheckInPage /></Suspense>} />
         <Route path="/verify-email" element={<Suspense fallback={<PageLoader />}><EmailVerificationPage /></Suspense>} />
+        <Route path="/t/:uuid" element={<Suspense fallback={<PageLoader />}><TicketVerificationPage /></Suspense>} />
         <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense>} />
       </Routes>
 
