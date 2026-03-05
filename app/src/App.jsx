@@ -28,6 +28,7 @@ const MyTicketsPage = lazy(() => import('./pages/MyTicketsPage'));
 const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage'));
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
 const OrganizerDashboardPage = lazy(() => import('./pages/OrganizerDashboardPage'));
+const CheckInPage = lazy(() => import('./pages/CheckInPage'));
 
 // Loading fallback — plain CSS spinner, no framer-motion transforms
 const PageLoader = () => (
@@ -70,6 +71,7 @@ const AppRoutes = () => {
         <Route path="/my-tickets" element={<Suspense fallback={<PageLoader />}><MyTicketsPage /></Suspense>} />
         <Route path="/settings" element={<Suspense fallback={<PageLoader />}><AccountSettingsPage /></Suspense>} />
         <Route path="/organizer-dashboard" element={<Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>} />
+        <Route path="/organizer/events/:slug/checkin" element={<Suspense fallback={<PageLoader />}><CheckInPage /></Suspense>} />
         <Route path="/verify-email" element={<Suspense fallback={<PageLoader />}><EmailVerificationPage /></Suspense>} />
         <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense>} />
       </Routes>

@@ -574,12 +574,12 @@ const OrganizerDashboardPage = () => {
                                                             >
                                                                 <Users className="w-3.5 h-3.5" /> Attendees
                                                             </button>
-                                                            <button
-                                                                onClick={() => { setSelectedEventId(String(event.id)); setActiveTab('finances'); }}
-                                                                className="flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#7C3AED] px-2.5 py-1.5 rounded-lg hover:bg-purple-50 transition-colors"
+                                                            <Link
+                                                                to={`/organizer/events/${event.slug}/checkin`}
+                                                                className="flex items-center gap-1.5 text-xs font-medium text-white bg-gradient-to-r from-[#7C3AED] to-[#1E4DB7] px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity ml-auto shadow-sm"
                                                             >
-                                                                <Wallet className="w-3.5 h-3.5" /> Finances
-                                                            </button>
+                                                                <CheckCircle2 className="w-3.5 h-3.5" /> Check-In
+                                                            </Link>
                                                         </div>
                                                     </div>
                                                 </div>
