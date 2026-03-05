@@ -107,3 +107,43 @@ class TicketQRView(generics.GenericAPIView):
         img.save(buffer, format="PNG")
         
         return HttpResponse(buffer.getvalue(), content_type="image/png")
+
+class TicketVerificationDetailView(generics.GenericAPIView):
+    """
+    Public endpoint for verifying a ticket.
+    Returns safe, non-PII details about a ticket given its UUID or QR Data.
+    Used by the generic web QR scanning feature.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, qr_code_data, *args, **kwargs):
+        from apps.orders.models import Ticket
+        ticket = get_object_or_404(Ticket.objects.select_related("event", "ticket_type", "order"), qr_code_data=qr_code_data)
+        
+        # Build masked email for privacy since this is a public endpoint
+        email = ticket.attendee_email
+        if email and "@" in email:
+            name_part, domain_part = email.split("@", 1)
+            masked_email = f"{name_part[:2]}***@{domain_part}"
+        else:
+            masked_email = "Unknown"
+
+        return Response({
+            "id": str(ticket.id),
+            "qr_code_data": str(ticket.qr_code_data),
+            "status": ticket.status,
+            "attendee_name": ticket.attendee_name,
+            "attendee_email_masked": masked_email,
+            "ticket_type_name": ticket.ticket_type.name if ticket.ticket_type else "General Admission",
+            "order_number": ticket.order.order_number,
+            "checked_in_at": ticket.checked_in_at,
+            "event": {
+                "id": str(ticket.event.id),
+                "slug": ticket.event.slug,
+                "title": ticket.event.title,
+                "start_date": ticket.event.start_date,
+                "start_time": ticket.event.start_time,
+                "venue_name": ticket.event.venue_name,
+                "organizer_id": str(ticket.event.organizer_id),
+            }
+        })
