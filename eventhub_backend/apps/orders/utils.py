@@ -4,6 +4,8 @@ import logging
 import qrcode
 from PIL import Image
 
+from email.mime.image import MIMEImage
+
 from django.core.files.base import ContentFile
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
@@ -72,16 +74,41 @@ def send_ticket_email(order, tickets=None):
     # ── Per-ticket HTML blocks ─────────────────────────────────
     ticket_blocks = ""
     text_ticket_lines = []
+    inline_images = []
+
+    import io
+    import qrcode
+    from email.mime.image import MIMEImage
 
     for i, ticket in enumerate(tickets):
         ticket_type_name = (
             ticket.ticket_type.name if ticket.ticket_type else "General Admission"
         )
         uuid_str = str(ticket.qr_code_data)
+        
+        # Ensure the QR code is generated and saved to the bucket for backend storage
+        get_or_generate_qr_url(ticket)
+        
+        # ── Generate QR code in memory for email attachment ──
+        # By attaching it directly as a MIMEImage inline attachment, we ensure
+        # 100% rendering in ALL email clients without external image downloads.
+        # This is the industry standard for ticketing systems.
+        cid = f"qr_code_{uuid_str}"
+        
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(uuid_str)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format="PNG")
+        
+        mime_image = MIMEImage(img_buffer.getvalue())
+        mime_image.add_header("Content-ID", f"<{cid}>")
+        mime_image.add_header("Content-Disposition", "inline", filename=f"ticket_{i+1}.png")
+        inline_images.append(mime_image)
 
-        # Public HTTPS QR image generated and stored in your Supabase bucket
-        # This renders perfectly in every email client without blocking
-        qr_url = get_or_generate_qr_url(ticket)
+        qr_src = f"cid:{cid}"
 
         ticket_blocks += f"""
         <table width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -112,7 +139,7 @@ def send_ticket_email(order, tickets=None):
             <td style="padding:16px; vertical-align:middle; text-align:center;
                        border-left:2px solid #e2e8f0; width:152px;
                        background:#f8fafc;">
-              <img src="{qr_url}"
+              <img src="{qr_src}"
                    width="140" height="140"
                    alt="QR Code — Ticket #{i + 1}"
                    style="display:block; margin:0 auto;
@@ -131,7 +158,7 @@ def send_ticket_email(order, tickets=None):
             f"  Ticket #{i + 1}: {ticket_type_name}\n"
             f"  Attendee: {ticket.attendee_name}\n"
             f"  UUID: {uuid_str}\n"
-            f"  QR Image: {qr_url}\n"
+            f"  QR UUID: {uuid_str}\n"
         )
 
     if not ticket_blocks:
@@ -306,7 +333,14 @@ def send_ticket_email(order, tickets=None):
         from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@eventhub.com"),
         to=[order.attendee_email],
     )
+    
+    # 💥 CRITICAL FOR INLINE IMAGES 💥
+    # 1. You MUST attach the HTML alternative first
     msg.attach_alternative(html_content, "text/html")
+    
+    # 2. Then attach all MIMEImages for them to be parsed as multipart/related inline attachments
+    for inline_img in inline_images:
+        msg.attach(inline_img)
 
     from django.utils import timezone
     try:
