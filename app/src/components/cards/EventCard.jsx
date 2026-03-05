@@ -13,6 +13,7 @@ import useSavedEvents from '../../hooks/useSavedEvents';
 import { prefetchEvent } from '../../lib/eventsApi';
 import CustomAvatar from '../ui/CustomAvatar';
 import CustomBadge from '../ui/CustomBadge';
+import OptimizedImage from '../ui/OptimizedImage';
 
 const cardTints = [
   '#EFF6FF', // blue
@@ -84,10 +85,9 @@ const EventCard = ({
         {/* Background Image/Gradient */}
         <div className="absolute inset-0 z-0">
           {event.coverImage ? (
-            <img
+            <OptimizedImage
               src={event.coverImage}
               alt={event.title}
-              loading="lazy"
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
             />
           ) : (
