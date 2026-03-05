@@ -1,24 +1,49 @@
+import io
 import logging
-from urllib.parse import quote
 
+import qrcode
+from PIL import Image
+
+from django.core.files.base import ContentFile
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
-def qr_image_url(data: str, size: int = 200) -> str:
+def get_or_generate_qr_url(ticket) -> str:
     """
-    Returns a public HTTPS URL that renders a QR code PNG for the given data.
-    Uses api.qrserver.com — a free, reliable, CDN-backed service that works
-    with ALL email clients (Gmail, Yahoo, Outlook, Apple Mail, mobile apps).
-    No auth, no API key, no hosting required.
+    Checks if the ticket already has a saved QR code image.
+    If not, it generates one and saves it to the `qr_code` ImageField,
+    which automatically uploads it to the configured storage bucket (S3/Supabase).
+    Returns the absolute public URL of the image.
     """
-    encoded = quote(str(data), safe="")
-    return (
-        f"https://api.qrserver.com/v1/create-qr-code/"
-        f"?size={size}x{size}&data={encoded}&margin=10&format=png"
-    )
+    if not ticket.qr_code:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(str(ticket.qr_code_data))
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        
+        filename = f"ticket_qr_{ticket.qr_code_data}.png"
+        ticket.qr_code.save(filename, ContentFile(buffer.getvalue()), save=True)
+    
+    url = ticket.qr_code.url
+    if url.startswith('/'):
+        # Fallback for local development or FileSystemStorage
+        base = getattr(settings, 'FRONTEND_URL', 'http://localhost:8000')
+        # Render backend url
+        backend_url = "https://eventsticketingsystem.onrender.com"
+        url = f"{backend_url}{url}"
+
+    return url
 
 
 def send_ticket_email(order, tickets=None):
@@ -58,8 +83,9 @@ def send_ticket_email(order, tickets=None):
         )
         uuid_str = str(ticket.qr_code_data)
 
-        # Public HTTPS QR image — renders in every email client
-        qr_url = qr_image_url(uuid_str, size=200)
+        # Public HTTPS QR image generated and stored in your Supabase bucket
+        # This renders perfectly in every email client without blocking
+        qr_url = get_or_generate_qr_url(ticket)
 
         ticket_blocks += f"""
         <table width="100%" cellpadding="0" cellspacing="0" border="0"
