@@ -29,6 +29,7 @@ const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage')
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
 const OrganizerDashboardPage = lazy(() => import('./pages/OrganizerDashboardPage'));
 const CheckInPage = lazy(() => import('./pages/CheckInPage'));
+const TicketVerificationPage = lazy(() => import('./pages/TicketVerificationPage'));
 
 // Loading fallback — plain CSS spinner, no framer-motion transforms
 const PageLoader = () => (
