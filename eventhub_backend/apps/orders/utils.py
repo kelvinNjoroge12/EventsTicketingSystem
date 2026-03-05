@@ -335,6 +335,10 @@ def send_ticket_email(order, tickets=None):
     )
     
     # 💥 CRITICAL FOR INLINE IMAGES 💥
+    # Email structure MUST be multipart/related to render CID images inline!
+    # Without this, Gmail treats the image as a standard file attachment at the bottom.
+    msg.mixed_subtype = "related"
+    
     # 1. You MUST attach the HTML alternative first
     msg.attach_alternative(html_content, "text/html")
     
