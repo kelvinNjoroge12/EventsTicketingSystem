@@ -13,6 +13,7 @@ import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
 import ProgressiveImage from '../components/ui/ProgressiveImage';
 import { fetchEvent, fetchRelatedEvents, trackEventView, fetchEventSpeakers, fetchEventSchedule } from '../lib/eventsApi';
+import { useQuery } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import useSavedEvents from '../hooks/useSavedEvents';
 import { heroImage, heroSrcSet, avatarImage, logoImage } from '../lib/imageUtils';
@@ -154,57 +155,54 @@ const EventDetailPage = () => {
   const navigate = useNavigate();
   const { addToCart, addMultipleToCart } = useCart();
   const { isSaved, toggleSave } = useSavedEvents();
-  const [event, setEvent] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [relatedEvents, setRelatedEvents] = useState([]);
 
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    (async () => {
-      try {
-        trackEventView(slug);
+  // 1. Fetch Main Event immediately (from cache instantly if preloaded)
+  const { data: baseEvent, isLoading } = useQuery({
+    queryKey: ['event', slug],
+    queryFn: async () => {
+      // Trigger analytics asynchronously and fire-and-forget
+      trackEventView(slug);
+      return fetchEvent(slug);
+    },
+    retry: false
+  });
 
-        // 1. Load Main Event instantly (it will hit cache thanks to preloader)
-        const data = await fetchEvent(slug);
-        if (isMounted) {
-          setEvent(data);
-          setIsLoading(false); // Drop the loading skeleton IMMEDIATELY
-        }
+  // 2. Fetch Related Events silently
+  const { data: relatedEvents = [] } = useQuery({
+    queryKey: ['events', 'related', slug],
+    queryFn: () => fetchRelatedEvents(slug),
+    enabled: !!slug
+  });
 
-        // 2. Load Related Events quietly in the background
-        fetchRelatedEvents(slug).then(related => {
-          if (isMounted) setRelatedEvents(related);
-        }).catch(e => console.error('Failed to load related events', e));
+  // 3. Background fetch for extra data (speakers/schedule) usually embedded but sometimes detached
+  const { data: extraData } = useQuery({
+    queryKey: ['event', 'extras', slug],
+    queryFn: async () => {
+      const [speakersRes, scheduleRes] = await Promise.allSettled([
+        fetchEventSpeakers(slug),
+        fetchEventSchedule(slug)
+      ]);
+      const speakers = speakersRes.status === 'fulfilled' ? speakersRes.value.map(s => ({ ...s, avatar: s.avatar_url || s.avatar })) : [];
+      const schedule = scheduleRes.status === 'fulfilled' ? scheduleRes.value : [];
+      return { speakers, schedule };
+    },
+    enabled: !!baseEvent
+  });
 
-        // 3. Optimistic Background Fetch for Speakers & Schedule
-        Promise.allSettled([
-          fetchEventSpeakers(slug),
-          fetchEventSchedule(slug)
-        ]).then(([speakersRes, scheduleRes]) => {
-          if (isMounted) {
-            setEvent(prev => {
-              if (!prev) return prev;
-              const speakers = speakersRes.status === 'fulfilled' ? speakersRes.value.map(s => ({ ...s, avatar: s.avatar_url || s.avatar })) : prev.speakers;
-              const schedule = scheduleRes.status === 'fulfilled' ? scheduleRes.value : prev.schedule;
-              return { ...prev, speakers, schedule };
-            });
-          }
-        });
+  // Merge extra background logic smartly
+  const event = useMemo(() => {
+    if (!baseEvent) return null;
+    return {
+      ...baseEvent,
+      speakers: extraData?.speakers?.length ? extraData.speakers : baseEvent.speakers,
+      schedule: extraData?.schedule?.length ? extraData.schedule : baseEvent.schedule,
+    };
+  }, [baseEvent, extraData]);
 
-      } catch (e) {
-        console.error('Failed to load event', e);
-        if (isMounted) {
-          setEvent(null);
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => { isMounted = false; };
-  }, [slug]);
+  // Handle Tickets
 
   const handleGetTickets = (ticketData) => {
     addMultipleToCart(

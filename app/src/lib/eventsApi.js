@@ -1,10 +1,5 @@
 import { api } from "./apiClient";
 
-// ── Cache Configuration ────────────────────────────────────────────────────
-const CACHE_TTL = 1000 * 60 * 5; // 5 minutes — data considered fresh
-const eventCache = new Map();     // slug → { data, timestamp }
-const listCache = new Map();      // cacheKey → { data, timestamp }
-
 // ── Mappers ────────────────────────────────────────────────────────────────
 
 // Map backend event list item to the shape used by EventCard, HomePage, EventsPage
@@ -134,26 +129,8 @@ const mapDetailEvent = (e) => {
   };
 };
 
-// ── List Cache Key Builder ─────────────────────────────────────────────────
-const buildListCacheKey = (params = {}) => {
-  const sorted = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== null && v !== "")
-    .sort(([a], [b]) => a.localeCompare(b));
-  return sorted.length === 0 ? "__all__" : JSON.stringify(sorted);
-};
-
-// ── Fetch Events (with SWR-style caching) ──────────────────────────────────
-// Returns cached data immediately if available, and refreshes in background
-// if stale. This means HomePage → EventsPage navigation is instant.
+// ── Fetch Events ──────────────────────────────────────────────────────────
 export const fetchEvents = async (params = {}) => {
-  const cacheKey = buildListCacheKey(params);
-  const cached = listCache.get(cacheKey);
-
-  // If we have fresh cached data, return immediately
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-
   // Build query
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -161,96 +138,19 @@ export const fetchEvents = async (params = {}) => {
       searchParams.set(key, value);
     }
   });
-  const query = searchParams.toString();
 
-  // Fetch fresh data
+  const query = searchParams.toString();
   const rawData = await api.get(`/api/events/${query ? "?" + query : ""}`);
-  const events = Array.isArray(rawData?.results)
+
+  return Array.isArray(rawData?.results)
     ? rawData.results.map(mapListEvent)
     : rawData.map(mapListEvent);
-
-  // Store in cache
-  listCache.set(cacheKey, { data: events, timestamp: Date.now() });
-
-  return events;
 };
 
-// Stale-while-revalidate variant: returns cached data AND refreshes in bg
-// Calls onUpdate when fresh data arrives
-export const fetchEventsWithSWR = (params = {}, onUpdate) => {
-  const cacheKey = buildListCacheKey(params);
-  const cached = listCache.get(cacheKey);
-
-  if (cached) {
-    // Return stale data immediately
-    const isStale = Date.now() - cached.timestamp >= CACHE_TTL;
-
-    if (isStale && onUpdate) {
-      // Refresh in background
-      fetchEvents(params).then(onUpdate).catch(() => { });
-    }
-
-    return cached.data; // Return synchronously
-  }
-
-  return null; // No cache, caller should await fetchEvents
-};
-
-// ── Prefetch Event Detail (fire-and-forget) ────────────────────────────────
-export const prefetchEvent = async (slug) => {
-  if (eventCache.has(slug)) {
-    const cached = eventCache.get(slug);
-    if (Date.now() - cached.timestamp < CACHE_TTL) return;
-  }
-  try {
-    const data = await api.get(`/api/events/${slug}/`);
-    const mapped = mapDetailEvent(data);
-    eventCache.set(slug, { data: mapped, timestamp: Date.now() });
-  } catch (e) {
-    // silently fail prefetch
-  }
-};
-
-// ── Fetch Single Event Detail (cache-first) ────────────────────────────────
+// ── Fetch Single Event Detail ─────────────────────────────────────────────
 export const fetchEvent = async (slug) => {
-  if (eventCache.has(slug)) {
-    const cached = eventCache.get(slug);
-    if (Date.now() - cached.timestamp < CACHE_TTL) {
-      return cached.data;
-    }
-  }
   const data = await api.get(`/api/events/${slug}/`);
-  const mapped = mapDetailEvent(data);
-  eventCache.set(slug, { data: mapped, timestamp: Date.now() });
-  return mapped;
-};
-
-// ── Batch Prefetch Event Details ────────────────────────────────────────────
-// Prefetches details for multiple events with concurrency control.
-// Called after the event list loads to warm the cache for instant detail views.
-export const prefetchEventsBatch = (slugs, concurrency = 3) => {
-  let index = 0;
-
-  const next = () => {
-    if (index >= slugs.length) return;
-    const slug = slugs[index++];
-
-    // Skip if already cached
-    if (eventCache.has(slug)) {
-      const cached = eventCache.get(slug);
-      if (Date.now() - cached.timestamp < CACHE_TTL) {
-        next();
-        return;
-      }
-    }
-
-    prefetchEvent(slug).finally(next);
-  };
-
-  // Start N concurrent workers
-  for (let i = 0; i < Math.min(concurrency, slugs.length); i++) {
-    next();
-  }
+  return mapDetailEvent(data);
 };
 
 // ── Related Events ─────────────────────────────────────────────────────────

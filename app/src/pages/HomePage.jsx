@@ -18,7 +18,8 @@ import EventCard from '../components/cards/EventCard';
 import CategoryPill from '../components/cards/CategoryPill';
 import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
-import { fetchEvents, fetchEventsWithSWR, prefetchEventsBatch, preloadRoutes } from '../lib/eventsApi';
+import { fetchEvents, preloadRoutes } from '../lib/eventsApi';
+import { useQuery } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
 import useSavedEvents from '../hooks/useSavedEvents';
@@ -68,81 +69,14 @@ const StepCard = ({ number, title, description, icon: Icon, tint, delay }) => (
 const HomePage = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('All');
-  const [allEvents, setAllEvents] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchData, setSearchData] = useState({
-    keyword: '',
-    location: '',
-    date: '',
+  const { data: allEvents = [], isLoading } = useQuery({
+    queryKey: ['events', { ordering: 'start_date' }],
+    queryFn: () => fetchEvents({ ordering: 'start_date' })
   });
-  const [activeTab, setActiveTab] = useState('attendee');
 
-  // Marquee Animation Refs
-  const trackRef = useRef(null);
-  const progress = useRef(0);
-  const lastTime = useRef(performance.now());
-  const isCategoryPaused = useRef(false);
-  const pauseTimeout = useRef(null);
-  const touchStartX = useRef(0);
-
+  // Preload React Router JS chunks on mount
   useEffect(() => {
-    let isMounted = true;
-
-    // Helper: quietly background-load ALL details for instant navigation
-    const prefetchEverything = (eventsList) => {
-      if (!isMounted || !eventsList || eventsList.length === 0) return;
-      const slugs = eventsList.map((e) => e.slug);
-      // Wait for the browser to idle (or a short timeout) to prevent blocking main thread
-      setTimeout(() => {
-        prefetchEventsBatch(slugs, 2); // 2 concurrent to not overwhelm network
-      }, 500);
-    };
-
-    // 1. Try to render from cache immediately (stale-while-revalidate)
-    const cached = fetchEventsWithSWR({ ordering: 'start_date' }, (freshEvents) => {
-      if (isMounted) {
-        setAllEvents(freshEvents);
-        prefetchEverything(freshEvents);
-      }
-    });
-
-    if (cached) {
-      setAllEvents(cached);
-      setIsLoading(false);
-      prefetchEverything(cached);
-    }
-
-    // 2. If no cache, do a full fetch
-    if (!cached) {
-      (async () => {
-        try {
-          const events = await fetchEvents({ ordering: 'start_date' });
-          if (isMounted) {
-            setAllEvents(events);
-            prefetchEverything(events);
-          }
-        } catch (e) {
-          console.error("Failed to load upcoming events", e);
-        } finally {
-          if (isMounted) setIsLoading(false);
-        }
-      })();
-    }
-
-    // 3. Ultra-Aggressive Pre-warm: Preload the entire catalog in the background,
-    //    then download every single detail page.
-    setTimeout(() => {
-      fetchEvents({}).then(allEvents => {
-        if (isMounted) prefetchEverything(allEvents);
-      }).catch(() => { });
-    }, 2000);
-
-    // 4. Preload React Route JS chunks so JS execution is instant 
     preloadRoutes();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   const handleSearch = (e) => {

@@ -13,7 +13,8 @@ import { format } from 'date-fns';
 import PageWrapper from '../components/layout/PageWrapper';
 import EventCard from '../components/cards/EventCard';
 import CustomButton from '../components/ui/CustomButton';
-import { fetchEvents, fetchEventsWithSWR } from '../lib/eventsApi';
+import { fetchEvents } from '../lib/eventsApi';
+import { useQuery } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
@@ -43,10 +44,7 @@ const FilterCardWrapper = ({ title, icon: Icon, hoverClass, children }) => (
 );
 
 const EventsPage = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [allEvents, setAllEvents] = useState([]);
-
-  // Filter states (No keyword search as requested)
+  // Filter states
   const [filters, setFilters] = useState({
     category: '',
     location: '',
@@ -57,54 +55,11 @@ const EventsPage = () => {
     sort: 'popular', // popular, upcoming, newest, price-low, price-high
   });
 
-  // Initial load — uses SWR cache from HomePage if available
-  useEffect(() => {
-    let isMounted = true;
-
-    // Helper: quietly background-load ALL details for instant navigation
-    const prefetchEverything = (eventsList) => {
-      if (!isMounted || !eventsList || eventsList.length === 0) return;
-      const slugs = eventsList.map((e) => e.slug);
-      // Wait for the browser to idle (or a short timeout) to prevent blocking main thread
-      setTimeout(() => {
-        // dynamic import of prefetchEventsBatch to avoid top-level bundle size if not used
-        import('../lib/eventsApi').then(({ prefetchEventsBatch }) => {
-          prefetchEventsBatch(slugs, 2);
-        });
-      }, 500);
-    };
-
-    // 1. Try to serve from cache immediately
-    const cached = fetchEventsWithSWR({}, (freshEvents) => {
-      if (isMounted) {
-        setAllEvents(freshEvents);
-        prefetchEverything(freshEvents);
-      }
-    });
-
-    if (cached) {
-      setAllEvents(cached);
-      setIsLoading(false);
-      prefetchEverything(cached);
-    } else {
-      // 2. No cache — full network fetch
-      (async () => {
-        try {
-          const data = await fetchEvents();
-          if (isMounted) {
-            setAllEvents(data);
-            prefetchEverything(data);
-          }
-        } catch (e) {
-          console.error('Failed to load events', e);
-        } finally {
-          if (isMounted) setIsLoading(false);
-        }
-      })();
-    }
-
-    return () => { isMounted = false; };
-  }, []);
+  // Fetch all events via React Query (cached with staleTime configuration in main.jsx)
+  const { data: allEvents = [], isLoading } = useQuery({
+    queryKey: ['events', 'all'],
+    queryFn: () => fetchEvents()
+  });
 
   // Filter and sort events
   const filteredEvents = useMemo(() => {

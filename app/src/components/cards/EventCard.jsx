@@ -10,7 +10,8 @@ import {
   BookmarkCheck
 } from 'lucide-react';
 import useSavedEvents from '../../hooks/useSavedEvents';
-import { prefetchEvent } from '../../lib/eventsApi';
+import { fetchEvent } from '../../lib/eventsApi';
+import { useQueryClient } from '@tanstack/react-query';
 import CustomAvatar from '../ui/CustomAvatar';
 import CustomBadge from '../ui/CustomBadge';
 import ProgressiveImage from '../ui/ProgressiveImage';
@@ -42,6 +43,17 @@ const EventCard = ({
     toggleSave(event.slug);
     if (onBookmarkToggle) {
       onBookmarkToggle(event.slug, !saved);
+    }
+  };
+
+  const queryClient = useQueryClient();
+
+  const handleMouseEnter = () => {
+    if (event?.slug) {
+      queryClient.prefetchQuery({
+        queryKey: ['event', event.slug],
+        queryFn: () => fetchEvent(event.slug)
+      });
     }
   };
 
