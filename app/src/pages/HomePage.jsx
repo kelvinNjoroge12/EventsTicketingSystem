@@ -22,7 +22,6 @@ import { fetchEvents, preloadRoutes } from '../lib/eventsApi';
 import { useQuery } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
-import useSavedEvents from '../hooks/useSavedEvents';
 
 // Statistics Component
 const StatBox = ({ value, label, suffix = '' }) => {
@@ -69,6 +68,17 @@ const StepCard = ({ number, title, description, icon: Icon, tint, delay }) => (
 const HomePage = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeTab, setActiveTab] = useState('attendee');
+  const [searchData, setSearchData] = useState({ keyword: '', location: '', date: '' });
+
+  // Refs for the category marquee animation
+  const trackRef = useRef(null);
+  const progress = useRef(0);
+  const lastTime = useRef(performance.now());
+  const isCategoryPaused = useRef(false);
+  const pauseTimeout = useRef(null);
+  const touchStartX = useRef(0);
+
   const { data: allEvents = [], isLoading } = useQuery({
     queryKey: ['events', { ordering: 'start_date' }],
     queryFn: () => fetchEvents({ ordering: 'start_date' })
