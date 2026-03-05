@@ -45,14 +45,14 @@ class FreeOrderConfirmView(APIView):
 
     def post(self, request):
         order_number = request.data.get("order_number")
-        try:
-            attendee = request.user if request.user.is_authenticated else None
-        except Exception:
-            attendee = None
+        if not order_number:
+            return Response({"detail": "order_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Look up purely by order_number — no attendee filter so guest
+        # checkouts (attendee=None) and logged-in checkouts both work.
         order = Order.objects.filter(
-            order_number=order_number, 
-            attendee=attendee, 
-            status="pending"
+            order_number=order_number,
+            status="pending",
         ).first()
 
         if not order:

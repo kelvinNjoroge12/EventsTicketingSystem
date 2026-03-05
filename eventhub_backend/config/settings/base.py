@@ -171,6 +171,16 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 
+# Allow ALL Vercel preview deployments automatically (*.vercel.app)
+# and the production domain. This avoids having to update env vars
+# every time Vercel creates a new preview URL.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",       # all vercel preview + production urls
+    r"^https://eventsticketingsystem\.onrender\.com$",
+    r"^http://localhost(:\d+)?$",        # local dev
+    r"^http://127\.0\.0\.1(:\d+)?$",
+]
+
 # Upload constraints (validated server-side in serializers/validators)
 FILE_UPLOAD_MAX_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
 FILE_UPLOAD_ALLOWED_EXTENSIONS = ("jpeg", "jpg", "png", "webp", "gif")
