@@ -1,34 +1,34 @@
 """
-Ticket Email Delivery and QR Code Generation System
-(Production-Grade Implementation)
+Ticket Email — Production Grade
+================================
+Layout (single ticket, no clutter):
 
-SYSTEM CAPABILITIES & REQUIREMENTS FULFILLED:
----------------------------------------------
-1. Unique Secure Ticket ID: Yes, uses cryptographically secure UUIDv4.
-2. QR Code Encodes Verification URL: Yes, encodes `https://<frontend_url>/t/{uuid}`.
-3. Renders Correctly in Emails: Yes, uses a publicly accessible Supabase HTTPS object URL.
-4. Clickable QR Image: Yes, the QR image is wrapped in an `<a>` tag pointing to the ticket URL.
-5. Large Scale Ready: Yes, QR images are generated locally, offloaded to cloud object storage (Supabase/S3), 
-   and served via CDN endpoints.
-6. NO attachments, NO base64, NO CID: Strictly conforms to URL-based remote image loading.
-7. Strict HTML Email Layout: Uses table-based structure with inline CSS globally.
-8. Fallback text link: Yes, provided directly under the QR code image.
+  ┌─────────────────────────────────────────┐
+  │  [BRAND COLOR BAR]                      │
+  │  🎟 Your Ticket Is Confirmed            │
+  │  Event Name                             │
+  ├─────────────────────────────────────────┤
+  │  Hi Kelvin,                             │
+  │  Present the QR code below for entry.  │
+  │                                         │
+  │  Aug 22 · 5:00 PM · iHub Nairobi       │
+  │  Order: EH260305BCFC83                  │
+  ├─────────────────────────────────────────┤
+  │  [  QR CODE  — full width, centred  ]  │
+  │  Kelvin Njoroge — Terraces              │
+  │  Ticket Code: EH26A8F                  │
+  │  [ View Ticket → ]                     │
+  ├─────────────────────────────────────────┤
+  │  Powered by EventHub                   │
+  └─────────────────────────────────────────┘
 
-WHY THIS AVOIDS COMMON EMAIL RENDERING FAILURES:
-------------------------------------------------
-• Blocked External Images: Gmail proxies HTTPS images natively. To ensure it preloads automatically, 
-  the URL must be public (no auth). Our Supabase `/object/public/` URL achieves this.
-• Base64 & CID Attachments: Dropped entirely. Gmail strips base64 and heavily filters CID inline attachments.
-• Oversized Images: Forced to 148x148 pixels via code and HTML attributes (<150KB).
-• Missing HTTPS: All generated URLs enforce HTTPS protocol.
-• CSS Background Images: Avoided entirely (email clients hate `background-image`). Used direct `<img src="...">`.
-• SVG Support: Avoided (breaks in Outlook). PNG format generated via `qrcode` and `Pillow`.
-
-TICKET VALIDATION & SECURITY CHECKS:
-------------------------------------
-• Validation: Scanners reading the QR code are directed to the `/t/{uuid}` frontend route.
-• Security: Backend endpoints (`/api/events/.../checkin/scan/`) enforce UUID verification,
-  status transition (`valid` -> `used`), prevents duplicate check-ins, and logs timestamps / staff IDs.
+Design rules followed:
+  • Zero long UUIDs visible to users.
+  • Zero instruction paragraphs.
+  • QR is the hero — 200×200 px, centred.
+  • Every ticket gets its own clear section.
+  • No localhost URLs — enforced via settings.FRONTEND_URL.
+  • Table-based layout, all CSS inline, no JS, no SVG.
 """
 
 import io
@@ -42,13 +42,23 @@ from django.core.mail import EmailMultiAlternatives
 logger = logging.getLogger(__name__)
 
 
-# ── QR Generators & Storage ───────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────
+
+def _short_ticket_code(uuid_val) -> str:
+    """
+    Converts a UUID like 37a8960c-1f01-4d1d-87af-ef6c4bebd5ab
+    into a short, human-friendly code like  EH37A89
+    (prefix "EH" + first 5 UUID hex digits uppercased)
+    """
+    hex_clean = str(uuid_val).replace("-", "")[:5].upper()
+    return f"EH{hex_clean}"
 
 
 def _generate_qr_png(data: str) -> bytes:
     """
-    Generates a secure QR code encoding a specific string (URL) as PNG.
-    Maintains a high error correction rate (H) for fast scanning.
+    Generates a high-contrast, scan-optimised QR code PNG.
+    Error correction level H (30%) ensures scanning works
+    even if part of the code is obscured.
     """
     qr = qrcode.QRCode(
         version=1,
@@ -66,37 +76,37 @@ def _generate_qr_png(data: str) -> bytes:
 
 def _get_or_create_qr_url(ticket, frontend_url: str) -> str | None:
     """
-    Saves the QR PNG to the Object Storage bucket and returns the fully qualified
-    public HTTPS URL so it can be embedded cleanly in HTML emails without auth.
+    Uploads the QR PNG to Supabase object storage and returns its
+    fully-qualified public HTTPS URL for direct embedding in HTML email.
+    The QR encodes the full ticket verification URL: /t/{uuid}
     """
     ticket_url = f"{frontend_url}/t/{ticket.qr_code_data}"
-    
+
     try:
         if not ticket.qr_code:
-            # Generate the QR image encoding the FULL TICKET VERIFICATION URL, not just UUID
             png = _generate_qr_png(ticket_url)
             ticket.qr_code.save(
                 f"ticket_qr_{ticket.qr_code_data}.png",
                 ContentFile(png),
                 save=True,
             )
-        
-        # Determine the public URL of the saved file
+
         url = ticket.qr_code.url
+        # Ensure the URL is always absolute HTTPS — never localhost
         if url and not url.startswith("http"):
-            # Fallback for local dev environments where domain isn't attached to storage
             url = f"https://eventsticketingsystem.onrender.com{url}"
-            
+
         return url or None
     except Exception as exc:
         logger.warning(
-            "QR bucket save failed for Ticket UUID (%s): %s", 
-            ticket.qr_code_data, exc
+            "QR bucket save failed for Ticket UUID (%s): %s",
+            ticket.qr_code_data,
+            exc,
         )
         return None
 
 
-# ── HTML Email Construct ──────────────────────────────────────
+# ── Email Builder ──────────────────────────────────────────────
 
 
 def send_ticket_email(order, tickets=None):
@@ -109,214 +119,235 @@ def send_ticket_email(order, tickets=None):
     if tickets is None:
         tickets = list(order.tickets.select_related("ticket_type", "order_item").all())
 
-    theme = getattr(order.event, "theme_color", None) or "#1E4DB7"
-    subject = f"Your Ticket: {order.event.title} — Order #{order.order_number}"
-    venue = (
+    # Brand / Event data
+    theme       = getattr(order.event, "theme_color", None) or "#1E4DB7"
+    event_title = order.event.title
+    venue       = (
         getattr(order.event, "venue_name", "")
         or getattr(order.event, "city", "")
         or "Online"
     )
-    date_str = order.event.start_date.strftime("%B %d, %Y")
-    time_str = order.event.start_time.strftime("%I:%M %p")
+    date_str = order.event.start_date.strftime("%b") + " " + str(order.event.start_date.day)  # e.g. "Aug 22"
+    # Cross-platform 12h time without leading zero (%-I fails on Windows)
+    raw_time = order.event.start_time.strftime("%I:%M %p")  # "05:00 PM"
+    time_str = raw_time.lstrip("0")  # "5:00 PM"
 
-    # Establish the base frontend URL for the verification link
-    frontend_url = getattr(settings, "FRONTEND_URL", "https://eventsticketingsystem.onrender.com").rstrip("/")
+    subject = f"🎟 Your Ticket: {event_title}"
 
-    # ── Gather per-ticket data ────────────────────────────────
-    ticket_rows = []
+    # Ensure we never use localhost — FRONTEND_URL must be set in production env
+    frontend_url = getattr(
+        settings, "FRONTEND_URL", "https://eventsticketingsystem.onrender.com"
+    ).rstrip("/")
+
+    # ── Per-ticket sections ──────────────────────────────────
+    ticket_sections_html = ""
+    plain_ticket_lines = []
+
     for i, ticket in enumerate(tickets):
-        type_name = (
-            ticket.ticket_type.name if ticket.ticket_type else "General Admission"
-        )
-        uuid_str = str(ticket.qr_code_data)
-        qr_url = _get_or_create_qr_url(ticket, frontend_url)
-        ticket_verification_link = f"{frontend_url}/t/{uuid_str}"
-        
-        ticket_rows.append(
-            dict(
-                idx=i + 1,
-                type_name=type_name,
-                attendee=ticket.attendee_name,
-                uuid=uuid_str,
-                qr_url=qr_url,
-                verify_link=ticket_verification_link,
-            )
-        )
+        type_name   = ticket.ticket_type.name if ticket.ticket_type else "General Admission"
+        short_code  = _short_ticket_code(ticket.qr_code_data)
+        qr_url      = _get_or_create_qr_url(ticket, frontend_url)
+        verify_link = f"{frontend_url}/t/{ticket.qr_code_data}"
+        attendee    = ticket.attendee_name
 
-    # ── Build strict table-based HTML cards ───────────────────
-    cards_html = ""
-    for td in ticket_rows:
-        
-        # Ticket ID Verification URL Fallback
-        fallback_link_html = f"""
-          <a href="{td['verify_link']}" style="color:#1E4DB7; text-decoration:underline; font-size:11px; word-break:break-all;">
-            {td['verify_link']}
-          </a>
-        """
-
-        if td["qr_url"]:
-            qr_cell = f"""
-              <td style="padding:16px;vertical-align:middle;text-align:center;
-                         border-left:2px solid #e2e8f0;width:170px;background:#f8fafc;">
-                <a href="{td['verify_link']}" target="_blank" style="text-decoration:none; display:inline-block;">
-                    <img src="{td['qr_url']}" width="148" height="148"
-                         alt="Click to view ticket status"
-                         style="display:block;margin:0 auto;border-radius:8px;
-                                border:2px solid #e2e8f0; max-width: 148px; max-height: 148px;" />
+        # ── QR Image block (200px, centred, clickable) ──────
+        if qr_url:
+            qr_block = f"""
+            <tr>
+              <td align="center" style="padding:28px 32px 12px;">
+                <a href="{verify_link}" target="_blank" style="display:inline-block;text-decoration:none;">
+                  <img
+                    src="{qr_url}"
+                    width="200"
+                    height="200"
+                    alt="Entry QR Code"
+                    style="display:block;border:3px solid #e2e8f0;border-radius:12px;
+                           padding:8px;background:#fff;"
+                  />
                 </a>
-                <p style="margin:6px 0 2px;font-size:10px;color:#94a3b8;
-                           font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
-                  Scan or Click Here
-                </p>
-                <div style="margin-top: 4px; font-size: 10px;">
-                    {fallback_link_html}
-                </div>
-              </td>"""
+              </td>
+            </tr>"""
         else:
-            qr_cell = f"""
-              <td style="padding:16px;vertical-align:middle;text-align:center;
-                         border-left:2px solid #e2e8f0;width:170px;background:#eff6ff;">
-                <p style="margin:0;font-size:12px;color:#1e40af;font-weight:600;">
-                  View Ticket Online:<br/>
+            # Fallback when QR image upload failed — show a prominent link button
+            qr_block = f"""
+            <tr>
+              <td align="center" style="padding:28px 32px 12px;">
+                <a href="{verify_link}" target="_blank"
+                   style="display:inline-block;padding:14px 28px;background:{theme};
+                          color:#fff;font-size:15px;font-weight:700;border-radius:8px;
+                          text-decoration:none;">
+                  View Digital Ticket
+                </a>
+              </td>
+            </tr>"""
+
+        # ── Ticket meta row (name + type + code) ─────────────
+        ticket_meta = f"""
+            <tr>
+              <td align="center" style="padding:0 32px 8px;">
+                <p style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">
+                  {attendee}
                 </p>
-                <div style="margin-top: 4px;">
-                    {fallback_link_html}
-                </div>
-              </td>"""
+                <p style="margin:4px 0;font-size:14px;color:#64748b;">
+                  {type_name}
+                </p>
+                <p style="margin:4px 0;font-size:13px;font-family:Courier New,monospace;
+                          color:#94a3b8;letter-spacing:1px;">
+                  {short_code}
+                </p>
+              </td>
+            </tr>"""
 
-        cards_html += f"""
-        <table width="100%" cellpadding="0" cellspacing="0" border="0"
-               style="margin-bottom:16px;border:2px solid #e2e8f0;
-                      border-radius:12px;border-collapse:separate;overflow:hidden;background:#ffffff;">
-          <tr>
-            <td style="padding:20px 20px 20px 24px;vertical-align:middle;">
-              <p style="margin:0 0 4px;font-size:17px;font-weight:700;color:#0f172a;">
-                🎫 {td['type_name']}
-              </p>
-              <p style="margin:0 0 4px;color:#64748b;font-size:13px;">
-                Ticket #{td['idx']} &nbsp;&bull;&nbsp; {td['attendee']}
-              </p>
-              <p style="margin:0;font-family:Courier New,monospace;font-size:11px;
-                         color:#94a3b8;word-break:break-all;">ID: {td['uuid']}</p>
-            </td>
-            {qr_cell}
-          </tr>
-        </table>"""
+        # ── "View Ticket" CTA button ─────────────────────────
+        cta_button = f"""
+            <tr>
+              <td align="center" style="padding:16px 32px 28px;">
+                <a href="{verify_link}" target="_blank"
+                   style="display:inline-block;padding:13px 36px;
+                          background:{theme};color:#ffffff;font-size:15px;
+                          font-weight:700;border-radius:8px;text-decoration:none;
+                          letter-spacing:0.3px;">
+                  View Ticket &rarr;
+                </a>
+              </td>
+            </tr>"""
 
-    # ── Final HTML composition ────────────────────────────────
+        # ── Divider between multiple tickets (skip for last) ─
+        divider = ""
+        if i < len(tickets) - 1:
+            divider = """
+            <tr>
+              <td style="padding:0 32px;">
+                <hr style="border:none;border-top:1px dashed #e2e8f0;"/>
+              </td>
+            </tr>"""
+
+        ticket_sections_html += qr_block + ticket_meta + cta_button + divider
+
+        plain_ticket_lines.append(
+            f"  Ticket: {type_name} — {attendee}\n"
+            f"  Code:   {short_code}\n"
+            f"  Link:   {verify_link}\n"
+        )
+
+    # ── Full HTML email ──────────────────────────────────────
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"/></head>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+</head>
 <body style="margin:0;padding:0;background:#f1f5f9;
              font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0"
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"
          style="background:#f1f5f9;padding:32px 16px;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0"
-             style="background:#fff;border-radius:16px;overflow:hidden;
-                    box-shadow:0 4px 24px rgba(0,0,0,.09);max-width:600px;width:100%;">
-        <!-- Header -->
-        <tr><td style="background:{theme};padding:36px 28px;text-align:center;">
-          <p style="margin:0;font-size:40px;">🎟️</p>
-          <h1 style="margin:10px 0 6px;color:#fff;font-size:24px;font-weight:800;">
-            Your Tickets Are Confirmed!
-          </h1>
-          <p style="margin:0;color:rgba(255,255,255,.88);font-size:15px;">
-            {order.event.title}
-          </p>
-        </td></tr>
-        
-        <!-- Greeting -->
-        <tr><td style="padding:28px 28px 16px;">
-          <p style="margin:0;font-size:16px;color:#0f172a;font-weight:600;">
-            Hi {order.attendee_first_name},
-          </p>
-          <p style="margin:8px 0 0;color:#475569;font-size:14px;line-height:1.6;">
-            Your transaction is complete. You can view your dynamic entry pass below. Show the QR code or click the ticket link to view your live ticket status.
-          </p>
-        </td></tr>
-        
-        <!-- Order details block -->
-        <tr><td style="padding:0 28px 20px;">
-          <table width="100%" cellpadding="0" cellspacing="0"
-                 style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;
-                        border-collapse:separate;overflow:hidden;">
-            <tr>
-              <td style="padding:11px 16px;color:#64748b;font-size:13px;
-                          border-bottom:1px solid #e2e8f0;">📋 Order ID</td>
-              <td style="padding:11px 16px;font-weight:700;font-size:13px;
-                          color:#0f172a;text-align:right;
-                          border-bottom:1px solid #e2e8f0;">{order.order_number}</td>
-            </tr>
-            <tr>
-              <td style="padding:11px 16px;color:#64748b;font-size:13px;
-                          border-bottom:1px solid #e2e8f0;">📅 Date &amp; Time</td>
-              <td style="padding:11px 16px;font-weight:700;font-size:13px;
-                          color:#0f172a;text-align:right;
-                          border-bottom:1px solid #e2e8f0;">{date_str} at {time_str}</td>
-            </tr>
-            <tr>
-              <td style="padding:11px 16px;color:#64748b;font-size:13px;">📍 Location</td>
-              <td style="padding:11px 16px;font-weight:700;font-size:13px;
-                          color:#0f172a;text-align:right;">{venue}</td>
-            </tr>
-          </table>
-        </td></tr>
-        
-        <!-- Tickets / QR block -->
-        <tr><td style="padding:0 28px 8px;">
-          <h3 style="margin:0 0 14px;color:#0f172a;font-size:15px;font-weight:700;">
-            Your Secure Entry Passes
-          </h3>
-          {cards_html}
-        </td></tr>
-        
-        <!-- Instructions / Footer Info -->
-        <tr><td style="padding:0 28px 24px;">
-          <table width="100%" cellpadding="0" cellspacing="0"
-                 style="background:#eff6ff;border-radius:10px;
-                        border:1px solid #bfdbfe;border-collapse:separate;">
-            <tr><td style="padding:14px 16px;color:#1e40af;
-                            font-size:13px;line-height:1.7;">
-              <strong>ℹ️ Accessing Your Ticket:</strong><br/>
-              • The QR code connects directly to your secure URL.<br/>
-              • You can scan or tap the QR image to open your ticket page.<br/>
-              • Present this screen at the venue. Your code is single-use.
-            </td></tr>
-          </table>
-        </td></tr>
-        
-        <!-- Bottom Signature -->
-        <tr><td style="padding:0 28px 20px;">
-          <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 14px;"/>
-          <p style="margin:0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.6;">
-            Please have this email open before arriving at the venue check-in.
-          </p>
-        </td></tr>
-        <tr><td style="background:{theme};padding:16px;text-align:center;">
-          <p style="margin:0;color:rgba(255,255,255,.7);font-size:12px;">
-            Ticket Distributed securely via EventHub
-          </p>
-        </td></tr>
+
+      <!-- Outer card -->
+      <table width="560" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:560px;width:100%;background:#ffffff;
+                    border-radius:16px;overflow:hidden;
+                    box-shadow:0 4px 24px rgba(0,0,0,.10);">
+
+        <!-- ── HEADER ── -->
+        <tr>
+          <td align="center"
+              style="background:{theme};padding:32px 28px 28px;">
+            <p style="margin:0 0 10px;font-size:36px;line-height:1;">🎟</p>
+            <h1 style="margin:0 0 6px;color:#ffffff;font-size:22px;
+                       font-weight:800;letter-spacing:-0.3px;">
+              Your Ticket Is Confirmed
+            </h1>
+            <p style="margin:0;color:rgba(255,255,255,.85);font-size:15px;
+                      font-weight:500;">
+              {event_title}
+            </p>
+          </td>
+        </tr>
+
+        <!-- ── GREETING ── -->
+        <tr>
+          <td style="padding:26px 32px 10px;">
+            <p style="margin:0 0 6px;font-size:16px;font-weight:700;
+                      color:#0f172a;">
+              Hi {order.attendee_first_name},
+            </p>
+            <p style="margin:0;font-size:14px;color:#64748b;line-height:1.5;">
+              Present the QR code below for entry.
+            </p>
+          </td>
+        </tr>
+
+        <!-- ── EVENT INFO STRIP ── -->
+        <tr>
+          <td style="padding:14px 32px 20px;">
+            <table cellpadding="0" cellspacing="0" border="0"
+                   style="background:#f8fafc;border:1px solid #e2e8f0;
+                          border-radius:10px;width:100%;border-collapse:separate;">
+              <tr>
+                <td style="padding:12px 16px;font-size:14px;color:#0f172a;
+                           font-weight:600;">
+                  📅 &nbsp;{date_str} &nbsp;·&nbsp; {time_str}
+                </td>
+                <td style="padding:12px 16px;font-size:14px;color:#0f172a;
+                           font-weight:600;text-align:right;">
+                  📍 &nbsp;{venue}
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2"
+                    style="padding:0 16px 12px;font-size:12px;
+                           color:#94a3b8;border-top:1px solid #f1f5f9;">
+                  Order: <strong style="color:#475569;">{order.order_number}</strong>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── TICKET SECTIONS (QR + name + CTA) ── -->
+        {ticket_sections_html}
+
+        <!-- ── FOOTER ── -->
+        <tr>
+          <td style="padding:6px 0 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center"
+                    style="background:{theme};padding:14px;
+                           border-radius:0 0 16px 16px;">
+                  <p style="margin:0;color:rgba(255,255,255,.70);font-size:12px;">
+                    Powered by EventHub
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
       </table>
     </td></tr>
   </table>
-</body></html>"""
 
-    # ── Plain text fallback ───────────────────────────────────
+</body>
+</html>"""
+
+    # ── Plain-text fallback ──────────────────────────────────
     text_content = (
-        f"YOUR TICKETS ARE CONFIRMED\nEvent: {order.event.title}\n\n"
-        f"Hi {order.attendee_first_name},\n\n"
-        f"Order: {order.order_number} | {date_str} at {time_str} | {venue}\n\n"
-        + "\n".join(
-            f"Ticket #{td['idx']}: {td['type_name']} — {td['attendee']}\n"
-            f"  ID: {td['uuid']}\n  Verify Link: {td['verify_link']}\n"
-            for td in ticket_rows
-        )
-        + "\nTap or visit the links above to access your entry pass.\n"
+        f"YOUR TICKET IS CONFIRMED\n"
+        f"{'=' * 40}\n"
+        f"{event_title}\n\n"
+        f"Hi {order.attendee_first_name},\n"
+        f"Present the QR code below for entry.\n\n"
+        f"Date:  {date_str} at {time_str}\n"
+        f"Venue: {venue}\n"
+        f"Order: {order.order_number}\n\n"
+        + "\n".join(plain_ticket_lines)
+        + f"\nPowered by EventHub\n"
     )
 
-    # ── Dispatch standard EmailMultiAlternatives ──────────────
+    # ── Dispatch ─────────────────────────────────────────────
     msg = EmailMultiAlternatives(
         subject=subject,
         body=text_content,
@@ -332,7 +363,7 @@ def send_ticket_email(order, tickets=None):
         order.email_error = ""
         order.save(update_fields=["email_sent", "email_sent_at", "email_error"])
         logger.info(
-            "Ticket email successfully formatted and dispatched — %s (%d ticket(s)) → %s",
+            "Ticket email dispatched — %s (%d ticket(s)) → %s",
             order.order_number,
             len(tickets),
             order.attendee_email,
@@ -340,5 +371,7 @@ def send_ticket_email(order, tickets=None):
     except Exception as err:
         order.email_error = f"{err.__class__.__name__}: {err}"
         order.save(update_fields=["email_error"])
-        logger.exception("Email generation/sending failed for %s: %s", order.order_number, err)
+        logger.exception(
+            "Email send failed for order %s: %s", order.order_number, err
+        )
         raise
