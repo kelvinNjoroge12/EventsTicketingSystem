@@ -86,26 +86,10 @@ def send_ticket_email(order, tickets=None):
         )
         uuid_str = str(ticket.qr_code_data)
         
-        # Ensure the QR code is generated and saved to the bucket for backend storage
-        get_or_generate_qr_url(ticket)
-        
-        # Generate raw PNG bytes
-        qr = qrcode.QRCode(version=1, box_size=10, border=4)
-        qr.add_data(uuid_str)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-        img_buffer = io.BytesIO()
-        img.save(img_buffer, format="PNG")
-        
-        inline_images.append({
-            "data": img_buffer.getvalue(),
-            "idstring": f"qr_{uuid_str}",
-            "filename": f"ticket_qr_{i+1}.png"
-        })
-
-        # We will attach it via AnymailMessage and get the correct CID string
-        # using Anymail's internal helpers later. For now we use the ID string.
-        qr_src = f"{{{{qr_cid_{i}}}}}"
+        # We now generate QR codes statically on the fly by hitting our own Django API endpoint.
+        # This bypasses ALL email client blocking, ALL bucket/S3 header issues, and ALL SendGrid bugs.
+        base_url = "https://eventsticketingsystem.onrender.com"
+        qr_src = f"{base_url}/api/orders/qr/{uuid_str}/"
 
         ticket_blocks += f"""
         <table width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -324,32 +308,14 @@ def send_ticket_email(order, tickets=None):
     )
 
     # ── Compose & send ────────────────────────────────────────
-    from anymail.message import AnymailMessage
+    from django.core.mail import EmailMultiAlternatives
     
-    msg = AnymailMessage(
+    msg = EmailMultiAlternatives(
         subject=subject,
         body=text_content,
         from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@eventhub.com"),
         to=[order.attendee_email],
     )
-    
-    # Disable tracking links which aggressively modify or corrupt inline image urls 
-    # in some ESPs (SendGrid natively replaces all href/img urls)
-    msg.track_clicks = False
-    msg.track_opens = False
-    
-    # ANYMAIL's official inline image builder ensures 100% correct JSON construction
-    # for SendGrid APIs, returning the fully-formatted CID to inject.
-    for i, img_obj in enumerate(inline_images):
-        raw_cid = msg.attach_inline_image(
-            img_obj["data"], 
-            filename=img_obj["filename"],
-            subtype="png",
-            idstring=img_obj["idstring"]
-        )
-        html_content = html_content.replace(f"{{qr_cid_{i}}}", f"cid:{raw_cid}")
-
-    # Attach the HTML alternative
     msg.attach_alternative(html_content, "text/html")
     
     from django.utils import timezone

@@ -87,3 +87,23 @@ class OrderCancelView(generics.GenericAPIView):
             order.save(update_fields=["status"])
         return Response({"message": "Order cancelled."})
 
+
+import io
+import qrcode
+from django.http import HttpResponse
+
+class TicketQRView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, qr_code_data, *args, **kwargs):
+        # Dynamically generate QR code to bypass any auth/S3 headers from storages
+        # This becomes a pure 100% public PNG accessible via a simple HTTP GET.
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(str(qr_code_data))
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        
+        return HttpResponse(buffer.getvalue(), content_type="image/png")
