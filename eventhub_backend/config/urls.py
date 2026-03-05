@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 from django.http import JsonResponse
+from apps.checkin.views import RetrieveTicketView
 import threading
 import time
 import urllib.request
@@ -43,6 +44,8 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # Health Check
     path("api/health/", health_check, name="health-check"),
+    # Ticket self-service retrieval (public, no auth)
+    path("api/tickets/retrieve/", RetrieveTicketView.as_view(), name="ticket-retrieve"),
     # Core apps
     path("api/auth/", include("apps.accounts.urls")),
     path("api/events/", include("apps.events.urls")),

@@ -49,6 +49,11 @@ class Order(TimeStampedModel):
     refund_reason = models.TextField(blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)
 
+    # Email delivery tracking
+    email_sent = models.BooleanField(default=False)
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    email_error = models.TextField(blank=True)  # stores last SMTP/SendGrid error if any
+
     class Meta:
         indexes = [
             models.Index(fields=["attendee", "status"]),
