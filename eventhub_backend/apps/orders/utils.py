@@ -36,6 +36,14 @@ def get_or_generate_qr_url(ticket) -> str:
         ticket.qr_code.save(filename, ContentFile(buffer.getvalue()), save=True)
     
     url = ticket.qr_code.url
+    
+    # 💥 CRITICAL FIX: Supabase S3 endpoint vs Public HTTP endpoint
+    # The S3 backend URL is `.../storage/v1/s3/media/...` which is for API access.
+    # To view the image publicly in an email without headers, it MUST be converted
+    # to the `.../storage/v1/object/public/media/...` format.
+    if "/storage/v1/s3/" in url:
+        url = url.replace("/storage/v1/s3/", "/storage/v1/object/public/")
+
     if url.startswith('/'):
         # Fallback for local development or FileSystemStorage
         base = getattr(settings, 'FRONTEND_URL', 'http://localhost:8000')
