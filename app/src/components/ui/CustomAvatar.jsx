@@ -1,4 +1,5 @@
 import React from 'react';
+import { avatarImage } from '../../lib/imageUtils';
 
 const Avatar = ({
   src,
@@ -49,13 +50,15 @@ const Avatar = ({
   if (src && !imageError) {
     return (
       <img
-        src={src}
+        src={avatarImage(src, 128)}
         alt={alt || name || 'Avatar'}
         className={`
           rounded-full object-cover
           ${sizes[size]}
           ${className}
         `}
+        decoding="async"
+        loading="lazy"
         onError={() => setImageError(true)}
         {...props}
       />

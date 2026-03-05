@@ -11,10 +11,11 @@ import TicketBox from '../components/event/TicketBox';
 import StickyMobileBar from '../components/event/StickyMobileBar';
 import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
-import OptimizedImage from '../components/ui/OptimizedImage';
+import ProgressiveImage from '../components/ui/ProgressiveImage';
 import { fetchEvent, fetchRelatedEvents, trackEventView, fetchEventSpeakers, fetchEventSchedule } from '../lib/eventsApi';
 import { useCart } from '../context/CartContext';
 import useSavedEvents from '../hooks/useSavedEvents';
+import { heroImage, heroSrcSet, avatarImage, logoImage } from '../lib/imageUtils';
 
 // ── Timeline Component ──────────────────────────────────────────────────────
 const ScheduleTimeline = ({ schedule, themeColor }) => (
@@ -62,9 +63,14 @@ const SpeakersGrid = ({ speakers, themeColor }) => (
         className="bg-white rounded-2xl border border-[#E2E8F0] p-5 flex flex-col items-center text-center hover:shadow-lg hover:border-blue-100 transition-all min-w-0"
       >
         {speaker.photo || speaker.avatar ? (
-          <div className="w-20 h-20 rounded-full mb-3 border-4 border-white shadow-md overflow-hidden relative">
-            <OptimizedImage src={speaker.photo || speaker.avatar} alt={speaker.name} defaultWidth={200} srcSetWidths={[100, 200, 400]} className="object-cover w-full h-full" />
-          </div>
+          <img
+            src={avatarImage(speaker.photo || speaker.avatar, 160)}
+            alt={speaker.name}
+            loading="lazy"
+            decoding="async"
+            width="80"
+            height="80"
+            className="w-20 h-20 rounded-full object-cover mb-3 border-4 border-white shadow-md" />
         ) : (
           <div className="w-20 h-20 rounded-full mb-3 flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-md"
             style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}99)` }}>
@@ -112,9 +118,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                   <a href={sponsor.website} target="_blank" rel="noopener noreferrer"
                     className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-100 transition-all group min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
-                      <div className="h-10 w-full relative">
-                        <OptimizedImage src={sponsor.logo} alt={sponsor.name} defaultWidth={400} srcSetWidths={[200, 400, 800]} className="object-contain w-full h-full" />
-                      </div>
+                      <img src={logoImage(sponsor.logo)} alt={sponsor.name} loading="lazy" decoding="async" className="h-10 max-w-full object-contain" />
                     ) : (
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
@@ -127,9 +131,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                 ) : (
                   <div className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
-                      <div className="h-10 w-full relative">
-                        <OptimizedImage src={sponsor.logo} alt={sponsor.name} defaultWidth={400} srcSetWidths={[200, 400, 800]} className="object-contain w-full h-full" />
-                      </div>
+                      <img src={logoImage(sponsor.logo)} alt={sponsor.name} loading="lazy" decoding="async" className="h-10 max-w-full object-contain" />
                     ) : (
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
@@ -287,20 +289,24 @@ const EventDetailPage = () => {
     <PageWrapper>
       {/* ── HERO SECTION ── */}
       <div className="relative w-full h-[320px] md:h-[480px]" style={{ overflow: 'hidden' }}>
-        {/* Background */}
-        <div className="absolute inset-0 z-0">
-          {event.bannerImage ? (
-            <OptimizedImage
-              src={event.bannerImage}
-              alt={event.title}
-              defaultWidth={1200}
-              srcSetWidths={[600, 1200, 1800]}
-              className="object-cover w-full h-full scale-[1.02]"
-            />
-          ) : (
-            <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${themeColor} 0%, ${accentColor} 100%)` }} />
-          )}
-        </div>
+        {/* Background — proper <img> for LCP priority, falls back to gradient */}
+        {event.bannerImage ? (
+          <img
+            src={heroImage(event.bannerImage)}
+            srcSet={heroSrcSet(event.bannerImage)}
+            sizes="100vw"
+            alt=""
+            aria-hidden="true"
+            fetchpriority="high"
+            decoding="sync"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(135deg, ${themeColor} 0%, ${accentColor} 100%)` }}
+          />
+        )}
 
         {/* Decorative pattern only when no image */}
         {!event.bannerImage && (
@@ -503,9 +509,13 @@ const EventDetailPage = () => {
                           style={{ borderColor: `${accentColor}40`, background: `${accentColor}08` }}
                         >
                           {event.mc.avatar || event.mc.photo ? (
-                            <div className="w-16 h-16 rounded-full border-4 border-white shadow-md flex-shrink-0 overflow-hidden relative">
-                              <OptimizedImage src={event.mc.avatar || event.mc.photo} alt={event.mc.name} defaultWidth={200} srcSetWidths={[100, 200, 400]} className="object-cover w-full h-full" />
-                            </div>
+                            <img src={avatarImage(event.mc.avatar || event.mc.photo, 128)}
+                              alt={event.mc.name}
+                              loading="lazy"
+                              decoding="async"
+                              width="64"
+                              height="64"
+                              className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-md flex-shrink-0" />
                           ) : (
                             <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold border-4 border-white shadow-md flex-shrink-0"
                               style={{ backgroundColor: accentColor }}>
