@@ -81,8 +81,8 @@ const EventCard = ({
     <Link
       to={`/events/${event.slug}`}
       className="block h-full group"
-      onMouseEnter={() => prefetchEvent(event.slug)}
-      onTouchStart={() => prefetchEvent(event.slug)}
+      onMouseEnter={handleMouseEnter}
+      onTouchStart={handleMouseEnter}
     >
       <motion.article
         className="relative h-[320px] md:h-[380px] rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 shadow-xl flex flex-col justify-end transition-all duration-500"
