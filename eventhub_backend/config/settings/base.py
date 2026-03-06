@@ -167,7 +167,7 @@ SIMPLE_JWT = {
 }
 
 # CORS
-FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+FRONTEND_URL = env("FRONTEND_URL", default="https://events-ticketing-system.vercel.app")
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 

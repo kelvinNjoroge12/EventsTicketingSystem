@@ -135,9 +135,11 @@ def send_ticket_email(order, tickets=None):
     subject = f"🎟 Your Ticket: {event_title}"
 
     # Ensure we never use localhost — FRONTEND_URL must be set in production env
-    frontend_url = getattr(
-        settings, "FRONTEND_URL", "https://eventsticketingsystem.onrender.com"
-    ).rstrip("/")
+    _PRODUCTION_FRONTEND = "https://events-ticketing-system.vercel.app"
+    frontend_url = getattr(settings, "FRONTEND_URL", _PRODUCTION_FRONTEND).rstrip("/")
+    # Safety net: if someone left the default localhost value in env, override it
+    if "localhost" in frontend_url or "127.0.0.1" in frontend_url:
+        frontend_url = _PRODUCTION_FRONTEND
 
     # ── Per-ticket sections ──────────────────────────────────
     ticket_sections_html = ""
