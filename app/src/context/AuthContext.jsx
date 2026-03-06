@@ -37,9 +37,11 @@ export const AuthProvider = ({ children }) => {
       try {
         const profile = await api.get('/api/auth/profile/');
         setUser(profile);
-      } catch {
-        api.clearAuthTokens();
-        setUserRaw(null);
+      } catch (err) {
+        if (err?.status === 401) {
+          api.clearAuthTokens();
+          setUserRaw(null);
+        }
       }
     };
     init();
