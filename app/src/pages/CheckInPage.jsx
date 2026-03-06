@@ -217,7 +217,7 @@ const CheckInPage = () => {
         }
     };
 
-    if (!user || user.role !== 'organizer') {
+    if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
         return (
             <PageWrapper>
                 <div className="text-center py-20">

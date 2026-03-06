@@ -43,9 +43,9 @@ const TicketVerificationPage = () => {
     const handleCheckIn = async () => {
         if (!ticketData || !ticketData.event) return;
 
-        // Safety check - button should only appear for organizers anyway
-        if (!user || user.role !== 'organizer') {
-            showToast('Only event organizers can check-in tickets.', 'error');
+        // Safety check - button should only appear for organizers/admins anyway
+        if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
+            showToast('Only event organizers and admins can check-in tickets.', 'error');
             return;
         }
 

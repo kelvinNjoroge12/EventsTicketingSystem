@@ -98,7 +98,7 @@ const OrganizerDashboardPage = () => {
     // Load basic events list
     useEffect(() => {
         let mounted = true;
-        if (!user || user.role !== 'organizer') return;
+        if (!user || (user.role !== 'organizer' && user.role !== 'admin')) return;
 
         api.get('/api/events/organizer/')
             .then(data => {
@@ -112,7 +112,7 @@ const OrganizerDashboardPage = () => {
 
     // Load Dashboard Stats, Expenses, and Attendees
     useEffect(() => {
-        if (!user || user.role !== 'organizer') return;
+        if (!user || (user.role !== 'organizer' && user.role !== 'admin')) return;
 
         setIsStatsLoading(true);
         const eventParam = selectedEventId !== 'all' ? `?event_id=${selectedEventId}` : '';
@@ -217,7 +217,7 @@ const OrganizerDashboardPage = () => {
     };
 
     // ── Guard ───────────────────────────────────────────────────
-    if (!user || user.role !== 'organizer') {
+    if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
         return (
             <PageWrapper>
                 <div className="text-center py-20 px-4">

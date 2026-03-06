@@ -22,6 +22,7 @@ import { fetchEvents, preloadRoutes } from '../lib/eventsApi';
 import { useQuery } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
+import { useAuth } from '../context/AuthContext';
 
 // Statistics Component
 const StatBox = ({ value, label, suffix = '' }) => {
@@ -67,9 +68,17 @@ const StepCard = ({ number, title, description, icon: Icon, tint, delay }) => (
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeTab, setActiveTab] = useState('attendee');
   const [searchData, setSearchData] = useState({ keyword: '', location: '', date: '' });
+
+  // Instantly redirect organizers/admins to their dashboard instead of showing the public homepage
+  useEffect(() => {
+    if (isAuthenticated && (user?.role === 'organizer' || user?.role === 'admin')) {
+      navigate('/organizer-dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   // Refs for the category marquee animation
   const trackRef = useRef(null);

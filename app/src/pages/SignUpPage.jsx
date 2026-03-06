@@ -30,11 +30,15 @@ const SignUpPage = () => {
     setIsLoading(true);
     setError('');
     try {
-      await signup({
+      const user = await signup({
         ...formData,
         role: selectedRole,
       });
-      navigate('/');
+      if (user?.role === 'organizer' || user?.role === 'admin') {
+        navigate('/organizer-dashboard');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(
         err?.email?.[0] ||

@@ -15,7 +15,7 @@ class IsOrganizerRole(BasePermission):
         return bool(
             user
             and user.is_authenticated
-            and getattr(user, "role", None) == "organizer"
+            and getattr(user, "role", None) in ["organizer", "admin"]
         )
 
 
@@ -30,10 +30,15 @@ class IsOrganizer(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
+        if not user or not user.is_authenticated:
+            return False
+            
+        role = getattr(user, "role", None)
+        if role == "admin":
+            return True
+            
         return bool(
-            user
-            and user.is_authenticated
-            and getattr(user, "role", None) == "organizer"
+            role == "organizer"
             and getattr(getattr(user, "organizer_profile", None), "is_approved", False)
         )
 
