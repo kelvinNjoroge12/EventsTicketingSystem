@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -158,6 +158,24 @@ const EventDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  const contentStartRef = useRef(null);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    // If user is scrolled far down, switching to a shorter tab (like Sponsors)
+    // leaves them scrolled past the heading. Scroll them back to the tab bar.
+    setTimeout(() => {
+      if (contentStartRef.current) {
+        const top = contentStartRef.current.getBoundingClientRect().top;
+        // 64px is the height of the main top Navbar
+        if (top < 64) {
+          const y = top + window.scrollY - 64;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+      }
+    }, 10);
+  };
 
   // 1. Main event — served from hover-prefetch cache instantly on revisit
   useEffect(() => {
@@ -422,7 +440,7 @@ const EventDetailPage = () => {
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
-          <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden">
+          <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden" ref={contentStartRef}>
 
             {/* ── TABS ── */}
             <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
@@ -430,7 +448,7 @@ const EventDetailPage = () => {
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`relative flex-shrink-0 flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab.id ? 'text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
                   >
                     {tab.icon}
