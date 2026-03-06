@@ -13,14 +13,20 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const from = location.state?.from?.pathname || '/';
-
   const handleSubmit = async (formData) => {
     setIsLoading(true);
     setError('');
     try {
-      await login(formData.email, formData.password);
-      navigate(from, { replace: true });
+      const user = await login(formData.email, formData.password);
+
+      const intendedDestination = location.state?.from?.pathname;
+      if (intendedDestination) {
+        navigate(intendedDestination, { replace: true });
+      } else if (user?.role === 'organizer' || user?.role === 'admin') {
+        navigate('/organizer-dashboard', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (err) {
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {

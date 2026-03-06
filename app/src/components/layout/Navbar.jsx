@@ -19,7 +19,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const profileRef = useRef(null);
 
-  const isOrganizer = user?.role === 'organizer';
+  const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
   const isOrganizerArea = location.pathname.startsWith('/organizer-dashboard') ||
     location.pathname.startsWith('/create-event') ||
     location.pathname.startsWith('/edit-event');
@@ -260,7 +260,7 @@ const Navbar = () => {
                             <p className="text-xs text-[#64748B] truncate">{user.email}</p>
                           </div>
                           <div className="py-1">
-                            {user.role === 'organizer' && (
+                            {isOrganizer && (
                               <Link to="/organizer-dashboard" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
                                 <LayoutDashboard className="w-4 h-4 text-[#1E4DB7]" /> Organizer Dashboard
                               </Link>
@@ -323,13 +323,13 @@ const Navbar = () => {
                 <div className="pt-4 border-t border-[#E2E8F0] space-y-2">
                   {isAuthenticated ? (
                     <>
-                      <Link to={user.role === 'organizer' ? '/organizer-dashboard' : '/my-tickets'} className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#F1F5F9]">
+                      <Link to={isOrganizer ? '/organizer-dashboard' : '/my-tickets'} className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#F1F5F9]">
                         <div className="w-10 h-10 rounded-full bg-[#1E4DB7] text-white flex items-center justify-center">
                           {user.name?.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <p className="font-medium text-[#0F172A]">{user.name}</p>
-                          <p className="text-sm text-[#64748B]">{user.role === 'organizer' ? 'Dashboard' : 'My Tickets'}</p>
+                          <p className="text-sm text-[#64748B]">{isOrganizer ? 'Dashboard' : 'My Tickets'}</p>
                         </div>
                       </Link>
                       <Link to="/settings" className="block px-4 py-3 text-[#0F172A] font-medium rounded-lg hover:bg-[#F1F5F9]">Settings</Link>
