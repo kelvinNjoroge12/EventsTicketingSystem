@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Settings, Users, Calendar, Activity, ArrowRight, Eye, AlertCircle,
@@ -82,54 +83,60 @@ const EXPENSE_CATEGORIES = [
 const OrganizerDashboardPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const [events, setEvents] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isStatsLoading, setIsStatsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedEventId, setSelectedEventId] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showExpenseModal, setShowExpenseModal] = useState(false);
 
-    // Real data states
-    const [dashboardStats, setDashboardStats] = useState(null);
-    const [expenses, setExpenses] = useState([]);
-    const [attendees, setAttendees] = useState([]);
+    const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
 
     // Load basic events list
-    useEffect(() => {
-        let mounted = true;
-        if (!user || (user.role !== 'organizer' && user.role !== 'admin')) return;
+    const { data: eventsData, isLoading } = useQuery({
+        queryKey: ['organizer_events'],
+        queryFn: async () => {
+            const data = await api.get('/api/events/organizer/');
+            return Array.isArray(data) ? data : data?.results || [];
+        },
+        enabled: !!hasAccess,
+        staleTime: 5 * 60 * 1000, // Keep fresh for 5 mins so 'Back' navigation is instantaneous
+    });
 
-        api.get('/api/events/organizer/')
-            .then(data => {
-                if (mounted) setEvents(Array.isArray(data) ? data : data?.results || []);
-            })
-            .catch(err => console.error('Failed to load organizer events:', err))
-            .finally(() => { if (mounted) setIsLoading(false); });
+    const eventParam = selectedEventId !== 'all' ? `?event_id=${selectedEventId}` : '';
 
-        return () => { mounted = false; };
-    }, [user]);
+    // Load Stats
+    const { data: dashboardStats, isLoading: isStatsLoading } = useQuery({
+        queryKey: ['dashboard_stats', selectedEventId],
+        queryFn: () => api.get(`/api/finances/dashboard-stats/${eventParam}`),
+        enabled: !!hasAccess,
+        staleTime: 5 * 60 * 1000,
+    });
 
-    // Load Dashboard Stats, Expenses, and Attendees
-    useEffect(() => {
-        if (!user || (user.role !== 'organizer' && user.role !== 'admin')) return;
+    // Load Expenses
+    const { data: expensesData } = useQuery({
+        queryKey: ['finances_expenses', selectedEventId],
+        queryFn: async () => {
+            const data = await api.get(`/api/finances/expenses/${eventParam}`);
+            return Array.isArray(data) ? data : data?.results || [];
+        },
+        enabled: !!hasAccess,
+        staleTime: 5 * 60 * 1000,
+    });
 
-        setIsStatsLoading(true);
-        const eventParam = selectedEventId !== 'all' ? `?event_id=${selectedEventId}` : '';
+    // Load Attendees
+    const { data: attendeesData } = useQuery({
+        queryKey: ['finances_attendees', selectedEventId, searchQuery],
+        queryFn: async () => {
+            const data = await api.get(`/api/finances/attendees/${eventParam ? eventParam + '&' : '?'}q=${searchQuery}`);
+            return Array.isArray(data) ? data : data?.results || [];
+        },
+        enabled: !!hasAccess,
+        staleTime: 5 * 60 * 1000,
+    });
 
-        Promise.all([
-            api.get(`/api/finances/dashboard-stats/${eventParam}`),
-            api.get(`/api/finances/expenses/${eventParam}`),
-            api.get(`/api/finances/attendees/${eventParam ? eventParam + '&' : '?'}q=${searchQuery}`)
-        ])
-            .then(([statsData, expensesData, attendeesData]) => {
-                setDashboardStats(statsData);
-                setExpenses(Array.isArray(expensesData) ? expensesData : expensesData.results || []);
-                setAttendees(Array.isArray(attendeesData) ? attendeesData : attendeesData.results || []);
-            })
-            .catch(err => console.error('Failed to load dashboard data:', err))
-            .finally(() => setIsStatsLoading(false));
-    }, [user, selectedEventId, searchQuery, activeTab]);
+    // Computed Data
+    const events = eventsData || [];
+    const expenses = expensesData || [];
+    const attendees = attendeesData || [];
 
     // ── Computed Stats from Backend ─────────────────────────────
     const stats = useMemo(() => {

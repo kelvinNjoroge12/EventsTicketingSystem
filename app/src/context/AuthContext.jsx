@@ -23,7 +23,12 @@ const normalizeUser = (raw) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUserRaw] = useState(null);
+  // Eagerly load user from local storage so there's zero UI blinking or "Access Denied" flashes 
+  // on hard reloads or back/forward navigation
+  const [user, setUserRaw] = useState(() => {
+    const raw = api.getAuthTokens()?.user;
+    return raw ? normalizeUser(raw) : null;
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   // Always normalize before setting so every consumer gets `user.name`
@@ -34,6 +39,7 @@ export const AuthProvider = ({ children }) => {
     const init = async () => {
       const stored = api.getAuthTokens();
       if (!stored?.tokens?.access) return;
+
       try {
         const profile = await api.get('/api/auth/profile/');
         setUser(profile);
