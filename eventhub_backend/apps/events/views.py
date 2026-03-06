@@ -51,7 +51,8 @@ class EventDetailView(generics.RetrieveAPIView):
             "tags",
             "ticket_types",
             "promo_codes",
-            "speakers", # still need this for 'mc' check
+            "speakers",
+            "schedule_items",
             "event_sponsors"
         )
         qs_pub = qs.filter(status__in=["published", "completed"])
@@ -68,7 +69,7 @@ class EventDetailView(generics.RetrieveAPIView):
         event = self.get_object()
         # Only use cache for public events, not draft/pending owner views
         if event.status in ("published", "completed"):
-            cache_key = f"events:detail:{slug}"
+            cache_key = f"events:detail:v2:{slug}"
             cached = cache.get(cache_key)
             if cached:
                 response = Response(cached)
@@ -107,7 +108,7 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         serializer.save()
         cache.clear()
-        cache.delete(f"events:detail:{self.get_object().slug}")
+        cache.delete(f"events:detail:v2:{self.get_object().slug}")
 
 
 class EventDeleteView(generics.DestroyAPIView):
@@ -137,7 +138,7 @@ class EventPublishView(generics.UpdateAPIView):
         event.status = "published"
         event.save(update_fields=["status"])
         cache.clear()
-        cache.delete(f"events:detail:{event.slug}")
+        cache.delete(f"events:detail:v2:{event.slug}")
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(serializer.data)
 

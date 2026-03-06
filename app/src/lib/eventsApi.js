@@ -108,7 +108,16 @@ const mapDetailEvent = (e) => {
       ...e.mc,
       avatar: e.mc.avatar_url || e.mc.avatar
     } : null,
-    schedule: e.schedule || [],
+    schedule: (e.schedule || []).map(item => ({
+      ...item,
+      // Normalise: backend returns start_time/speaker_name; component expects time/speaker
+      time: item.start_time
+        ? item.end_time
+          ? `${item.start_time} – ${item.end_time}`
+          : item.start_time
+        : item.time || '',
+      speaker: item.speaker_name || item.speaker || '',
+    })),
     sponsors: (e.sponsors || []).map(s => ({
       ...s,
       logo: s.logo_url || s.logo,
