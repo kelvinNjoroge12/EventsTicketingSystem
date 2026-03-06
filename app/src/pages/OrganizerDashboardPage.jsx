@@ -237,34 +237,7 @@ const OrganizerDashboardPage = () => {
             {/* ── Dashboard Container ── */}
             <div className="min-h-screen bg-[#F8FAFC]">
 
-                {/* ── Top Bar / Welcome ── */}
-                <div className="bg-gradient-to-r from-[#0F172A] via-[#1E293B] to-[#0F172A] text-white">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] flex items-center justify-center text-white text-xl font-bold shadow-lg">
-                                    {(profile.organization_name || user.name || 'O')[0].toUpperCase()}
-                                </div>
-                                <div>
-                                    <p className="text-white/60 text-sm">{greeting}</p>
-                                    <h1 className="text-xl md:text-2xl font-bold">{profile.organization_name || user.name}</h1>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Link to="/create-event">
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] rounded-xl text-sm font-semibold shadow-lg shadow-blue-500/20"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        Create Event
-                                    </motion.button>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
 
                 {/* ── Tab Navigation ── */}
                 <div className="bg-white border-b border-[#E2E8F0] sticky top-16 z-20">
@@ -313,7 +286,7 @@ const OrganizerDashboardPage = () => {
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: i * 0.08 }}
-                                            className={`bg-gradient-to-br ${kpi.bg} border ${kpi.border} rounded-2xl p-4 md:p-5 hover:shadow-md transition-shadow`}
+                                            className={`bg-gradient-to-br ${kpi.bg} border ${kpi.border} rounded-3xl p-5 md:p-6 hover:shadow-lg transition-shadow duration-300`}
                                         >
                                             <div className="flex items-center justify-between mb-3">
                                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${kpi.color}15` }}>
@@ -332,7 +305,7 @@ const OrganizerDashboardPage = () => {
                                 {/* Charts Row */}
                                 <div className="grid md:grid-cols-2 gap-4">
                                     {/* Registrations Chart */}
-                                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5">
+                                    <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="font-semibold text-[#0F172A]">Registration Trend</h3>
                                             <span className="text-xs text-[#64748B]">Last 6 months</span>
@@ -341,7 +314,7 @@ const OrganizerDashboardPage = () => {
                                     </div>
 
                                     {/* Check-in Donut */}
-                                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5">
+                                    <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="font-semibold text-[#0F172A]">Check-in Rate</h3>
                                             <span className="text-xs text-[#16A34A] font-medium">+5% from last event</span>
@@ -365,7 +338,7 @@ const OrganizerDashboardPage = () => {
                                 </div>
 
                                 {/* Quick Actions */}
-                                <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5">
+                                <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7">
                                     <h3 className="font-semibold text-[#0F172A] mb-4">Quick Actions</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         {[
@@ -400,7 +373,7 @@ const OrganizerDashboardPage = () => {
                                 </div>
 
                                 {/* Recent Events Preview */}
-                                <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5">
+                                <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7">
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="font-semibold text-[#0F172A]">Recent Events</h3>
                                         <button onClick={() => setActiveTab('events')} className="text-[#1E4DB7] text-xs font-medium hover:underline flex items-center gap-1">
@@ -424,7 +397,7 @@ const OrganizerDashboardPage = () => {
                                                     initial={{ opacity: 0, x: -10 }}
                                                     animate={{ opacity: 1, x: 0 }}
                                                     transition={{ delay: i * 0.05 }}
-                                                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#F8FAFC] transition-colors group"
+                                                    className="flex items-center gap-3 p-3 rounded-2xl hover:bg-[#F8FAFC] transition-colors group"
                                                 >
                                                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                                         {new Date(event.start_date || event.date).getDate()}
@@ -497,10 +470,10 @@ const OrganizerDashboardPage = () => {
                                 {/* Event Cards */}
                                 {isLoading ? (
                                     <div className="space-y-3 animate-pulse">
-                                        {[1, 2, 3].map(i => <div key={i} className="h-24 bg-white border border-[#E2E8F0] rounded-2xl" />)}
+                                        {[1, 2, 3].map(i => <div key={i} className="h-24 bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl" />)}
                                     </div>
                                 ) : filteredEvents.length === 0 ? (
-                                    <div className="text-center py-16 bg-white border border-[#E2E8F0] rounded-2xl">
+                                    <div className="text-center py-16 bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl">
                                         <Calendar className="w-14 h-14 text-[#94A3B8] mx-auto mb-3" />
                                         <h3 className="text-lg font-bold text-[#0F172A] mb-1">No events found</h3>
                                         <p className="text-[#64748B] text-sm mb-4">Create your first event to get started.</p>
@@ -516,7 +489,7 @@ const OrganizerDashboardPage = () => {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: i * 0.04 }}
-                                                className="bg-white border border-[#E2E8F0] rounded-2xl p-4 hover:shadow-md transition-all group"
+                                                className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-5 md:p-6 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300 group"
                                             >
                                                 <div className="flex items-start gap-4">
                                                     {/* Date Block */}
@@ -637,7 +610,7 @@ const OrganizerDashboardPage = () => {
                                 </div>
 
                                 {/* Attendee List */}
-                                <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden">
+                                <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left">
                                             <thead>
@@ -720,7 +693,7 @@ const OrganizerDashboardPage = () => {
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: i * 0.1 }}
-                                            className="bg-white border border-[#E2E8F0] rounded-2xl p-5"
+                                            className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7"
                                         >
                                             <div className="flex items-center gap-2 mb-2">
                                                 <kpi.icon className="w-5 h-5" style={{ color: kpi.color }} />
@@ -734,7 +707,7 @@ const OrganizerDashboardPage = () => {
                                 </div>
 
                                 {/* Expense Breakdown by Category */}
-                                <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5">
+                                <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7">
                                     <h3 className="font-semibold text-[#0F172A] mb-4">Cost Breakdown</h3>
                                     {expensesByCategory.length === 0 ? (
                                         <div className="text-center py-8 text-[#94A3B8]">
@@ -776,7 +749,7 @@ const OrganizerDashboardPage = () => {
                                 </div>
 
                                 {/* Expense History */}
-                                <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden">
+                                <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden">
                                     <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
                                         <h3 className="font-semibold text-[#0F172A]">Expense History</h3>
                                         <span className="text-xs text-[#64748B]">{expenses.length} entries</span>
