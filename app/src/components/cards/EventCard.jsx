@@ -52,7 +52,8 @@ const EventCard = ({
     if (event?.slug) {
       queryClient.prefetchQuery({
         queryKey: ['event', event.slug],
-        queryFn: () => fetchEvent(event.slug)
+        queryFn: () => fetchEvent(event.slug),
+        staleTime: 5 * 60 * 1000, // matches EventDetailPage — no double-fetch on navigation
       });
     }
   };

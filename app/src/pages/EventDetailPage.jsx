@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -12,7 +12,7 @@ import StickyMobileBar from '../components/event/StickyMobileBar';
 import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
 import ProgressiveImage from '../components/ui/ProgressiveImage';
-import { fetchEvent, fetchRelatedEvents, trackEventView, fetchEventSpeakers, fetchEventSchedule } from '../lib/eventsApi';
+import { fetchEvent, fetchRelatedEvents, trackEventView } from '../lib/eventsApi';
 import { useQuery } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import useSavedEvents from '../hooks/useSavedEvents';
@@ -159,48 +159,30 @@ const EventDetailPage = () => {
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // 1. Fetch Main Event immediately (from cache instantly if preloaded)
+  // 1. Main event — served from hover-prefetch cache instantly on revisit
+  useEffect(() => {
+    // Fire analytics outside query so it never delays the data fetch
+    if (slug) trackEventView(slug);
+  }, [slug]);
+
   const { data: baseEvent, isLoading } = useQuery({
     queryKey: ['event', slug],
-    queryFn: async () => {
-      // Trigger analytics asynchronously and fire-and-forget
-      trackEventView(slug);
-      return fetchEvent(slug);
-    },
-    retry: false
+    queryFn: () => fetchEvent(slug),
+    staleTime: 5 * 60 * 1000, // 5 min — serve from cache on tab switch / back-navigation
+    retry: false,
   });
 
-  // 2. Fetch Related Events silently
+  // 2. Related events — low-priority background fetch
   const { data: relatedEvents = [] } = useQuery({
     queryKey: ['events', 'related', slug],
     queryFn: () => fetchRelatedEvents(slug),
-    enabled: !!slug
+    enabled: !!slug,
+    staleTime: 10 * 60 * 1000, // 10 min — rarely changes
   });
 
-  // 3. Background fetch for extra data (speakers/schedule) usually embedded but sometimes detached
-  const { data: extraData } = useQuery({
-    queryKey: ['event', 'extras', slug],
-    queryFn: async () => {
-      const [speakersRes, scheduleRes] = await Promise.allSettled([
-        fetchEventSpeakers(slug),
-        fetchEventSchedule(slug)
-      ]);
-      const speakers = speakersRes.status === 'fulfilled' ? speakersRes.value.map(s => ({ ...s, avatar: s.avatar_url || s.avatar })) : [];
-      const schedule = scheduleRes.status === 'fulfilled' ? scheduleRes.value : [];
-      return { speakers, schedule };
-    },
-    enabled: !!baseEvent
-  });
-
-  // Merge extra background logic smartly
-  const event = useMemo(() => {
-    if (!baseEvent) return null;
-    return {
-      ...baseEvent,
-      speakers: extraData?.speakers?.length ? extraData.speakers : baseEvent.speakers,
-      schedule: extraData?.schedule?.length ? extraData.schedule : baseEvent.schedule,
-    };
-  }, [baseEvent, extraData]);
+  // Speakers + schedule are now embedded in the main event response.
+  // No secondary API calls needed — just use baseEvent directly.
+  const event = baseEvent ?? null;
 
   // Handle Tickets
 
