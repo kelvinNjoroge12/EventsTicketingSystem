@@ -34,7 +34,18 @@ def eventhub_exception_handler(exc, context):
                 message = str(data["detail"])
             else:
                 code = "VALIDATION_ERROR" if response.status_code == 400 else "ERROR"
-                message = "Validation error" if code == "VALIDATION_ERROR" else "Request failed"
+                # Pull the very first string out of the validation error dictionary
+                # so the user sees a real message like "Email already exists" instead of "Validation error"
+                first_error = None
+                for key, val in data.items():
+                    if isinstance(val, list) and len(val) > 0 and isinstance(val[0], str):
+                        first_error = str(val[0])
+                        break
+                    elif isinstance(val, str):
+                        first_error = val
+                        break
+                
+                message = first_error if first_error else ("Validation error" if code == "VALIDATION_ERROR" else "Request failed")
         
         response.data = {
             "success": False, 
