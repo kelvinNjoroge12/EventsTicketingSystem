@@ -61,7 +61,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-[#0F172A] text-white">
+    <footer className="bg-[#1E4DB7] text-white">
       {/* Main Footer */}
       {!isDashboard && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -71,7 +71,7 @@ const Footer = () => {
               <Link to="/" className="inline-block">
                 <span className="text-2xl font-bold text-white">EventHub</span>
               </Link>
-              <p className="mt-4 text-[#94A3B8] text-sm max-w-xs">
+              <p className="mt-4 text-white/70 text-sm max-w-xs">
                 Discover amazing events near you. Find, RSVP, and attend events that match your interests.
               </p>
 
@@ -81,7 +81,7 @@ const Footer = () => {
                   <a
                     key={social.label}
                     href={social.href}
-                    className="p-2 rounded-lg bg-white/10 text-[#94A3B8] hover:bg-white/20 hover:text-white transition-colors"
+                    className="p-2 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors"
                     aria-label={social.label}
                   >
                     <social.icon className="w-5 h-5" />
@@ -99,7 +99,7 @@ const Footer = () => {
                     <li key={link.name}>
                       <Link
                         to={link.path}
-                        className="text-[#94A3B8] hover:text-white transition-colors text-sm"
+                        className="text-white/70 hover:text-white transition-colors text-sm"
                       >
                         {link.name}
                       </Link>
@@ -117,7 +117,7 @@ const Footer = () => {
                 <h3 className="font-semibold text-white mb-1">
                   Stay updated on events near you
                 </h3>
-                <p className="text-[#94A3B8] text-sm">
+                <p className="text-white/70 text-sm">
                   Get weekly updates on the best events in your city.
                 </p>
               </div>
@@ -128,13 +128,13 @@ const Footer = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1"
-                  inputClassName="bg-white/10 border-white/20 text-white placeholder:text-[#94A3B8]"
+                  inputClassName="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 />
                 <CustomButton
                   type="submit"
                   variant="primary"
                   leftIcon={Send}
-                  className="whitespace-nowrap"
+                  className="whitespace-nowrap bg-white text-[#1E4DB7] hover:bg-white/90 border-0"
                 >
                   {isSubscribed ? 'Subscribed!' : 'Subscribe'}
                 </CustomButton>
@@ -147,11 +147,11 @@ const Footer = () => {
       {/* Bottom Bar */}
       <div className={!isDashboard ? "border-t border-white/10" : ""}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className={`flex flex-col md:flex-row md:items-center ${!isDashboard ? 'md:justify-between' : 'justify-center'} gap-2 text-sm text-[#94A3B8]`}>
+          <div className={`flex flex-col md:flex-row md:items-center ${!isDashboard ? 'md:justify-between' : 'justify-center'} gap-2 text-sm text-white/60`}>
             <p className={isDashboard ? "text-center w-full" : ""}>&copy; {new Date().getFullYear()} EventHub. All rights reserved.</p>
             {!isDashboard && (
               <p className="flex items-center gap-1">
-                Made with <span className="text-[#DC2626]">❤️</span> in Nairobi
+                Made with <span className="text-white">❤️</span> in Nairobi
               </p>
             )}
           </div>

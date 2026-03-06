@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -83,10 +83,15 @@ const EXPENSE_CATEGORIES = [
 const OrganizerDashboardPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('overview');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get('tab') || 'overview';
     const [selectedEventId, setSelectedEventId] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showExpenseModal, setShowExpenseModal] = useState(false);
+
+    const setActiveTab = (tab) => {
+        setSearchParams({ tab });
+    };
 
     const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
 
@@ -123,10 +128,13 @@ const OrganizerDashboardPage = () => {
     });
 
     // Load Attendees
-    const { data: attendeesData } = useQuery({
+    const { data: attendeesData, refetch: refetchAttendees } = useQuery({
         queryKey: ['finances_attendees', selectedEventId, searchQuery],
         queryFn: async () => {
-            const data = await api.get(`/api/finances/attendees/${eventParam ? eventParam + '&' : '?'}q=${searchQuery}`);
+            const query = searchQuery ? `q=${encodeURIComponent(searchQuery)}` : '';
+            const eventIdParam = selectedEventId !== 'all' ? `event_id=${selectedEventId}` : '';
+            const fullQuery = [query, eventIdParam].filter(Boolean).join('&');
+            const data = await api.get(`/api/finances/attendees/${fullQuery ? '?' + fullQuery : ''}`);
             return Array.isArray(data) ? data : data?.results || [];
         },
         enabled: !!hasAccess,
