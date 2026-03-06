@@ -344,40 +344,6 @@ const OrganizerDashboardPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Quick Actions */}
-                                <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7">
-                                    <h3 className="font-semibold text-[#0F172A] mb-4">Quick Actions</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        {[
-                                            { label: 'Create Event', icon: Plus, to: '/create-event', gradient: 'from-[#1E4DB7] to-[#7C3AED]' },
-                                            { label: 'View My Events', action: () => setActiveTab('events'), icon: Calendar, gradient: 'from-[#059669] to-[#10B981]' },
-                                            { label: 'Manage Attendees', action: () => setActiveTab('attendees'), icon: Users, gradient: 'from-[#F59E0B] to-[#F97316]' },
-                                            { label: 'View Finances', action: () => setActiveTab('finances'), icon: Wallet, gradient: 'from-[#8B5CF6] to-[#EC4899]' },
-                                        ].map((action, i) => (
-                                            action.to ? (
-                                                <Link key={i} to={action.to}>
-                                                    <motion.div
-                                                        whileHover={{ y: -2 }}
-                                                        className={`bg-gradient-to-br ${action.gradient} text-white rounded-xl p-4 text-center cursor-pointer shadow-sm hover:shadow-md transition-shadow`}
-                                                    >
-                                                        <action.icon className="w-6 h-6 mx-auto mb-2" />
-                                                        <span className="text-xs font-semibold">{action.label}</span>
-                                                    </motion.div>
-                                                </Link>
-                                            ) : (
-                                                <motion.div
-                                                    key={i}
-                                                    whileHover={{ y: -2 }}
-                                                    onClick={action.action}
-                                                    className={`bg-gradient-to-br ${action.gradient} text-white rounded-xl p-4 text-center cursor-pointer shadow-sm hover:shadow-md transition-shadow`}
-                                                >
-                                                    <action.icon className="w-6 h-6 mx-auto mb-2" />
-                                                    <span className="text-xs font-semibold">{action.label}</span>
-                                                </motion.div>
-                                            )
-                                        ))}
-                                    </div>
-                                </div>
 
                                 {/* Recent Events Preview */}
                                 <div className="bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-6 md:p-7">
