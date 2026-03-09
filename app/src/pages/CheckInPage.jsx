@@ -147,7 +147,6 @@ const CheckInPage = () => {
     const [resendingOrder, setResendingOrder] = useState(null);
     const [resendResult, setResendResult] = useState({});
     const [searchAttendee, setSearchAttendee] = useState('');
-    const inputRef = useRef(null);
 
     // Reset result after delay
     useEffect(() => {
@@ -156,13 +155,6 @@ const CheckInPage = () => {
             return () => clearTimeout(t);
         }
     }, [result]);
-
-    // Auto focus manual input
-    useEffect(() => {
-        if (mode === 'manual' && inputRef.current) {
-            setTimeout(() => inputRef.current?.focus(), 100);
-        }
-    }, [mode]);
 
     // Load event info + attendance
     const loadAttendance = useCallback(async () => {
@@ -330,7 +322,6 @@ const CheckInPage = () => {
                                             <form onSubmit={handleManualSubmit} className="space-y-3">
                                                 <div className="relative">
                                                     <input
-                                                        ref={inputRef}
                                                         type="text"
                                                         value={manualInput}
                                                         onChange={(e) => setManualInput(e.target.value)}

@@ -1,19 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus,
   Users,
   Calendar,
   ArrowRight,
-  Eye,
   AlertCircle,
   TrendingUp,
   DollarSign,
-  BarChart3,
   CheckCircle2,
-  Clock,
   Edit3,
   X,
   Receipt,
@@ -29,15 +25,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PageWrapper from '../components/layout/PageWrapper';
-import CustomButton from '../components/ui/CustomButton';
 import CustomAvatar from '../components/ui/CustomAvatar';
 import { api } from '../lib/apiClient';
 
-const TABS = [
-  { id: 'overview', label: 'Overview', icon: BarChart3 },
-  { id: 'events', label: 'My Events', icon: Calendar },
-  { id: 'checkin', label: 'Check-In', icon: UserCheck },
-];
+const DASHBOARD_TAB_IDS = ['overview', 'events', 'checkin'];
 
 const EXPENSE_CATEGORIES = [
   { id: 'speakers', label: 'Speakers', icon: Mic2, color: '#8B5CF6' },
@@ -88,7 +79,7 @@ const OrganizerDashboardPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabParam = searchParams.get('tab');
-  const activeTab = TABS.some((tab) => tab.id === tabParam) ? tabParam : 'overview';
+  const activeTab = DASHBOARD_TAB_IDS.includes(tabParam || '') ? tabParam : 'overview';
   const selectedEventId = searchParams.get('event') || '';
 
   const [eventSearch, setEventSearch] = useState('');
@@ -97,20 +88,13 @@ const OrganizerDashboardPage = () => {
   const [flash, setFlash] = useState(null);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showRevenueForm, setShowRevenueForm] = useState(false);
+  const [showGuestsModal, setShowGuestsModal] = useState(false);
   const [entryView, setEntryView] = useState('all');
-  const guestsSectionRef = useRef(null);
   const [expenseForm, setExpenseForm] = useState({ event: '', description: '', amount: '', category: 'speakers' });
   const [revenueForm, setRevenueForm] = useState({ event: '', description: '', amount: '', source: 'sponsorship' });
   const [customRevenueSource, setCustomRevenueSource] = useState('');
 
   const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
-
-  const setTab = (tab) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('tab', tab);
-    if (tab !== 'events') next.delete('event');
-    setSearchParams(next);
-  };
 
   const openEventDashboard = (eventId) => {
     const next = new URLSearchParams(searchParams);
@@ -278,6 +262,10 @@ const OrganizerDashboardPage = () => {
   }, [selectedEvent]);
 
   useEffect(() => {
+    setShowGuestsModal(false);
+  }, [selectedEventId]);
+
+  useEffect(() => {
     if (events.length === 0 || checkInEventId) return;
     setCheckInEventId(String(events[0].id));
   }, [events, checkInEventId]);
@@ -331,29 +319,32 @@ const OrganizerDashboardPage = () => {
     };
     addRevenueMutation.mutate(payload);
   };
-  const greeting = new Date().getHours() < 12
-    ? 'Good Morning'
-    : new Date().getHours() < 18
-      ? 'Good Afternoon'
-      : 'Good Evening';
+  const dashboardCards = selectedEvent
+    ? [
+      { label: 'Guests', value: selectedStats.totalAttendees, icon: Users, color: '#1E4DB7' },
+      { label: 'Checked In', value: selectedStats.totalCheckins, icon: UserCheck, color: '#C58B1A' },
+      { label: 'Revenue', value: formatMoney(selectedStats.totalRevenue), icon: TrendingUp, color: '#0F4FA8', text: true },
+      { label: 'Net Profit', value: formatMoney(selectedStats.netProfit), icon: DollarSign, color: '#B91C1C', text: true },
+    ]
+    : [
+      { label: 'Total Events', value: overviewStats.totalEvents, icon: Calendar, color: '#1E4DB7' },
+      { label: 'Guests', value: overviewStats.totalAttendees, icon: Users, color: '#C58B1A' },
+      { label: 'Checked In', value: overviewStats.totalCheckins, icon: UserCheck, color: '#0F4FA8' },
+      { label: 'Revenue', value: formatMoney(overviewStats.totalRevenue), icon: TrendingUp, color: '#B91C1C', text: true },
+    ];
+  const isStatsLoading = selectedEvent ? isLoadingEventStats : isLoadingGlobalStats;
+  const eventHeaderLabel = selectedEvent ? 'Event Studio' : (activeTab === 'checkin' ? 'Check-In Console' : 'Organizer Dashboard');
+  const eventHeaderTitle = selectedEvent ? selectedEvent.title : 'Organizer Dashboard';
+  const eventHeaderDescription = selectedEvent
+    ? `Manage every detail for ${selectedEvent.title} from one focused workspace.`
+    : activeTab === 'checkin'
+      ? 'Choose an event and launch your check-in workflow quickly.'
+      : 'Select any event to switch into a full event-specific dashboard.';
 
   return (
     <PageWrapper>
       <div className="min-h-screen bg-[#F8FAFC]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-[#64748B]">{greeting}</p>
-              <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A]">Organizer Dashboard</h1>
-            </div>
-            <Link to="/create-event">
-              <CustomButton variant="primary" className="gap-2">
-                <Plus className="w-4 h-4" />
-                Create Event
-              </CustomButton>
-            </Link>
-          </div>
-
           <AnimatePresence>
             {flash && (
               <motion.div
@@ -371,253 +362,156 @@ const OrganizerDashboardPage = () => {
             )}
           </AnimatePresence>
 
-          <div className="bg-white border border-[#E2E8F0] rounded-[28px] p-2 flex flex-wrap gap-2">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setTab(tab.id)}
-                className={`px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all flex items-center gap-2 ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] text-white shadow-md'
-                    : 'text-[#475569] hover:bg-[#F8FAFC]'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
+          <div className="relative overflow-hidden bg-white border border-[#E2E8F0] rounded-[30px] shadow-sm">
+            <div className="absolute -top-20 -right-16 w-64 h-64 rounded-full bg-[#C58B1A]/10" />
+            <div className="absolute -bottom-24 -left-10 w-56 h-56 rounded-full bg-[#B91C1C]/10" />
+            <div className="relative p-6 md:p-8">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[#64748B] font-semibold">{eventHeaderLabel}</p>
+              <h1 className="text-3xl md:text-4xl font-black text-[#0F172A] mt-2">{eventHeaderTitle}</h1>
+              <p className="text-sm md:text-base text-[#475569] mt-2 max-w-3xl">{eventHeaderDescription}</p>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
-            {activeTab === 'overview' && (
+            {activeTab !== 'checkin' && (
               <motion.div
-                key="overview"
+                key={`workspace-${activeTab}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 className="space-y-6"
               >
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Events', value: overviewStats.totalEvents, icon: Calendar, color: '#1E4DB7' },
-                    { label: 'Guests', value: overviewStats.totalAttendees, icon: Users, color: '#16A34A' },
-                    { label: 'Checked In', value: overviewStats.totalCheckins, icon: UserCheck, color: '#F59E0B' },
-                    { label: 'Revenue', value: formatMoney(overviewStats.totalRevenue), icon: TrendingUp, color: '#7C3AED', text: true },
-                  ].map((kpi) => (
-                    <div key={kpi.label} className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${kpi.color}15` }}>
-                        <kpi.icon className="w-4 h-4" style={{ color: kpi.color }} />
+                  {dashboardCards.map((card) => (
+                    <div key={card.label} className="bg-white border border-[#E2E8F0] rounded-[22px] p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${card.color}15` }}>
+                          <card.icon className="w-5 h-5" style={{ color: card.color }} />
+                        </div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#94A3B8]">Live</span>
                       </div>
-                      <p className="text-[11px] uppercase tracking-wider text-[#64748B] font-medium">{kpi.label}</p>
-                      <p className="text-xl font-bold text-[#0F172A] mt-0.5">
-                        {isLoadingGlobalStats ? '...' : (kpi.text ? kpi.value : Number(kpi.value || 0).toLocaleString())}
+                      <p className="text-[11px] uppercase tracking-wider text-[#64748B] font-semibold mt-4">{card.label}</p>
+                      <p className="text-xl md:text-2xl font-black text-[#0F172A] mt-1">
+                        {isStatsLoading ? '...' : (card.text ? card.value : Number(card.value || 0).toLocaleString())}
                       </p>
                     </div>
                   ))}
                 </div>
 
-                <div className="grid lg:grid-cols-2 gap-4">
-                  <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-6 shadow-sm">
-                    <h3 className="font-semibold text-[#0F172A] mb-2">Check-In Progress</h3>
-                    <p className="text-sm text-[#64748B] mb-4">
-                      {overviewStats.totalCheckins} of {overviewStats.totalAttendees} total attendees have checked in.
-                    </p>
-                    <div className="w-full h-3 rounded-full bg-[#E2E8F0] overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(Number(overviewStats.checkinPercent || 0), 100)}%` }}
-                        transition={{ duration: 0.6 }}
-                        className="h-full bg-gradient-to-r from-[#16A34A] to-[#22C55E]"
+                <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-4 md:p-5 shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-[#0F172A]">Event Directory</h2>
+                      <p className="text-sm text-[#64748B]">Pick one event to open a focused event dashboard.</p>
+                    </div>
+                    <div className="relative w-full md:max-w-sm">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                      <input
+                        type="text"
+                        value={eventSearch}
+                        onChange={(e) => setEventSearch(e.target.value)}
+                        placeholder="Search events..."
+                        className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E2E8F0] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]/20"
                       />
                     </div>
-                    <p className="text-right mt-2 text-sm font-bold text-[#16A34A]">{overviewStats.checkinPercent || 0}%</p>
                   </div>
 
-                  <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-6 shadow-sm">
-                    <h3 className="font-semibold text-[#0F172A] mb-3">Quick Actions</h3>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <button onClick={() => setTab('events')} className="px-4 py-4 rounded-2xl border border-[#DBEAFE] bg-[#EFF6FF] text-[#1E4DB7] text-sm font-semibold text-left">
-                        Open My Events
-                      </button>
-                      <button onClick={() => setTab('checkin')} className="px-4 py-4 rounded-2xl border border-[#D1FAE5] bg-[#ECFDF5] text-[#047857] text-sm font-semibold text-left">
-                        Start Check-In
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-[#0F172A]">Recent Events</h3>
-                    <button onClick={() => setTab('events')} className="text-[#1E4DB7] text-sm font-semibold inline-flex items-center gap-1">
-                      Manage
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
                   {isLoadingEvents ? (
                     <div className="space-y-2 animate-pulse">
-                      {[1, 2, 3].map((i) => <div key={i} className="h-14 rounded-xl bg-[#F1F5F9]" />)}
+                      {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl bg-[#F1F5F9]" />)}
                     </div>
-                  ) : events.length === 0 ? (
-                    <p className="text-sm text-[#64748B]">No events yet.</p>
+                  ) : filteredEvents.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-[#CBD5E1] p-10 text-center">
+                      <Calendar className="w-10 h-10 text-[#94A3B8] mx-auto mb-2" />
+                      <h3 className="font-bold text-[#0F172A]">No events found</h3>
+                      <p className="text-sm text-[#64748B] mt-1">Try another search keyword.</p>
+                    </div>
                   ) : (
-                    <div className="space-y-2">
-                      {events.slice(0, 5).map((event) => (
-                        <button
-                          key={event.id}
-                          onClick={() => openEventDashboard(event.id)}
-                          className="w-full text-left px-4 py-3 rounded-2xl border border-[#F1F5F9] hover:bg-[#F8FAFC] transition-colors flex items-center justify-between"
-                        >
-                          <div>
-                            <p className="font-semibold text-[#0F172A] text-sm">{event.title}</p>
-                            <p className="text-xs text-[#64748B] mt-0.5">{formatDate(event.start_date || event.date)}</p>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-[#94A3B8]" />
-                        </button>
-                      ))}
+                    <div className="rounded-2xl border border-[#E2E8F0] overflow-hidden">
+                      {filteredEvents.map((event) => {
+                        const eventIsSelected = String(event.id) === String(selectedEventId);
+                        const isPublished = event.status === 'published' || event.is_published;
+                        return (
+                          <button
+                            key={event.id}
+                            onClick={() => openEventDashboard(event.id)}
+                            className={`w-full text-left px-4 py-3 border-b border-[#E2E8F0] last:border-b-0 transition-colors ${
+                              eventIsSelected ? 'bg-[#F8FAFC]' : 'bg-white hover:bg-[#F8FAFC]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-bold text-[#0F172A] truncate">{event.title}</p>
+                                <p className="text-xs text-[#64748B] mt-0.5">
+                                  {formatDate(event.start_date || event.date)} • {event.attendee_count || 0} guests
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                                  isPublished ? 'bg-[#DBEAFE] text-[#1D4ED8]' : 'bg-[#FEF3C7] text-[#92400E]'
+                                }`}>
+                                  {isPublished ? 'Published' : 'Draft'}
+                                </span>
+                                <ArrowRight className="w-4 h-4 text-[#94A3B8]" />
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'events' && (
-              <motion.div
-                key="events"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                className="space-y-6"
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="relative w-full md:max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-                    <input
-                      type="text"
-                      value={eventSearch}
-                      onChange={(e) => setEventSearch(e.target.value)}
-                      placeholder="Search your events..."
-                      className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E2E8F0] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]/20"
-                    />
-                  </div>
-                  <Link to="/create-event">
-                    <CustomButton variant="primary" className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      New Event
-                    </CustomButton>
-                  </Link>
-                </div>
-
-                {!selectedEvent && (
-                  <>
-                    {isLoadingEvents ? (
-                      <div className="space-y-3 animate-pulse">
-                        {[1, 2, 3].map((i) => <div key={i} className="h-28 rounded-[24px] bg-white border border-[#E2E8F0]" />)}
-                      </div>
-                    ) : filteredEvents.length === 0 ? (
-                      <div className="bg-white border border-[#E2E8F0] rounded-[28px] p-12 text-center">
-                        <Calendar className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-                        <h3 className="font-bold text-[#0F172A]">No events found</h3>
-                        <p className="text-sm text-[#64748B] mt-1">Try another search or create a new event.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {filteredEvents.map((event) => (
-                          <div key={event.id} className="bg-white border border-[#E2E8F0] rounded-[28px] p-5 shadow-sm">
-                            <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
-                              <div>
-                                <h3 className="font-bold text-[#0F172A]">{event.title}</h3>
-                                <p className="text-sm text-[#64748B] mt-1">
-                                  {formatDate(event.start_date || event.date)} - {event.attendee_count || 0} guests
-                                </p>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                <Link to={`/events/${event.slug}`} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#EFF6FF] text-[#1E4DB7] inline-flex items-center gap-1.5">
-                                  <Eye className="w-4 h-4" />
-                                  View
-                                </Link>
-                                <Link to={`/edit-event/${event.slug}`} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#F8FAFC] text-[#334155] inline-flex items-center gap-1.5">
-                                  <Edit3 className="w-4 h-4" />
-                                  Edit
-                                </Link>
-                                <button onClick={() => openEventDashboard(event.id)} className="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] inline-flex items-center gap-1.5">
-                                  <BarChart3 className="w-4 h-4" />
-                                  Open Dashboard
-                                </button>
-                                <Link to={`/organizer/events/${event.slug}/checkin`} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#ECFDF5] text-[#047857] inline-flex items-center gap-1.5">
-                                  <CheckCircle2 className="w-4 h-4" />
-                                  Check-In
-                                </Link>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
 
                 {selectedEvent && (
-                  <div className="space-y-5">
-                    <button onClick={clearEventDashboard} className="inline-flex items-center gap-2 text-sm font-semibold text-[#1E4DB7]">
-                      <ArrowLeft className="w-4 h-4" />
-                      Back to all events
-                    </button>
-
-                    <div className="bg-white border border-[#E2E8F0] rounded-[28px] p-6 shadow-sm">
-                      <div className="flex flex-col lg:flex-row lg:items-start gap-4 justify-between">
-                        <div>
-                          <p className="text-xs uppercase tracking-wider text-[#64748B] font-semibold">Selected Event</p>
-                          <h2 className="text-2xl font-bold text-[#0F172A] mt-1">{selectedEvent.title}</h2>
-                          <p className="text-sm text-[#64748B] mt-1">{formatDate(selectedEvent.start_date || selectedEvent.date)}</p>
+                  <div className="space-y-4">
+                    <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 md:p-6 shadow-sm">
+                      <div className="flex flex-col gap-5">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <button onClick={clearEventDashboard} className="inline-flex items-center gap-2 text-sm font-semibold text-[#1E4DB7] hover:text-[#163B90]">
+                            <ArrowLeft className="w-4 h-4" />
+                            Back to event directory
+                          </button>
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#FEE2E2] text-[#991B1B]">
+                            Event Control
+                          </span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Link to={`/edit-event/${selectedEvent.slug}`} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#F8FAFC] text-[#334155] inline-flex items-center gap-1.5">
-                            <Edit3 className="w-4 h-4" />
-                            Edit Event
-                          </Link>
-                          <button onClick={() => { setShowExpenseForm(true); setShowRevenueForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#FAF5FF] text-[#7C3AED] inline-flex items-center gap-1.5">
-                            <Receipt className="w-4 h-4" />
-                            Add Expense
-                          </button>
-                          <button onClick={() => { setShowRevenueForm(true); setShowExpenseForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#ECFDF5] text-[#15803D] inline-flex items-center gap-1.5">
-                            <DollarSign className="w-4 h-4" />
-                            Add Revenue
-                          </button>
-                          <button
-                            onClick={() => guestsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                            className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#EFF6FF] text-[#1E4DB7] inline-flex items-center gap-1.5"
-                          >
-                            <Users className="w-4 h-4" />
-                            See Guests
-                          </button>
-                          <Link to={`/organizer/events/${selectedEvent.slug}/checkin`} className="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] inline-flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Check-In
-                          </Link>
+                        <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
+                          <div>
+                            <p className="text-xs uppercase tracking-widest text-[#64748B] font-semibold">Selected Event</p>
+                            <h2 className="text-2xl md:text-3xl font-black text-[#0F172A] mt-1">{selectedEvent.title}</h2>
+                            <p className="text-sm text-[#64748B] mt-1">{formatDate(selectedEvent.start_date || selectedEvent.date)}</p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2">
+                            <Link to={`/edit-event/${selectedEvent.slug}`} className="px-3 py-2 rounded-xl text-sm font-semibold border border-[#BFDBFE] text-[#1E4DB7] bg-[#EFF6FF] inline-flex items-center justify-center gap-1.5">
+                              <Edit3 className="w-4 h-4" />
+                              Edit Event
+                            </Link>
+                            <button onClick={() => { setShowExpenseForm(true); setShowRevenueForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold border border-[#FECACA] text-[#B91C1C] bg-[#FEF2F2] inline-flex items-center justify-center gap-1.5">
+                              <Receipt className="w-4 h-4" />
+                              Add Expense
+                            </button>
+                            <button onClick={() => { setShowRevenueForm(true); setShowExpenseForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold border border-[#FDE68A] text-[#92400E] bg-[#FFFBEB] inline-flex items-center justify-center gap-1.5">
+                              <DollarSign className="w-4 h-4" />
+                              Add Revenue
+                            </button>
+                            <button
+                              onClick={() => setShowGuestsModal(true)}
+                              className="px-3 py-2 rounded-xl text-sm font-semibold border border-[#BFDBFE] text-[#1E4DB7] bg-white inline-flex items-center justify-center gap-1.5"
+                            >
+                              <Users className="w-4 h-4" />
+                              See Guests
+                            </button>
+                            <Link to={`/organizer/events/${selectedEvent.slug}/checkin`} className="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-[#1E4DB7] hover:bg-[#1B3E90] inline-flex items-center justify-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Check-In
+                            </Link>
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      {[
-                        { label: 'Guests', value: selectedStats.totalAttendees, icon: Users, color: '#1E4DB7' },
-                        { label: 'Checked In', value: selectedStats.totalCheckins, icon: UserCheck, color: '#16A34A' },
-                        { label: 'Revenue', value: formatMoney(selectedStats.totalRevenue), icon: TrendingUp, color: '#7C3AED', text: true },
-                        { label: 'Net Profit', value: formatMoney(selectedStats.netProfit), icon: DollarSign, color: '#0F766E', text: true },
-                      ].map((kpi) => (
-                        <div key={kpi.label} className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${kpi.color}15` }}>
-                            <kpi.icon className="w-4 h-4" style={{ color: kpi.color }} />
-                          </div>
-                          <p className="text-[11px] uppercase tracking-wider text-[#64748B] font-medium">{kpi.label}</p>
-                          <p className="text-xl font-bold text-[#0F172A] mt-0.5">{isLoadingEventStats ? '...' : (kpi.text ? kpi.value : Number(kpi.value || 0).toLocaleString())}</p>
-                        </div>
-                      ))}
                     </div>
 
                     <div className="grid lg:grid-cols-2 gap-4">
-                      <div ref={guestsSectionRef} className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
+                      <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
                         <h3 className="font-semibold text-[#0F172A] mb-3">Guests</h3>
                         <div className="relative mb-3">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
@@ -691,7 +585,7 @@ const OrganizerDashboardPage = () => {
                             {revenueBreakdown.map((item) => (
                               <span
                                 key={item.source}
-                                className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#166534]"
+                                className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#DBEAFE] text-[#1E4DB7]"
                               >
                                 {item.label}: {formatMoney(item.amount)}
                               </span>
@@ -750,7 +644,6 @@ const OrganizerDashboardPage = () => {
                 )}
               </motion.div>
             )}
-
             {activeTab === 'checkin' && (
               <motion.div
                 key="checkin"
@@ -778,7 +671,7 @@ const OrganizerDashboardPage = () => {
                     <button
                       onClick={openCheckinForSelected}
                       disabled={!checkInEventId}
-                      className="px-5 py-3 rounded-2xl text-sm font-semibold text-white bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] disabled:opacity-50 inline-flex items-center gap-2"
+                      className="px-5 py-3 rounded-2xl text-sm font-semibold text-white bg-[#1E4DB7] hover:bg-[#1B3E90] disabled:opacity-50 inline-flex items-center gap-2"
                     >
                       <Ticket className="w-4 h-4" />
                       Open Check-In
@@ -812,6 +705,79 @@ const OrganizerDashboardPage = () => {
       </div>
 
       <AnimatePresence>
+        {showGuestsModal && selectedEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowGuestsModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 16 }}
+              onClick={(event) => event.stopPropagation()}
+              className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-5 md:px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-[#64748B] font-semibold">Guest List</p>
+                  <h3 className="text-lg font-bold text-[#0F172A]">{selectedEvent.title}</h3>
+                </div>
+                <button onClick={() => setShowGuestsModal(false)} className="p-1.5 rounded-full hover:bg-[#E2E8F0] text-[#475569]">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-5 md:p-6 space-y-4">
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                  <input
+                    value={guestSearch}
+                    onChange={(event) => setGuestSearch(event.target.value)}
+                    placeholder="Search guests..."
+                    className="w-full pl-9 pr-4 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]/20"
+                  />
+                </div>
+
+                {isLoadingEventAttendees ? (
+                  <div className="space-y-2 animate-pulse">{[1, 2, 3, 4].map((i) => <div key={i} className="h-12 rounded-xl bg-[#F1F5F9]" />)}</div>
+                ) : eventAttendees.length === 0 ? (
+                  <p className="text-sm text-[#64748B]">No guests found.</p>
+                ) : (
+                  <div className="border border-[#E2E8F0] rounded-xl overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-[#F8FAFC] text-[#475569]">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold">Guest</th>
+                          <th className="text-left px-4 py-3 font-semibold">Email</th>
+                          <th className="text-left px-4 py-3 font-semibold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {eventAttendees.map((attendee) => {
+                          const checkedIn = attendee.checked_in_at || attendee.status === 'used';
+                          return (
+                            <tr key={attendee.id} className="border-t border-[#E2E8F0]">
+                              <td className="px-4 py-3 font-semibold text-[#0F172A]">{attendee.attendee_name}</td>
+                              <td className="px-4 py-3 text-[#475569]">{attendee.attendee_email}</td>
+                              <td className="px-4 py-3">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${checkedIn ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  {checkedIn ? 'Checked In' : 'Pending'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {showExpenseForm && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -827,7 +793,7 @@ const OrganizerDashboardPage = () => {
               onClick={(event) => event.stopPropagation()}
               className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
             >
-              <div className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] px-6 py-4 text-white flex items-center justify-between">
+              <div className="bg-[#B91C1C] px-6 py-4 text-white flex items-center justify-between">
                 <h3 className="font-semibold">Add Expense</h3>
                 <button onClick={() => setShowExpenseForm(false)} className="p-1 rounded-full hover:bg-white/20">
                   <X className="w-4 h-4" />
@@ -901,7 +867,7 @@ const OrganizerDashboardPage = () => {
                     });
                   }}
                   disabled={!expenseForm.event || !expenseForm.description || !expenseForm.amount}
-                  className="w-full py-3 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg transition-shadow"
+                  className="w-full py-3 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Add Expense
                 </button>
@@ -925,7 +891,7 @@ const OrganizerDashboardPage = () => {
               onClick={(event) => event.stopPropagation()}
               className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
             >
-              <div className="bg-gradient-to-r from-[#16A34A] to-[#0EA5E9] px-6 py-4 text-white flex items-center justify-between">
+              <div className="bg-[#C58B1A] px-6 py-4 text-white flex items-center justify-between">
                 <h3 className="font-semibold">Add Revenue</h3>
                 <button onClick={() => setShowRevenueForm(false)} className="p-1 rounded-full hover:bg-white/20">
                   <X className="w-4 h-4" />
@@ -1013,7 +979,7 @@ const OrganizerDashboardPage = () => {
                   type="button"
                   onClick={submitRevenueEntry}
                   disabled={revenueSubmitDisabled}
-                  className="w-full py-3 bg-gradient-to-r from-[#16A34A] to-[#0EA5E9] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg transition-shadow"
+                  className="w-full py-3 bg-[#C58B1A] hover:bg-[#A56F14] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Add Revenue
                 </button>

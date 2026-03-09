@@ -59,7 +59,9 @@ const AppRoutes = () => {
   const location = useLocation();
   const hideFooter =
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
-    /^\/settings\/?$/.test(location.pathname);
+    /^\/settings\/?$/.test(location.pathname) ||
+    /^\/create-event\/?$/.test(location.pathname) ||
+    /^\/edit-event\/[^/]+\/?$/.test(location.pathname);
 
   return (
     <>
