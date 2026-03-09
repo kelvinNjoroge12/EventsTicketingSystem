@@ -252,34 +252,6 @@ const OrganizerDashboardPage = () => {
             {/* ── Dashboard Container ── */}
             <div className="min-h-screen bg-[#F8FAFC]">
 
-
-
-                {/* ── Tab Navigation ── */}
-                <div className="bg-white border-b border-[#E2E8F0] sticky top-16 z-20">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-                            {TABS.map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => { setActiveTab(tab.id); setSearchQuery(''); }}
-                                    className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab.id ? 'text-[#1E4DB7]' : 'text-[#64748B] hover:text-[#0F172A]'
-                                        }`}
-                                >
-                                    <tab.icon className="w-4 h-4" />
-                                    {tab.label}
-                                    {activeTab === tab.id && (
-                                        <motion.div
-                                            layoutId="dashTab"
-                                            className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#1E4DB7]"
-                                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                        />
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
                 {/* ── Main Content ── */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
                     <AnimatePresence mode="wait">

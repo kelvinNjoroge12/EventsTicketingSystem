@@ -69,75 +69,78 @@ const SignUpPage = () => {
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-2xl shadow-lg border border-[#E2E8F0] p-8">
-            <AnimatePresence mode="wait">
-              {step === 1 ? (
-                <motion.div
-                  key="step1"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <h1 className="text-2xl font-bold text-[#0F172A] text-center mb-2">
-                    Choose Your Role
-                  </h1>
-                  <p className="text-[#64748B] text-center mb-6">
-                    Select how you'll use EventHub
-                  </p>
-
-                  <RoleSelector
-                    selectedRole={selectedRole}
-                    onSelect={handleRoleSelect}
-                  />
-
-                  <CustomButton
-                    variant="primary"
-                    fullWidth
-                    className="mt-6 py-3"
-                    onClick={handleContinue}
+          <div className="bg-white rounded-3xl shadow-xl border border-[#E2E8F0] overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-[#1E4DB7] via-[#3B82F6] to-[#7C3AED]" />
+            <div className="p-8">
+              <AnimatePresence mode="wait">
+                {step === 1 ? (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
                   >
-                    Continue
-                  </CustomButton>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="step2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <button
-                    onClick={() => setStep(1)}
-                    className="flex items-center gap-1 text-[#64748B] hover:text-[#0F172A] mb-4"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to role selection
-                  </button>
+                    <h1 className="text-2xl font-bold text-[#0F172A] text-center mb-2">
+                      Choose Your Role
+                    </h1>
+                    <p className="text-[#64748B] text-center mb-6">
+                      Select how you'll use EventHub
+                    </p>
 
-                  <h1 className="text-2xl font-bold text-[#0F172A] text-center mb-6">
-                    Create Your Account
-                  </h1>
+                    <RoleSelector
+                      selectedRole={selectedRole}
+                      onSelect={handleRoleSelect}
+                    />
 
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-start gap-3 p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-lg mb-6"
+                    <CustomButton
+                      variant="primary"
+                      fullWidth
+                      className="mt-6 py-3"
+                      onClick={handleContinue}
                     >
-                      <AlertCircle className="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-[#DC2626]">{error}</p>
-                    </motion.div>
-                  )}
+                      Continue
+                    </CustomButton>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <button
+                      onClick={() => setStep(1)}
+                      className="flex items-center gap-1 text-[#64748B] hover:text-[#0F172A] mb-4"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Back to role selection
+                    </button>
 
-                  <AuthForm
-                    mode="signup"
-                    role={selectedRole}
-                    onSubmit={handleSubmit}
-                    isLoading={isLoading}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    <h1 className="text-2xl font-bold text-[#0F172A] text-center mb-6">
+                      Create Your Account
+                    </h1>
+
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-start gap-3 p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-lg mb-6"
+                      >
+                        <AlertCircle className="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-[#DC2626]">{error}</p>
+                      </motion.div>
+                    )}
+
+                    <AuthForm
+                      mode="signup"
+                      role={selectedRole}
+                      onSubmit={handleSubmit}
+                      isLoading={isLoading}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Footer */}

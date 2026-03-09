@@ -51,27 +51,30 @@ const LoginPage = () => {
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-2xl shadow-lg border border-[#E2E8F0] p-8">
-            <h1 className="text-2xl font-bold text-[#0F172A] text-center mb-6">
-              Welcome back
-            </h1>
+          <div className="bg-white rounded-3xl shadow-xl border border-[#E2E8F0] overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-[#1E4DB7] via-[#3B82F6] to-[#7C3AED]" />
+            <div className="p-8">
+              <h1 className="text-2xl font-bold text-[#0F172A] text-center mb-6">
+                Welcome back
+              </h1>
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-3 p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-lg mb-6"
-              >
-                <AlertCircle className="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-[#DC2626]">{error}</p>
-              </motion.div>
-            )}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-start gap-3 p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-lg mb-6"
+                >
+                  <AlertCircle className="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#DC2626]">{error}</p>
+                </motion.div>
+              )}
 
-            <AuthForm
-              mode="login"
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-            />
+              <AuthForm
+                mode="login"
+                onSubmit={handleSubmit}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
 
           {/* Footer */}
