@@ -21,6 +21,11 @@ import {
   Search,
   ArrowLeft,
   Ticket,
+  Mic2,
+  Tent,
+  Monitor,
+  Truck,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PageWrapper from '../components/layout/PageWrapper';
@@ -35,22 +40,24 @@ const TABS = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  { id: 'speakers', label: 'Speakers' },
-  { id: 'mc', label: 'MC / Host' },
-  { id: 'venue', label: 'Venue / Tent' },
-  { id: 'equipment', label: 'Equipment Hire' },
-  { id: 'transport', label: 'Transport / Logistics' },
-  { id: 'marketing', label: 'Marketing' },
-  { id: 'catering', label: 'Catering' },
-  { id: 'other', label: 'Other' },
+  { id: 'speakers', label: 'Speakers', icon: Mic2, color: '#8B5CF6' },
+  { id: 'mc', label: 'MC / Host', icon: Mic2, color: '#EC4899' },
+  { id: 'venue', label: 'Venue / Tent', icon: Tent, color: '#F59E0B' },
+  { id: 'equipment', label: 'Equipment Hire', icon: Monitor, color: '#06B6D4' },
+  { id: 'transport', label: 'Transport / Logistics', icon: Truck, color: '#10B981' },
+  { id: 'marketing', label: 'Marketing', icon: TrendingUp, color: '#EF4444' },
+  { id: 'catering', label: 'Catering', icon: Receipt, color: '#F97316' },
+  { id: 'other', label: 'Other', icon: MoreHorizontal, color: '#64748B' },
 ];
 
 const REVENUE_SOURCES = [
-  { id: 'ticket_sales', label: 'Ticket Sales' },
-  { id: 'sponsorship', label: 'Sponsorship' },
-  { id: 'vendor', label: 'Vendor Booth' },
-  { id: 'donation', label: 'Donation' },
-  { id: 'other', label: 'Other' },
+  { id: 'ticket_sales', backend: 'ticket_sales', label: 'Ticket Sales (Auto)', icon: Ticket, color: '#1E4DB7', auto: true },
+  { id: 'sponsorship', backend: 'sponsorship', label: 'Sponsorship', icon: TrendingUp, color: '#16A34A' },
+  { id: 'vendor', backend: 'vendor', label: 'Vendor Booth', icon: Tent, color: '#0EA5E9' },
+  { id: 'donation', backend: 'donation', label: 'Donation', icon: DollarSign, color: '#7C3AED' },
+  { id: 'grant', backend: 'other', label: 'Grant', icon: Calendar, color: '#F59E0B' },
+  { id: 'merchandise', backend: 'other', label: 'Merchandise', icon: Receipt, color: '#EC4899' },
+  { id: 'custom', backend: 'other', label: 'Custom', icon: MoreHorizontal, color: '#64748B', custom: true },
 ];
 
 const EMPTY_STATS = {
@@ -90,9 +97,11 @@ const OrganizerDashboardPage = () => {
   const [flash, setFlash] = useState(null);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showRevenueForm, setShowRevenueForm] = useState(false);
+  const [entryView, setEntryView] = useState('all');
   const guestsSectionRef = useRef(null);
   const [expenseForm, setExpenseForm] = useState({ event: '', description: '', amount: '', category: 'speakers' });
-  const [revenueForm, setRevenueForm] = useState({ event: '', description: '', amount: '', source: 'ticket_sales' });
+  const [revenueForm, setRevenueForm] = useState({ event: '', description: '', amount: '', source: 'sponsorship' });
+  const [customRevenueSource, setCustomRevenueSource] = useState('');
 
   const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
 
@@ -194,8 +203,16 @@ const OrganizerDashboardPage = () => {
   }, [events, eventSearch]);
   const expenseCategoryLabel = (value) =>
     EXPENSE_CATEGORIES.find((item) => item.id === value)?.label || value || 'Other';
-  const revenueSourceLabel = (value) =>
-    REVENUE_SOURCES.find((item) => item.id === value)?.label || value || 'Other';
+  const revenueSourceLabel = (value) => {
+    const labels = {
+      ticket_sales: 'Ticket Sales',
+      sponsorship: 'Sponsorship',
+      vendor: 'Vendor Booth',
+      donation: 'Donation',
+      other: 'Other',
+    };
+    return labels[value] || value || 'Other';
+  };
   const addExpenseMutation = useMutation({
     mutationFn: async (payload) => api.post('/api/finances/expenses/', payload),
     onSuccess: () => {
@@ -227,7 +244,8 @@ const OrganizerDashboardPage = () => {
     onSuccess: () => {
       setFlash({ type: 'success', message: 'Revenue added.' });
       setShowRevenueForm(false);
-      setRevenueForm((prev) => ({ ...prev, description: '', amount: '' }));
+      setRevenueForm((prev) => ({ ...prev, description: '', amount: '', source: 'sponsorship' }));
+      setCustomRevenueSource('');
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
       queryClient.invalidateQueries({ queryKey: ['event_revenues'] });
     },
@@ -280,6 +298,38 @@ const OrganizerDashboardPage = () => {
     const event = events.find((item) => String(item.id) === String(checkInEventId));
     if (!event?.slug) return;
     navigate(`/organizer/events/${event.slug}/checkin`);
+  };
+  const selectedRevenueSource = REVENUE_SOURCES.find((item) => item.id === revenueForm.source) || REVENUE_SOURCES[1];
+  const revenueNeedsCustomLabel = Boolean(selectedRevenueSource?.custom);
+  const revenueSubmitDisabled =
+    !revenueForm.event ||
+    !revenueForm.description ||
+    !revenueForm.amount ||
+    Boolean(selectedRevenueSource?.auto) ||
+    (revenueNeedsCustomLabel && !customRevenueSource.trim());
+  const revenueBreakdownTotals = eventRevenues.reduce((acc, item) => {
+    const key = item.source || 'other';
+    acc[key] = (acc[key] || 0) + Number(item.amount || 0);
+    return acc;
+  }, {});
+  const revenueBreakdown = Object.entries(revenueBreakdownTotals).map(([source, amount]) => ({
+    source,
+    label: revenueSourceLabel(source),
+    amount,
+  }));
+  const showRevenueEntries = entryView === 'all' || entryView === 'revenues';
+  const showExpenseEntries = entryView === 'all' || entryView === 'expenses';
+  const submitRevenueEntry = () => {
+    if (revenueSubmitDisabled) return;
+    const customLabel = customRevenueSource.trim();
+    const description = revenueForm.description.trim();
+    const payload = {
+      event: revenueForm.event,
+      source: selectedRevenueSource.backend,
+      description: revenueNeedsCustomLabel ? `${customLabel}: ${description}` : description,
+      amount: Number(revenueForm.amount),
+    };
+    addRevenueMutation.mutate(payload);
   };
   const greeting = new Date().getHours() < 12
     ? 'Good Morning'
@@ -526,11 +576,11 @@ const OrganizerDashboardPage = () => {
                             <Edit3 className="w-4 h-4" />
                             Edit Event
                           </Link>
-                          <button onClick={() => { setShowExpenseForm((prev) => !prev); setShowRevenueForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#FAF5FF] text-[#7C3AED] inline-flex items-center gap-1.5">
+                          <button onClick={() => { setShowExpenseForm(true); setShowRevenueForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#FAF5FF] text-[#7C3AED] inline-flex items-center gap-1.5">
                             <Receipt className="w-4 h-4" />
                             Add Expense
                           </button>
-                          <button onClick={() => { setShowRevenueForm((prev) => !prev); setShowExpenseForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#ECFDF5] text-[#15803D] inline-flex items-center gap-1.5">
+                          <button onClick={() => { setShowRevenueForm(true); setShowExpenseForm(false); }} className="px-3 py-2 rounded-xl text-sm font-semibold bg-[#ECFDF5] text-[#15803D] inline-flex items-center gap-1.5">
                             <DollarSign className="w-4 h-4" />
                             Add Revenue
                           </button>
@@ -566,64 +616,6 @@ const OrganizerDashboardPage = () => {
                       ))}
                     </div>
 
-                    {(showExpenseForm || showRevenueForm) && (
-                      <div className="grid lg:grid-cols-2 gap-4">
-                        {showExpenseForm && (
-                          <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
-                            <h3 className="font-semibold text-[#0F172A] mb-3">Create Expense</h3>
-                            <div className="space-y-3">
-                              <select value={expenseForm.category} onChange={(e) => setExpenseForm((prev) => ({ ...prev, category: e.target.value }))} className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20">
-                                {EXPENSE_CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-                              </select>
-                              <input value={expenseForm.description} onChange={(e) => setExpenseForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="Expense description" className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20" />
-                              <input type="number" value={expenseForm.amount} onChange={(e) => setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))} placeholder="Amount (KES)" className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20" />
-                              <button
-                                onClick={() => {
-                                  if (!selectedEventId || !expenseForm.description || !expenseForm.amount) return;
-                                  addExpenseMutation.mutate({
-                                    event: selectedEventId,
-                                    category: expenseForm.category,
-                                    description: expenseForm.description,
-                                    amount: Number(expenseForm.amount),
-                                  });
-                                }}
-                                className="w-full py-2.5 rounded-xl text-white font-semibold bg-gradient-to-r from-[#7C3AED] to-[#EC4899]"
-                              >
-                                Add Expense
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {showRevenueForm && (
-                          <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
-                            <h3 className="font-semibold text-[#0F172A] mb-3">Create Revenue</h3>
-                            <div className="space-y-3">
-                              <select value={revenueForm.source} onChange={(e) => setRevenueForm((prev) => ({ ...prev, source: e.target.value }))} className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20">
-                                {REVENUE_SOURCES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-                              </select>
-                              <input value={revenueForm.description} onChange={(e) => setRevenueForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="Revenue description" className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
-                              <input type="number" value={revenueForm.amount} onChange={(e) => setRevenueForm((prev) => ({ ...prev, amount: e.target.value }))} placeholder="Amount (KES)" className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
-                              <button
-                                onClick={() => {
-                                  if (!selectedEventId || !revenueForm.description || !revenueForm.amount) return;
-                                  addRevenueMutation.mutate({
-                                    event: selectedEventId,
-                                    source: revenueForm.source,
-                                    description: revenueForm.description,
-                                    amount: Number(revenueForm.amount),
-                                  });
-                                }}
-                                className="w-full py-2.5 rounded-xl text-white font-semibold bg-gradient-to-r from-[#16A34A] to-[#15803D]"
-                              >
-                                Add Revenue
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     <div className="grid lg:grid-cols-2 gap-4">
                       <div ref={guestsSectionRef} className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
                         <h3 className="font-semibold text-[#0F172A] mb-3">Guests</h3>
@@ -656,24 +648,80 @@ const OrganizerDashboardPage = () => {
                       </div>
 
                       <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 shadow-sm">
-                        <h3 className="font-semibold text-[#0F172A] mb-3">Revenue & Expense Entries</h3>
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <h3 className="font-semibold text-[#0F172A]">Revenue & Expense Entries</h3>
+                          <div className="inline-flex p-1 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                            <button
+                              type="button"
+                              onClick={() => setEntryView('all')}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                entryView === 'all'
+                                  ? 'bg-white text-[#0F172A] shadow-sm'
+                                  : 'text-[#64748B] hover:text-[#334155]'
+                              }`}
+                            >
+                              All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEntryView('revenues')}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                entryView === 'revenues'
+                                  ? 'bg-white text-[#0F172A] shadow-sm'
+                                  : 'text-[#64748B] hover:text-[#334155]'
+                              }`}
+                            >
+                              Revenue Sources
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEntryView('expenses')}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                entryView === 'expenses'
+                                  ? 'bg-white text-[#0F172A] shadow-sm'
+                                  : 'text-[#64748B] hover:text-[#334155]'
+                              }`}
+                            >
+                              Expenses
+                            </button>
+                          </div>
+                        </div>
+                        {showRevenueEntries && revenueBreakdown.length > 0 && (
+                          <div className="mb-3 flex flex-wrap gap-2">
+                            {revenueBreakdown.map((item) => (
+                              <span
+                                key={item.source}
+                                className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#166534]"
+                              >
+                                {item.label}: {formatMoney(item.amount)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         {(isLoadingEventExpenses || isLoadingEventRevenues) ? (
                           <div className="space-y-2 animate-pulse">{[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-[#F1F5F9]" />)}</div>
                         ) : (
                           <div className="space-y-2 max-h-[360px] overflow-auto pr-1">
-                            {eventRevenues.map((item) => (
+                            {showRevenueEntries && eventRevenues.map((item) => (
                               <div key={item.id} className="border border-[#E2E8F0] rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-[#0F172A] truncate">{item.description}</p>
-                                  <p className="text-[11px] text-[#64748B]">{revenueSourceLabel(item.source)}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-[11px] text-[#64748B]">{revenueSourceLabel(item.source)}</p>
+                                    {item.source === 'ticket_sales' && (
+                                      <span className="px-2 py-0.5 rounded-full bg-[#DBEAFE] text-[#1E40AF] text-[10px] font-semibold">Auto</span>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-semibold text-[#15803D] whitespace-nowrap">+ {formatMoney(item.amount)}</span>
-                                  <button onClick={() => deleteRevenueMutation.mutate(item.id)} className="p-1 rounded-md hover:bg-red-50 text-[#94A3B8] hover:text-[#EF4444]"><X className="w-3.5 h-3.5" /></button>
+                                  {item.source !== 'ticket_sales' && (
+                                    <button onClick={() => deleteRevenueMutation.mutate(item.id)} className="p-1 rounded-md hover:bg-red-50 text-[#94A3B8] hover:text-[#EF4444]"><X className="w-3.5 h-3.5" /></button>
+                                  )}
                                 </div>
                               </div>
                             ))}
-                            {eventExpenses.map((item) => (
+                            {showExpenseEntries && eventExpenses.map((item) => (
                               <div key={item.id} className="border border-[#E2E8F0] rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-[#0F172A] truncate">{item.description}</p>
@@ -685,8 +733,14 @@ const OrganizerDashboardPage = () => {
                                 </div>
                               </div>
                             ))}
-                            {eventExpenses.length === 0 && eventRevenues.length === 0 && (
+                            {showRevenueEntries && showExpenseEntries && eventExpenses.length === 0 && eventRevenues.length === 0 && (
                               <p className="text-sm text-[#64748B]">No entries yet.</p>
+                            )}
+                            {showRevenueEntries && !showExpenseEntries && eventRevenues.length === 0 && (
+                              <p className="text-sm text-[#64748B]">No revenue sources yet.</p>
+                            )}
+                            {!showRevenueEntries && showExpenseEntries && eventExpenses.length === 0 && (
+                              <p className="text-sm text-[#64748B]">No expenses yet.</p>
                             )}
                           </div>
                         )}
@@ -756,6 +810,218 @@ const OrganizerDashboardPage = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showExpenseForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowExpenseForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(event) => event.stopPropagation()}
+              className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] px-6 py-4 text-white flex items-center justify-between">
+                <h3 className="font-semibold">Add Expense</h3>
+                <button onClick={() => setShowExpenseForm(false)} className="p-1 rounded-full hover:bg-white/20">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Event *</label>
+                  <select
+                    value={expenseForm.event}
+                    onChange={(event) => setExpenseForm((prev) => ({ ...prev, event: event.target.value }))}
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20"
+                  >
+                    <option value="">Select event...</option>
+                    {events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Category *</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {EXPENSE_CATEGORIES.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setExpenseForm((prev) => ({ ...prev, category: item.id }))}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center ${
+                          expenseForm.category === item.id
+                            ? 'border-[#7C3AED] bg-purple-50'
+                            : 'border-[#E2E8F0] hover:border-[#CBD5E1]'
+                        }`}
+                      >
+                        {item.icon && <item.icon className="w-4 h-4" style={{ color: item.color }} />}
+                        <span className="text-[8px] font-medium text-[#64748B] leading-tight">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Description *</label>
+                  <input
+                    type="text"
+                    value={expenseForm.description}
+                    onChange={(event) => setExpenseForm((prev) => ({ ...prev, description: event.target.value }))}
+                    placeholder="e.g., DJ equipment rental"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Amount (KES) *</label>
+                  <input
+                    type="number"
+                    value={expenseForm.amount}
+                    onChange={(event) => setExpenseForm((prev) => ({ ...prev, amount: event.target.value }))}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!expenseForm.event || !expenseForm.description || !expenseForm.amount) return;
+                    addExpenseMutation.mutate({
+                      event: expenseForm.event,
+                      category: expenseForm.category,
+                      description: expenseForm.description,
+                      amount: Number(expenseForm.amount),
+                    });
+                  }}
+                  disabled={!expenseForm.event || !expenseForm.description || !expenseForm.amount}
+                  className="w-full py-3 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg transition-shadow"
+                >
+                  Add Expense
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showRevenueForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowRevenueForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(event) => event.stopPropagation()}
+              className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-[#16A34A] to-[#0EA5E9] px-6 py-4 text-white flex items-center justify-between">
+                <h3 className="font-semibold">Add Revenue</h3>
+                <button onClick={() => setShowRevenueForm(false)} className="p-1 rounded-full hover:bg-white/20">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Event *</label>
+                  <select
+                    value={revenueForm.event}
+                    onChange={(event) => setRevenueForm((prev) => ({ ...prev, event: event.target.value }))}
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                  >
+                    <option value="">Select event...</option>
+                    {events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Source *</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {REVENUE_SOURCES.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        disabled={item.auto}
+                        onClick={() => {
+                          if (item.auto) return;
+                          setRevenueForm((prev) => ({ ...prev, source: item.id }));
+                          if (!item.custom) setCustomRevenueSource('');
+                        }}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center ${
+                          revenueForm.source === item.id
+                            ? 'border-[#16A34A] bg-green-50'
+                            : 'border-[#E2E8F0] hover:border-[#CBD5E1]'
+                        } ${item.auto ? 'opacity-70 cursor-not-allowed bg-[#F8FAFC]' : ''}`}
+                      >
+                        {item.icon && <item.icon className="w-4 h-4" style={{ color: item.color }} />}
+                        <span className="text-[9px] font-medium text-[#64748B] leading-tight">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-[#64748B] mt-2">
+                    Ticket Sales revenue is automatic and recorded after successful ticket purchase.
+                  </p>
+                </div>
+
+                {revenueNeedsCustomLabel && (
+                  <div>
+                    <label className="block text-xs font-medium text-[#64748B] mb-1.5">Custom Source Name *</label>
+                    <input
+                      type="text"
+                      value={customRevenueSource}
+                      onChange={(event) => setCustomRevenueSource(event.target.value)}
+                      placeholder="e.g., Main brand sponsor"
+                      className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Description *</label>
+                  <input
+                    type="text"
+                    value={revenueForm.description}
+                    onChange={(event) => setRevenueForm((prev) => ({ ...prev, description: event.target.value }))}
+                    placeholder="e.g., Gold sponsor package"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Amount (KES) *</label>
+                  <input
+                    type="number"
+                    value={revenueForm.amount}
+                    onChange={(event) => setRevenueForm((prev) => ({ ...prev, amount: event.target.value }))}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={submitRevenueEntry}
+                  disabled={revenueSubmitDisabled}
+                  className="w-full py-3 bg-gradient-to-r from-[#16A34A] to-[#0EA5E9] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg transition-shadow"
+                >
+                  Add Revenue
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageWrapper>
   );
 };

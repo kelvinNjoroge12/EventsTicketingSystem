@@ -56,6 +56,10 @@ const ScrollToTop = () => {
 // All routes — NO motion wrappers around pages (motion transforms break fixed positioning on iOS)
 const AppRoutes = () => {
   const { toasts, removeToast } = useToast();
+  const location = useLocation();
+  const hideFooter =
+    /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
+    /^\/settings\/?$/.test(location.pathname);
 
   return (
     <>
@@ -89,7 +93,7 @@ const AppRoutes = () => {
         <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense>} />
       </Routes>
 
-      <Footer />
+      {!hideFooter && <Footer />}
     </>
   );
 };
