@@ -220,7 +220,7 @@ const Navbar = () => {
   // ─── STANDARD / ATTENDEE NAVBAR ───────────────────────────────
   const navLinks = [
     { name: 'Home', path: '/', icon: Home },
-    { name: 'Create Event', path: '/create-event', icon: Plus },
+    { name: 'Create Event', path: isOrganizer ? '/create-event' : '/sell-tickets', icon: Plus },
     ...(isAuthenticated ?
       [{ name: 'My Tickets', path: '/my-tickets', icon: Ticket }] :
       [{ name: 'Search for My Ticket', path: '/find-ticket', icon: Search }]),

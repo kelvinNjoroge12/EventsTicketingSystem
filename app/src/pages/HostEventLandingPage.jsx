@@ -1,0 +1,330 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+    Ticket, BarChart3, Smartphone, Search, Megaphone,
+    Calendar, Users, Wallet, CheckCircle2, ArrowRight,
+    MapPin, Globe, HeadphonesIcon, Settings, Heart
+} from 'lucide-react';
+import PageWrapper from '../components/layout/PageWrapper';
+import CustomButton from '../components/ui/CustomButton';
+
+const HostEventLandingPage = () => {
+    // Animation variants
+    const sectionVariant = {
+        hidden: { opacity: 0, y: 30 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
+    };
+
+    const staggercontainer = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.15 }
+        }
+    };
+
+    const itemVariant = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+    };
+
+    return (
+        <PageWrapper>
+            <div className="bg-[#F8FAFC]">
+                {/* ── HERO SECTION ── */}
+                <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden bg-white">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-white to-white" />
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                            <motion.div
+                                initial={{ opacity: 0, x: -30 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.6 }}
+                            >
+                                <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-[#1E4DB7] text-sm font-bold tracking-wider mb-6">
+                                    Where Event Organizers Grow
+                                </span>
+                                <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#0F172A] leading-tight mb-6">
+                                    Event hosting <br /> <span className="text-[#1E4DB7]">made easy</span>
+                                </h1>
+                                <p className="text-lg md:text-xl text-[#64748B] mb-8 max-w-lg leading-relaxed">
+                                    The all-in-one ticketing and discovery platform trusted by millions of organizers and attendees worldwide. Easily create events for free on a platform that attendees love and trust.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <Link to="/signup">
+                                        <CustomButton variant="primary" size="xl" className="w-full sm:w-auto shadow-lg shadow-blue-500/30">
+                                            Get started for free
+                                        </CustomButton>
+                                    </Link>
+                                    <Link to="/contact">
+                                        <CustomButton variant="outline" size="xl" className="w-full sm:w-auto">
+                                            Contact Sales
+                                        </CustomButton>
+                                    </Link>
+                                </div>
+                            </motion.div>
+
+                            {/* Hero Image / UI Mockup */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 30 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                                className="relative"
+                            >
+                                <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white">
+                                    <div className="h-12 bg-gray-100 flex items-center px-4 border-b border-gray-200">
+                                        <div className="flex gap-2">
+                                            <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                                            <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+                                            <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                                        </div>
+                                    </div>
+                                    <img
+                                        src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
+                                        alt="People having fun at an event"
+                                        className="w-full h-auto object-cover opacity-90"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent flex flex-col justify-end p-8">
+                                        <h3 className="text-2xl font-bold text-white mb-2">Pizza Making Masterclass</h3>
+                                        <p className="text-white/80 flex items-center gap-2"><MapPin className="w-4 h-4" /> Downtown Napoli, Italy</p>
+                                    </div>
+                                </div>
+
+                                {/* Floating Badges */}
+                                <motion.div
+                                    animate={{ y: [0, -10, 0] }}
+                                    transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                                    className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl flex items-center gap-4"
+                                >
+                                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                                        <Ticket className="w-6 h-6 text-green-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">Tickets Sold</p>
+                                        <p className="text-xl font-bold text-gray-900">1,245</p>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ── CORE FEATURES ── */}
+                <section className="py-20 bg-[#F8FAFC]">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <motion.div
+                            className="text-center max-w-3xl mx-auto mb-16"
+                            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}
+                        >
+                            <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-4">All the tools event organizers need</h2>
+                            <p className="text-[#64748B] text-lg">
+                                From event ticketing to payment collection, tools to promote, market, and manage your events seamlessly.
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+                            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggercontainer}
+                        >
+                            {/* Feature 1 */}
+                            <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
+                                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
+                                    <Ticket className="w-7 h-7 text-indigo-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Event Ticketing</h3>
+                                <p className="text-[#64748B] mb-6">Everything you need to sell tickets for in-person or online events with a seamless checkout experience.</p>
+                                <Link to="/signup" className="text-indigo-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                    See ticketing tools <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </motion.div>
+
+                            {/* Feature 2 */}
+                            <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
+                                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+                                    <BarChart3 className="w-7 h-7 text-blue-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Reporting & Analytics</h3>
+                                <p className="text-[#64748B] mb-6">Learn more about your buyers and discover where sales are coming from with real-time analytics.</p>
+                                <Link to="/signup" className="text-blue-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                    Explore reporting <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </motion.div>
+
+                            {/* Feature 3 */}
+                            <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
+                                <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6">
+                                    <Smartphone className="w-7 h-7 text-purple-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Organizer App</h3>
+                                <p className="text-[#64748B] mb-6">Check guests in, sell tickets at the door, and track data with our easy-to-use Organizer App.</p>
+                                <Link to="/signup" className="text-purple-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                    Get the app <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </motion.div>
+
+                            {/* Feature 4 */}
+                            <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
+                                <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center mb-6">
+                                    <Megaphone className="w-7 h-7 text-pink-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Marketing Tools</h3>
+                                <p className="text-[#64748B] mb-6">Engage attendees and reach new ones with our suite of automated email and social marketing tools.</p>
+                                <Link to="/signup" className="text-pink-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                    See marketing tools <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </motion.div>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* ── PAYMENTS SECTION ── */}
+                <section className="py-20 bg-white border-y border-[#E2E8F0]">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                            <motion.div
+                                className="order-2 lg:order-1 relative"
+                                initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}
+                            >
+                                <div className="bg-[#F8FAFC] rounded-3xl p-8 border border-[#E2E8F0] shadow-inner relative overflow-hidden">
+                                    <div className="space-y-4 relative z-10">
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-[#E2E8F0] flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                                    <Wallet className="w-5 h-5 text-green-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 font-medium">Available Balance</p>
+                                                    <p className="text-lg font-bold text-gray-900">$8,450.00</p>
+                                                </div>
+                                            </div>
+                                            <button className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">Withdraw</button>
+                                        </div>
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-[#E2E8F0]">
+                                            <p className="font-semibold text-gray-900 mb-2">Scheduled Payouts</p>
+                                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2 border border-gray-100">
+                                                <span className="text-sm font-medium text-gray-700">Weekly</span>
+                                                <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100">
+                                                <span className="text-sm font-medium text-gray-500">Twice a month</span>
+                                                <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                                            </div>
+                                            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 mt-2">
+                                                <span className="text-sm font-medium text-gray-500">After each event</span>
+                                                <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-green-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                                </div>
+                            </motion.div>
+
+                            <motion.div
+                                className="order-1 lg:order-2"
+                                initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}
+                            >
+                                <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-6">Get paid, earn more</h2>
+                                <p className="text-[#64748B] text-lg mb-8">
+                                    Do what you love and earn more money with low-cost fees and quicker payouts, giving you the focus to build incredible experiences for your attendees.
+                                </p>
+
+                                <ul className="space-y-6">
+                                    <li className="flex gap-4">
+                                        <div className="mt-1 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-[#0F172A] text-lg">Payment Processing</h4>
+                                            <p className="text-[#64748B]">Easily collect and simplify event payments with built-in, full-service payment processing.</p>
+                                        </div>
+                                    </li>
+                                    <li className="flex gap-4">
+                                        <div className="mt-1 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-[#0F172A] text-lg">Low-cost fees</h4>
+                                            <p className="text-[#64748B]">Clear value, transparent fees. So you can focus on the important things.</p>
+                                        </div>
+                                    </li>
+                                    <li className="flex gap-4">
+                                        <div className="mt-1 w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-[#0F172A] text-lg">Scheduled Payouts</h4>
+                                            <p className="text-[#64748B]">Get paid before your event takes place on a customized schedule of your choice.</p>
+                                        </div>
+                                    </li>
+                                </ul>
+
+                                <Link to="/signup" className="inline-block mt-8">
+                                    <CustomButton variant="outline" size="lg">Discover payment tools</CustomButton>
+                                </Link>
+                            </motion.div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ── CTA SECTION ── */}
+                <section className="py-24 bg-[#1E4DB7] text-white relative overflow-hidden">
+                    {/* Decorative Background Elements */}
+                    <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+                    <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-400/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
+
+                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+                        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}>
+                            <h2 className="text-4xl md:text-5xl font-bold mb-6">Publish your events for free</h2>
+                            <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
+                                Reach more people on the world's largest and most trusted events marketplace. Everything you need to host standout events and earn more.
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
+                                <Link to="/signup">
+                                    <button className="w-full sm:w-auto px-8 py-4 bg-white text-[#1E4DB7] rounded-xl font-bold text-lg hover:bg-gray-50 transition-colors shadow-xl">
+                                        Get started for free
+                                    </button>
+                                </Link>
+                                <Link to="/contact">
+                                    <button className="w-full sm:w-auto px-8 py-4 bg-transparent border-2 border-white/30 text-white rounded-xl font-bold text-lg hover:bg-white/10 transition-colors">
+                                        Contact Sales
+                                    </button>
+                                </Link>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-left border-t border-white/20 pt-10">
+                                <div className="space-y-2 text-sm text-blue-100">
+                                    <p className="font-bold text-white mb-4">Event Creation</p>
+                                    <p>Event Page Builder</p>
+                                    <p>Event Registration</p>
+                                    <p>Sell Tickets Online</p>
+                                </div>
+                                <div className="space-y-2 text-sm text-blue-100">
+                                    <p className="font-bold text-white mb-4">Event Promotion</p>
+                                    <p>EventHub Ads</p>
+                                    <p>Email Marketing</p>
+                                    <p>Social Integration</p>
+                                </div>
+                                <div className="space-y-2 text-sm text-blue-100">
+                                    <p className="font-bold text-white mb-4">Event Types</p>
+                                    <p>Music Concerts</p>
+                                    <p>Food & Drinks</p>
+                                    <p>Corporate Events</p>
+                                </div>
+                                <div className="space-y-2 text-sm text-blue-100">
+                                    <p className="font-bold text-white mb-4">Event Hosting</p>
+                                    <p>Ticket Scanning</p>
+                                    <p>Check-In App</p>
+                                    <p>Analytics</p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                </section>
+            </div>
+        </PageWrapper>
+    );
+};
+
+export default HostEventLandingPage;
