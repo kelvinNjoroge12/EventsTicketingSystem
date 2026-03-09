@@ -7,6 +7,7 @@ import Footer from './components/layout/Footer';
 import useScrollTop from './hooks/useScrollTop';
 import useToast from './hooks/useToast';
 import Toast from './components/ui/Toast';
+import ClassicTicketLoader from './components/ui/ClassicTicketLoader';
 
 // HomePage is eager-loaded (entry point — no spinner on first visit)
 import HomePage from './pages/HomePage';
@@ -40,6 +41,12 @@ const PageLoader = () => (
   </div>
 );
 
+const EventDetailChunkLoader = () => (
+  <div className="min-h-screen bg-[#020617]">
+    <ClassicTicketLoader visible />
+  </div>
+);
+
 // Scroll to top on route change
 const ScrollToTop = () => {
   useScrollTop();
@@ -59,7 +66,7 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/events" element={<Suspense fallback={<PageLoader />}><EventsPage /></Suspense>} />
-        <Route path="/events/:slug" element={<Suspense fallback={<PageLoader />}><EventDetailPage /></Suspense>} />
+        <Route path="/events/:slug" element={<Suspense fallback={<EventDetailChunkLoader />}><EventDetailPage /></Suspense>} />
         <Route path="/checkout/:slug" element={<Suspense fallback={<PageLoader />}><CheckoutPage /></Suspense>} />
         <Route path="/confirmation/:orderId" element={<Suspense fallback={<PageLoader />}><ConfirmationPage /></Suspense>} />
         <Route path="/search" element={<Suspense fallback={<PageLoader />}><SearchResultsPage /></Suspense>} />

@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from apps.events.models import Event
+from apps.payments.simulation import issue_simulation_token
 from apps.tickets.models import PromoCode, TicketType
 from .models import Order, OrderItem, Ticket
 # send_ticket_email imported in view to decouple from transaction.atomic()
@@ -190,6 +191,7 @@ class OrderCreateSerializer(serializers.Serializer):
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
+    simulation_token = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -208,6 +210,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "payment_method",
             "created_at",
             "items",
+            "simulation_token",
         ]
 
     def get_items(self, obj: Order):
@@ -222,3 +225,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             for i in obj.items.all()
         ]
 
+    def get_simulation_token(self, obj: Order):
+        if obj.status != "pending":
+            return None
+        return issue_simulation_token(obj.order_number)

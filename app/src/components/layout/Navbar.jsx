@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Menu, X, User, Plus, CalendarDays, LogOut, Settings, LayoutDashboard,
-  Users, Wallet, Home, Ticket,
+  Home, Ticket,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import CustomButton from '../ui/CustomButton';
@@ -69,9 +69,8 @@ const Navbar = () => {
   if (isOrganizerArea) {
     const orgLinks = [
       { name: 'Home', path: '/organizer-dashboard?tab=overview', icon: Home },
-      { name: 'Attendees', path: '/organizer-dashboard?tab=attendees', icon: Users },
-      { name: 'Finance', path: '/organizer-dashboard?tab=finances', icon: Wallet },
       { name: 'My Events', path: '/organizer-dashboard?tab=events', icon: CalendarDays },
+      { name: 'Check-In', path: '/organizer-dashboard?tab=checkin', icon: Ticket },
     ];
 
     return (

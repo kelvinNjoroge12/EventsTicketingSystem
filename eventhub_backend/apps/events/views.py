@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.core.cache import cache
 from django.db import models
-from django.db.models import F, Q
+from django.db.models import Exists, OuterRef, Prefetch, Q, Subquery
 from django.shortcuts import get_object_or_404
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, permissions
@@ -12,18 +12,70 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 
 from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
+from apps.schedules.models import ScheduleItem
+from apps.speakers.models import Speaker
+from apps.sponsors.models import Sponsor
+from apps.tickets.models import PromoCode, TicketType
 from .filters import EventFilter
 from .models import Category, Event
 from .serializers import CategorySerializer, EventCreateSerializer, EventDetailSerializer, EventListSerializer, EventStatusSerializer
 
 
-class EventListView(generics.ListAPIView):
-    queryset = Event.objects.filter(status="published").select_related(
+def _with_list_optimizations(queryset):
+    active_tickets = TicketType.objects.filter(event=OuterRef("pk"), is_active=True)
+    lowest_price = Subquery(
+        active_tickets.order_by("price").values("price")[:1],
+        output_field=models.DecimalField(max_digits=10, decimal_places=2),
+    )
+    return queryset.select_related(
         "category", "organizer", "organizer__organizer_profile"
-    ).prefetch_related("ticket_types")
+    ).annotate(
+        lowest_ticket_price_annotated=lowest_price,
+        has_active_tickets_annotated=Exists(active_tickets),
+        has_paid_tickets_annotated=Exists(active_tickets.filter(price__gt=0)),
+    )
+
+
+def _with_detail_optimizations(queryset):
+    return queryset.select_related(
+        "category", "organizer", "organizer__organizer_profile"
+    ).prefetch_related(
+        "tags",
+        Prefetch(
+            "ticket_types",
+            queryset=TicketType.objects.filter(is_active=True).order_by("sort_order", "price"),
+            to_attr="prefetched_ticket_types_active",
+        ),
+        Prefetch(
+            "promo_codes",
+            queryset=PromoCode.objects.filter(is_active=True),
+            to_attr="prefetched_promo_codes_active",
+        ),
+        Prefetch(
+            "speakers",
+            queryset=Speaker.objects.order_by("sort_order", "name"),
+            to_attr="prefetched_speakers_ordered",
+        ),
+        Prefetch(
+            "schedule_items",
+            queryset=ScheduleItem.objects.select_related("speaker").order_by("day", "sort_order", "start_time"),
+            to_attr="prefetched_schedule_items",
+        ),
+        Prefetch(
+            "event_sponsors",
+            queryset=Sponsor.objects.order_by("tier", "sort_order", "name"),
+            to_attr="prefetched_sponsors",
+        ),
+    )
+
+
+class EventListView(generics.ListAPIView):
     serializer_class = EventListSerializer
     permission_classes = [permissions.AllowAny]
     filterset_class = EventFilter
+
+    def get_queryset(self):
+        return _with_list_optimizations(Event.objects.filter(status="published"))
 
     def list(self, request, *args, **kwargs):
         cache_key = f"events:list:{request.get_full_path()}"
@@ -45,44 +97,29 @@ class EventDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         """Allow organizers to view their own draft/pending events."""
-        qs = Event.objects.select_related(
-            "category", "organizer", "organizer__organizer_profile"
-        ).prefetch_related(
-            "tags",
-            "ticket_types",
-            "promo_codes",
-            "speakers",
-            "schedule_items",
-            "event_sponsors"
-        )
-        qs_pub = qs.filter(status__in=["published", "completed"])
         user = self.request.user
+        status_filter = Q(status__in=["published", "completed"])
         if user.is_authenticated:
-            qs_pub = qs_pub | qs.filter(
-                organizer=user,
-                status__in=["draft", "pending"],
-            )
-        return qs_pub.distinct()
+            status_filter |= Q(organizer=user, status__in=["draft", "pending"])
+        return _with_detail_optimizations(Event.objects.filter(status_filter).distinct())
 
     def retrieve(self, request, *args, **kwargs):
         slug = kwargs.get(self.lookup_field)
-        event = self.get_object()
-        # Only use cache for public events, not draft/pending owner views
-        if event.status in ("published", "completed"):
-            cache_key = f"events:detail:v2:{slug}"
-            cached = cache.get(cache_key)
-            if cached:
-                response = Response(cached)
-                response["Cache-Control"] = "public, max-age=600"
-                return response
-            response = super().retrieve(request, *args, **kwargs)
-            cache.set(cache_key, response.data, 600)  # 10 minutes
+        cache_key = f"events:detail:v2:{slug}"
+        cached = cache.get(cache_key)
+        if cached:
+            response = Response(cached)
             response["Cache-Control"] = "public, max-age=600"
             return response
-        # Draft/pending events — no cache, no view count
+
+        event = self.get_object()
         serializer = self.get_serializer(event)
         response = Response(serializer.data)
-        response["Cache-Control"] = "no-store, no-cache, private"
+        if event.status in ("published", "completed"):
+            cache.set(cache_key, response.data, 600)  # 10 minutes
+            response["Cache-Control"] = "public, max-age=600"
+        else:
+            response["Cache-Control"] = "no-store, no-cache, private"
         return response
 
 
@@ -149,9 +186,9 @@ class OrganizerEventListView(generics.ListAPIView):
 
     def get_queryset(self):
         organizer_id = self.kwargs["id"]
-        return Event.objects.filter(organizer_id=organizer_id, status="published").select_related(
-            "category", "organizer", "organizer__organizer_profile"
-        ).prefetch_related("ticket_types")
+        return _with_list_optimizations(
+            Event.objects.filter(organizer_id=organizer_id, status="published")
+        )
 
 
 class MyEventsListView(generics.ListAPIView):
@@ -160,9 +197,9 @@ class MyEventsListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def get_queryset(self):
-        return Event.objects.filter(organizer=self.request.user).select_related(
-            "category", "organizer", "organizer__organizer_profile"
-        ).prefetch_related("ticket_types").order_by("-created_at")
+        return _with_list_optimizations(
+            Event.objects.filter(organizer=self.request.user).order_by("-created_at")
+        )
 
 
 class FeaturedEventsView(generics.ListAPIView):
@@ -170,9 +207,9 @@ class FeaturedEventsView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        return Event.objects.filter(status="published", is_featured=True).select_related(
-            "category", "organizer", "organizer__organizer_profile"
-        ).prefetch_related("ticket_types")
+        return _with_list_optimizations(
+            Event.objects.filter(status="published", is_featured=True)
+        )
 
     def list(self, request, *args, **kwargs):
         cache_key = "events:featured"
@@ -227,4 +264,3 @@ def related_events(request, slug: str):
     serializer = EventListSerializer(qs, many=True, context={"request": request})
     cache.set(cache_key, serializer.data, 900)  # 15 minutes
     return Response(serializer.data)
-

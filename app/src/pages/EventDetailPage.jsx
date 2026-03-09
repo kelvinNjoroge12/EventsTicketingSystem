@@ -12,11 +12,13 @@ import StickyMobileBar from '../components/event/StickyMobileBar';
 import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
 import ProgressiveImage from '../components/ui/ProgressiveImage';
-import { fetchEvent, fetchRelatedEvents, trackEventView } from '../lib/eventsApi';
-import { useQuery } from '@tanstack/react-query';
+import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
+import { buildEventDetailPlaceholderFromList, fetchEvent, fetchRelatedEvents, trackEventView } from '../lib/eventsApi';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import useSavedEvents from '../hooks/useSavedEvents';
 import { heroImage, heroSrcSet, avatarImage, logoImage } from '../lib/imageUtils';
+import eventQueryKeys from '../lib/eventQueryKeys';
 
 // ── Timeline Component ──────────────────────────────────────────────────────
 const ScheduleTimeline = ({ schedule, themeColor }) => (
@@ -153,6 +155,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
 const EventDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { addToCart, addMultipleToCart } = useCart();
   const { isSaved, toggleSave } = useSavedEvents();
   const [activeTab, setActiveTab] = useState('overview');
@@ -187,16 +190,24 @@ const EventDetailPage = () => {
     if (slug) trackEventView(slug);
   }, [slug]);
 
-  const { data: baseEvent, isLoading } = useQuery({
-    queryKey: ['event', slug],
+  const detailQueryKey = eventQueryKeys.detail(slug);
+  const listCaches = queryClient.getQueriesData({ queryKey: eventQueryKeys.lists() });
+  const placeholderEventFromList = listCaches
+    .map(([, cached]) => (Array.isArray(cached) ? cached.find((item) => item?.slug === slug) : null))
+    .find(Boolean);
+  const detailAlreadyCached = Boolean(queryClient.getQueryData(detailQueryKey));
+
+  const { data: baseEvent, isLoading, isFetching, isPlaceholderData } = useQuery({
+    queryKey: detailQueryKey,
     queryFn: () => fetchEvent(slug),
     staleTime: 5 * 60 * 1000, // 5 min — serve from cache on tab switch / back-navigation
     retry: false,
+    placeholderData: () => buildEventDetailPlaceholderFromList(placeholderEventFromList),
   });
 
   // 2. Related events — low-priority background fetch
   const { data: relatedEvents = [] } = useQuery({
-    queryKey: ['events', 'related', slug],
+    queryKey: eventQueryKeys.related(slug),
     queryFn: () => fetchRelatedEvents(slug),
     enabled: !!slug,
     staleTime: 10 * 60 * 1000, // 10 min — rarely changes
@@ -240,22 +251,11 @@ const EventDetailPage = () => {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
-  if (isLoading) {
+  if (isLoading && !baseEvent) {
     return (
       <PageWrapper>
-        <div className="animate-pulse">
-          <div className="h-[420px] bg-[#E2E8F0]" />
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="h-8 bg-[#E2E8F0] rounded w-3/4" />
-                <div className="h-4 bg-[#E2E8F0] rounded w-1/2" />
-                <div className="h-48 bg-[#E2E8F0] rounded" />
-              </div>
-              <div className="h-96 bg-[#E2E8F0] rounded-2xl" />
-            </div>
-          </div>
-        </div>
+        <ClassicTicketLoader visible />
+        <div className="min-h-screen bg-[#020617]" />
       </PageWrapper>
     );
   }
@@ -279,6 +279,7 @@ const EventDetailPage = () => {
   const hasSchedule = event.schedule?.length > 0;
   const hasSponsors = event.sponsors?.length > 0;
   const hasMC = event.mc?.name;
+  const showClassicLoader = !detailAlreadyCached && (isPlaceholderData || (isFetching && isLoading));
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <Zap className="w-4 h-4" /> },
@@ -289,6 +290,7 @@ const EventDetailPage = () => {
 
   return (
     <PageWrapper>
+      <ClassicTicketLoader visible={showClassicLoader} />
       {/* ── HERO SECTION ── */}
       <div className="relative w-full h-[320px] md:h-[480px]" style={{ overflow: 'hidden' }}>
         {/* Background — proper <img> for LCP priority, falls back to gradient */}

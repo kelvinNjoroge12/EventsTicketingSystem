@@ -139,6 +139,35 @@ const mapDetailEvent = (e) => {
 };
 
 // ── Fetch Events ──────────────────────────────────────────────────────────
+export const buildEventDetailPlaceholderFromList = (event) => {
+  if (!event) return undefined;
+  return {
+    ...event,
+    rawCategory: '',
+    startDate: event.date || '',
+    startTime: event.time || '',
+    endDate: '',
+    endTime: '',
+    timezone: '',
+    venueName: '',
+    address: '',
+    city: '',
+    country: '',
+    streamingLink: '',
+    customRefundPolicy: '',
+    refundPolicy: '',
+    capacity: null,
+    bannerImage: event.coverImage || null,
+    tags: Array.isArray(event.tags) ? event.tags : [],
+    tickets: [],
+    promoCodes: [],
+    speakers: [],
+    mc: null,
+    schedule: [],
+    sponsors: [],
+  };
+};
+
 export const fetchEvents = async (params = {}) => {
   // Build query
   const searchParams = new URLSearchParams();

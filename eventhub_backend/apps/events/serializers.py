@@ -111,11 +111,17 @@ class EventListSerializer(serializers.ModelSerializer):
         ]
 
     def get_lowest_ticket_price(self, obj: Event):
+        if hasattr(obj, "lowest_ticket_price_annotated"):
+            return obj.lowest_ticket_price_annotated
         agg = obj.ticket_types.filter(is_active=True).aggregate(price=Min("price"))
         price = agg["price"]
         return price if isinstance(price, (int, float, Decimal)) else None
 
     def get_is_free(self, obj: Event) -> bool:
+        has_active = getattr(obj, "has_active_tickets_annotated", None)
+        has_paid = getattr(obj, "has_paid_tickets_annotated", None)
+        if has_active is not None and has_paid is not None:
+            return bool(has_active and not has_paid)
         prices = obj.ticket_types.filter(is_active=True).values_list("price", flat=True)
         return all(Decimal(p or 0) == 0 for p in prices) if prices else False
 
@@ -218,7 +224,8 @@ class EventDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_tickets(self, obj: Event):
-        qs = obj.ticket_types.filter(is_active=True).order_by("sort_order", "price")
+        prefetched = getattr(obj, "prefetched_ticket_types_active", None)
+        qs = prefetched if prefetched is not None else obj.ticket_types.filter(is_active=True).order_by("sort_order", "price")
         return [
             {
                 "id": t.id,
@@ -237,6 +244,8 @@ class EventDetailSerializer(serializers.ModelSerializer):
 
     def get_promo_codes(self, obj: Event):
         # For frontend convenience; validation will still happen server-side
+        prefetched = getattr(obj, "prefetched_promo_codes_active", None)
+        promo_codes = prefetched if prefetched is not None else obj.promo_codes.filter(is_active=True)
         return [
             {
                 "code": p.code,
@@ -245,28 +254,38 @@ class EventDetailSerializer(serializers.ModelSerializer):
                 "expiry": p.expiry,
                 "usageLimit": p.usage_limit,
             }
-            for p in obj.promo_codes.filter(is_active=True)
+            for p in promo_codes
         ]
 
     def get_mc(self, obj: Event):
-        mc = obj.speakers.filter(is_mc=True).first()
+        prefetched = getattr(obj, "prefetched_speakers_ordered", None)
+        if prefetched is not None:
+            mc = next((speaker for speaker in prefetched if speaker.is_mc), None)
+        else:
+            mc = obj.speakers.filter(is_mc=True).first()
         if mc:
             return SpeakerSerializer(mc, context=self.context).data
         return None
 
     def get_speakers(self, obj: Event):
         """Return all non-MC speakers, sorted by sort_order."""
-        qs = obj.speakers.filter(is_mc=False).order_by("sort_order", "name")
+        prefetched = getattr(obj, "prefetched_speakers_ordered", None)
+        if prefetched is not None:
+            qs = [speaker for speaker in prefetched if not speaker.is_mc]
+        else:
+            qs = obj.speakers.filter(is_mc=False).order_by("sort_order", "name")
         return SpeakerSerializer(qs, many=True, context=self.context).data
 
     def get_schedule(self, obj: Event):
         """Return schedule items sorted by day then start_time."""
         from apps.schedules.serializers import ScheduleItemSerializer
-        qs = obj.schedule_items.select_related("speaker").order_by("day", "sort_order", "start_time")
+        prefetched = getattr(obj, "prefetched_schedule_items", None)
+        qs = prefetched if prefetched is not None else obj.schedule_items.select_related("speaker").order_by("day", "sort_order", "start_time")
         return ScheduleItemSerializer(qs, many=True, context=self.context).data
 
     def get_sponsors(self, obj: Event):
-        qs = obj.event_sponsors.order_by("tier", "sort_order", "name")
+        prefetched = getattr(obj, "prefetched_sponsors", None)
+        qs = prefetched if prefetched is not None else obj.event_sponsors.order_by("tier", "sort_order", "name")
         return SponsorSerializer(qs, many=True, context=self.context).data
 
 
@@ -419,4 +438,3 @@ class EventStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = ["status"]
-

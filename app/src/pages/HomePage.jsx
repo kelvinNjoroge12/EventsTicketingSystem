@@ -18,11 +18,12 @@ import EventCard from '../components/cards/EventCard';
 import CategoryPill from '../components/cards/CategoryPill';
 import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
-import { fetchEvents, preloadRoutes } from '../lib/eventsApi';
-import { useQuery } from '@tanstack/react-query';
+import { fetchEvent, fetchEvents, preloadRoutes } from '../lib/eventsApi';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
 import { useAuth } from '../context/AuthContext';
+import eventQueryKeys from '../lib/eventQueryKeys';
 
 // Statistics Component
 const StatBox = ({ value, label, suffix = '' }) => {
@@ -68,6 +69,7 @@ const StepCard = ({ number, title, description, icon: Icon, tint, delay }) => (
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuth();
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeTab, setActiveTab] = useState('attendee');
@@ -89,9 +91,44 @@ const HomePage = () => {
   const touchStartX = useRef(0);
 
   const { data: allEvents = [], isLoading } = useQuery({
-    queryKey: ['events', { ordering: 'start_date' }],
+    queryKey: eventQueryKeys.list({ ordering: 'start_date' }),
     queryFn: () => fetchEvents({ ordering: 'start_date' })
   });
+
+  useEffect(() => {
+    if (!allEvents.length) return undefined;
+    let cancelled = false;
+    let idleId = null;
+    let timerId = null;
+
+    const warmTopEventDetails = () => {
+      allEvents.slice(0, 4).forEach((event, index) => {
+        setTimeout(() => {
+          if (cancelled || !event?.slug) return;
+          const detailKey = eventQueryKeys.detail(event.slug);
+          const state = queryClient.getQueryState(detailKey);
+          if (state?.dataUpdatedAt && Date.now() - state.dataUpdatedAt < 5 * 60 * 1000) return;
+          queryClient.prefetchQuery({
+            queryKey: detailKey,
+            queryFn: () => fetchEvent(event.slug),
+            staleTime: 5 * 60 * 1000,
+          });
+        }, index * 120);
+      });
+    };
+
+    if ('requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(warmTopEventDetails, { timeout: 1800 });
+    } else {
+      timerId = setTimeout(warmTopEventDetails, 350);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId && 'cancelIdleCallback' in window) window.cancelIdleCallback(idleId);
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [allEvents, queryClient]);
 
   // Preload React Router JS chunks on mount
   useEffect(() => {

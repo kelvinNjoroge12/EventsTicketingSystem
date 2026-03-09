@@ -17,6 +17,7 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (  # noqa: F405
 # CSRF and CORS security
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["https://*.onrender.com", "https://*.render.com", "https://*.vercel.app"])
 CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=True)
+ENABLE_SIMULATED_PAYMENTS = env.bool("ENABLE_SIMULATED_PAYMENTS", default=False)  # noqa: F405
 
 # Security headers
 SECURE_HSTS_SECONDS = 31536000

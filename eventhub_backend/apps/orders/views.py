@@ -1,18 +1,19 @@
 from __future__ import annotations
 
+import logging
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status, throttling
 from rest_framework.response import Response
 
-from apps.events.models import Event
 from apps.tickets.models import TicketType
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderDetailSerializer
 from .utils import send_ticket_email
-import time
 
-import sys
+logger = logging.getLogger(__name__)
+
 
 class OrderCreateView(generics.GenericAPIView):
     serializer_class = OrderCreateSerializer
@@ -21,30 +22,24 @@ class OrderCreateView(generics.GenericAPIView):
     throttle_scope = "checkout"
 
     def post(self, request, *args, **kwargs):
-        try:
-            serializer = self.get_serializer(data=request.data, context={"request": request})
-            serializer.is_valid(raise_exception=True)
-            
-            with transaction.atomic():
-                event = serializer.validated_data["event"]
-                items = serializer.validated_data["items"]
-                ticket_ids = [i["ticket_type_id"] for i in items]
-                list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
-                order = serializer.save()
-            
-            if order.status == "confirmed":
-                try:
-                    send_ticket_email(order)
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).error(f"Failed to send email for order {order.order_number}: {e}")
-            
-            data = OrderDetailSerializer(order).data
-            return Response({"data": data}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            return Response({"success": False, "error": {"code": "SERVER_ERROR", "message": str(e), "traceback": tb}}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            event = serializer.validated_data["event"]
+            items = serializer.validated_data["items"]
+            ticket_ids = [i["ticket_type_id"] for i in items]
+            list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
+            order = serializer.save()
+
+        if order.status == "confirmed":
+            try:
+                send_ticket_email(order)
+            except Exception as e:
+                logger.error(f"Failed to send email for order {order.order_number}: {e}")
+
+        data = OrderDetailSerializer(order).data
+        return Response({"data": data}, status=status.HTTP_201_CREATED)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
@@ -53,11 +48,15 @@ class OrderDetailView(generics.RetrieveAPIView):
     lookup_field = "order_number"
 
     def get_queryset(self):
-        try:
-            attendee = self.request.user if self.request.user.is_authenticated else None
-        except Exception:
-            attendee = None
-        return Order.objects.filter(attendee=attendee)
+        user = self.request.user
+        if user and user.is_authenticated:
+            return Order.objects.filter(attendee=user)
+
+        email = (self.request.query_params.get("email") or "").strip().lower()
+        if not email:
+            return Order.objects.none()
+
+        return Order.objects.filter(attendee__isnull=True, attendee_email__iexact=email)
 
 
 class OrderListView(generics.ListAPIView):

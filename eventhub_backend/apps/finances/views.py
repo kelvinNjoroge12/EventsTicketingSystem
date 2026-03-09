@@ -7,8 +7,8 @@ from rest_framework.exceptions import PermissionDenied
 from apps.events.models import Event
 from apps.orders.models import Order, Ticket
 from apps.checkin.models import CheckIn
-from .models import Expense
-from .serializers import ExpenseSerializer
+from .models import Expense, Revenue
+from .serializers import ExpenseSerializer, RevenueSerializer
 
 
 class OrganizerExpenseListCreateView(generics.ListCreateAPIView):
@@ -39,6 +39,31 @@ class OrganizerExpenseDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Expense.objects.filter(event__organizer=self.request.user)
+
+
+class OrganizerRevenueListCreateView(generics.ListCreateAPIView):
+    serializer_class = RevenueSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        event_id = self.request.query_params.get("event_id")
+        if event_id:
+            event = generics.get_object_or_404(Event, id=event_id, organizer=self.request.user)
+            return Revenue.objects.filter(event=event)
+        return Revenue.objects.filter(event__organizer=self.request.user)
+
+    def perform_create(self, serializer):
+        event_id = self.request.data.get("event")
+        generics.get_object_or_404(Event, id=event_id, organizer=self.request.user)
+        serializer.save()
+
+
+class OrganizerRevenueDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = RevenueSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Revenue.objects.filter(event__organizer=self.request.user)
 
 
 class OrganizerDashboardStatsView(APIView):
@@ -75,7 +100,9 @@ class OrganizerDashboardStatsView(APIView):
         draft_events = events_qs.filter(status='draft').count()
 
         confirmed_orders = Order.objects.filter(orders_filter, status='confirmed')
-        total_revenue = float(confirmed_orders.aggregate(rev=Sum('total'))['rev'] or 0)
+        ticket_revenue = float(confirmed_orders.aggregate(rev=Sum('total'))['rev'] or 0)
+        manual_revenue = float(Revenue.objects.filter(expenses_filter).aggregate(total=Sum("amount"))["total"] or 0)
+        total_revenue = ticket_revenue + manual_revenue
         
         # Valid tickets
         all_tickets = Ticket.objects.filter(tickets_filter, status='valid')
@@ -106,6 +133,8 @@ class OrganizerDashboardStatsView(APIView):
                 "totalCheckins": total_checkins,
                 "checkinPercent": checkin_pct,
                 "totalRevenue": total_revenue,
+                "ticketRevenue": ticket_revenue,
+                "manualRevenue": manual_revenue,
                 "totalExpenses": total_expenses,
                 "netProfit": net_profit,
             },

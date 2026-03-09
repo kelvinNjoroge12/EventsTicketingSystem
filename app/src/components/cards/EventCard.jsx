@@ -12,10 +12,14 @@ import {
 import useSavedEvents from '../../hooks/useSavedEvents';
 import { fetchEvent } from '../../lib/eventsApi';
 import { useQueryClient } from '@tanstack/react-query';
+import eventQueryKeys from '../../lib/eventQueryKeys';
 import CustomAvatar from '../ui/CustomAvatar';
 import CustomBadge from '../ui/CustomBadge';
 import ProgressiveImage from '../ui/ProgressiveImage';
 import { cardImage, cardSrcSet } from '../../lib/imageUtils';
+
+const PREFETCH_THROTTLE_MS = 12000;
+const prefetchRegistry = new Map();
 
 const cardTints = [
   '#EFF6FF', // blue
@@ -48,14 +52,23 @@ const EventCard = ({
 
   const queryClient = useQueryClient();
 
-  const handleMouseEnter = () => {
-    if (event?.slug) {
-      queryClient.prefetchQuery({
-        queryKey: ['event', event.slug],
-        queryFn: () => fetchEvent(event.slug),
-        staleTime: 5 * 60 * 1000, // matches EventDetailPage — no double-fetch on navigation
-      });
-    }
+  const handlePrefetch = () => {
+    if (!event?.slug) return;
+
+    const queryKey = eventQueryKeys.detail(event.slug);
+    const state = queryClient.getQueryState(queryKey);
+    const now = Date.now();
+    const recentlyPrefetchedAt = prefetchRegistry.get(event.slug) || 0;
+
+    if (state?.dataUpdatedAt && now - state.dataUpdatedAt < 5 * 60 * 1000) return;
+    if (now - recentlyPrefetchedAt < PREFETCH_THROTTLE_MS) return;
+
+    prefetchRegistry.set(event.slug, now);
+    queryClient.prefetchQuery({
+      queryKey,
+      queryFn: () => fetchEvent(event.slug),
+      staleTime: 5 * 60 * 1000,
+    });
   };
 
   const formatDate = (dateString) => {
@@ -82,8 +95,9 @@ const EventCard = ({
     <Link
       to={`/events/${event.slug}`}
       className="block h-full group"
-      onMouseEnter={handleMouseEnter}
-      onTouchStart={handleMouseEnter}
+      onMouseEnter={handlePrefetch}
+      onFocus={handlePrefetch}
+      onTouchStart={handlePrefetch}
     >
       <motion.article
         className="relative h-[320px] md:h-[380px] rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 shadow-xl flex flex-col justify-end transition-all duration-500"

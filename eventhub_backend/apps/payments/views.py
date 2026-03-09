@@ -1,187 +1,218 @@
 from __future__ import annotations
 
+import json
+import logging
+import uuid
+
+import stripe
 from django.conf import settings
+from django.db import transaction
+from django.db.models import F
 from django.http import HttpRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.notifications.serializers import create_notification
 from apps.orders.models import Order, Ticket
 from apps.orders.utils import send_ticket_email
-from apps.notifications.serializers import create_notification
+from apps.tickets.models import TicketType
 from .models import Payment
 from .mpesa_service import MpesaService
+from .simulation import verify_simulation_token
 from .stripe_service import StripeService
 
-import json
-import stripe
-import uuid
+logger = logging.getLogger(__name__)
+
+
+def _confirm_order_and_issue_tickets(order: Order) -> tuple[Order, bool]:
+    """
+    Idempotent finalization:
+    - move order pending -> confirmed
+    - move ticket reservation -> sold
+    - create one Ticket row per purchased unit
+    """
+    with transaction.atomic():
+        locked = (
+            Order.objects.select_for_update()
+            .prefetch_related("items__ticket_type")
+            .get(pk=order.pk)
+        )
+
+        if locked.status == "confirmed":
+            return locked, False
+        if locked.status != "pending":
+            raise ValueError("Order is not pending.")
+
+        locked.status = "confirmed"
+        locked.save(update_fields=["status"])
+
+        tickets_to_create: list[Ticket] = []
+        for item in locked.items.all():
+            for _ in range(item.quantity):
+                tickets_to_create.append(
+                    Ticket(
+                        order=locked,
+                        order_item=item,
+                        event=locked.event,
+                        ticket_type=item.ticket_type,
+                        attendee_name=f"{locked.attendee_first_name} {locked.attendee_last_name}",
+                        attendee_email=locked.attendee_email,
+                        status="valid",
+                        qr_code_data=uuid.uuid4(),
+                    )
+                )
+
+            if item.ticket_type_id:
+                TicketType.objects.filter(id=item.ticket_type_id).update(
+                    quantity_reserved=F("quantity_reserved") - item.quantity,
+                    quantity_sold=F("quantity_sold") + item.quantity,
+                )
+
+        if tickets_to_create:
+            Ticket.objects.bulk_create(tickets_to_create)
+
+        return locked, True
+
+
+def _validate_confirmation_access(request, order: Order) -> Response | None:
+    simulation_token = (request.data.get("simulation_token") or "").strip()
+    attendee_email = (request.data.get("attendee_email") or "").strip().lower()
+
+    if not simulation_token:
+        return Response(
+            {"detail": "simulation_token is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    max_age_seconds = int(getattr(settings, "SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS", 3600))
+    if not verify_simulation_token(order.order_number, simulation_token, max_age_seconds=max_age_seconds):
+        return Response(
+            {"detail": "Invalid or expired confirmation token."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    user = request.user
+    if order.attendee_id:
+        if user.is_authenticated and (user.id == order.attendee_id or user.is_staff):
+            return None
+        return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+    if not attendee_email or attendee_email.lower() != (order.attendee_email or "").lower():
+        return Response(
+            {"detail": "attendee_email is required for guest orders."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    return None
+
+
+def _notify_and_email(order: Order, title: str):
+    if order.attendee:
+        create_notification(
+            recipient=order.attendee,
+            notification_type="ticket_confirmed",
+            title=title,
+            message=(
+                f"Your order #{order.order_number} for "
+                f"{order.event.title if order.event else 'the event'} has been confirmed. "
+                f"Check your tickets below."
+            ),
+            event=order.event,
+            action_url=f"/confirmation/{order.order_number}",
+        )
+
+    try:
+        send_ticket_email(order)
+    except Exception as exc:  # pragma: no cover
+        logger.error(
+            "Email failed for order %s: %s - %s",
+            order.order_number,
+            exc.__class__.__name__,
+            exc,
+        )
+
 
 class StripeCreatePaymentIntentView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        order_number = request.data.get("order_number")
-        try:
-            attendee = request.user if request.user.is_authenticated else None
-        except Exception:
-            attendee = None
-        order = Order.objects.filter(order_number=order_number, attendee=attendee, status="pending").first()
+        order_number = (request.data.get("order_number") or "").strip()
+        if not order_number:
+            return Response({"detail": "order_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = Order.objects.filter(order_number=order_number, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not payable."}, status=status.HTTP_400_BAD_REQUEST)
+
+        access_error = _validate_confirmation_access(request, order)
+        if access_error:
+            return access_error
+
         service = StripeService()
         client_secret = service.create_payment_intent(order)
         return Response({"client_secret": client_secret})
 
 
 class FreeOrderConfirmView(APIView):
-    """
-    POST /api/payments/free/confirm/
-    Accepts: { "order_number": "EH..." }
-    Only works if order.total == 0 and payment_method == "free"
-    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        order_number = request.data.get("order_number")
+        order_number = (request.data.get("order_number") or "").strip()
         if not order_number:
             return Response({"detail": "order_number is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Look up purely by order_number — no attendee filter so guest
-        # checkouts (attendee=None) and logged-in checkouts both work.
-        order = Order.objects.filter(
-            order_number=order_number,
-            status="pending",
-        ).first()
-
+        order = Order.objects.filter(order_number=order_number, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not pending."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        access_error = _validate_confirmation_access(request, order)
+        if access_error:
+            return access_error
+
         if order.payment_method != "free" or order.total > 0:
             return Response({"detail": "Order is not free."}, status=status.HTTP_400_BAD_REQUEST)
 
-        order.status = "confirmed"
-        order.save(update_fields=["status"])
-        
-        # Create Ticket rows for each item in the free order
-        tickets_to_create = []
-        for item in order.items.all():
-            for _ in range(item.quantity):
-                tickets_to_create.append(
-                    Ticket(
-                        order=order,
-                        order_item=item,
-                        event=order.event,
-                        ticket_type=item.ticket_type,
-                        attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
-                        attendee_email=order.attendee_email,
-                        status="valid",
-                        qr_code_data=uuid.uuid4(),
-                    )
-                )
-        if tickets_to_create:
-            Ticket.objects.bulk_create(tickets_to_create)
-
-        # Fire notification
-        if order.attendee:
-            create_notification(
-                recipient=order.attendee,
-                notification_type="ticket_confirmed",
-                title="Your free tickets are confirmed! 🎉",
-                message=(
-                    f"Your order #{order.order_number} for "
-                    f"{order.event.title if order.event else 'the event'} has been confirmed. "
-                    f"Check your tickets below."
-                ),
-                event=order.event,
-                action_url=f"/confirmation/{order.order_number}",
-            )
-            
         try:
-            send_ticket_email(order)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(
-                f"Email failed for free order {order.order_number}: {e.__class__.__name__} - {e}"
-            )
-            pass
+            order, created = _confirm_order_and_issue_tickets(order)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if created:
+            _notify_and_email(order, title="Your free tickets are confirmed! 🎉")
 
         return Response({"success": True, "message": "Free order confirmed."})
 
+
 class SimulatePaymentConfirmView(APIView):
-    """
-    POST /api/payments/simulate/confirm/
-    Accepts: { "order_number": "EH..." }
-    For testing: Immediately forces an order to confirmed, generates tickets, and sends email regardless of price.
-    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        order_number = request.data.get("order_number")
-        try:
-            attendee = request.user if request.user.is_authenticated else None
-        except Exception:
-            attendee = None
-        
-        order = Order.objects.filter(
-            order_number=order_number, 
-            status="pending"
-        ).first()
+        if not getattr(settings, "ENABLE_SIMULATED_PAYMENTS", False):
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        order_number = (request.data.get("order_number") or "").strip()
+        if not order_number:
+            return Response({"detail": "order_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = Order.objects.filter(order_number=order_number, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not pending."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        order.status = "confirmed"
-        order.save(update_fields=["status"])
-        
-        # Create Ticket rows for each item in the order
-        tickets_to_create = []
-        for item in order.items.all():
-            for _ in range(item.quantity):
-                tickets_to_create.append(
-                    Ticket(
-                        order=order,
-                        order_item=item,
-                        event=order.event,
-                        ticket_type=item.ticket_type,
-                        attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
-                        attendee_email=order.attendee_email,
-                        status="valid",
-                        qr_code_data=uuid.uuid4(),
-                    )
-                )
-        if tickets_to_create:
-            Ticket.objects.bulk_create(tickets_to_create)
 
-        # Fire notification
-        if order.attendee:
-            create_notification(
-                recipient=order.attendee,
-                notification_type="ticket_confirmed",
-                title="Your tickets are confirmed! 🎉",
-                message=(
-                    f"Your order #{order.order_number} for "
-                    f"{order.event.title if order.event else 'the event'} has been confirmed. "
-                    f"Check your tickets below."
-                ),
-                event=order.event,
-                action_url=f"/confirmation/{order.order_number}",
-            )
-            
+        access_error = _validate_confirmation_access(request, order)
+        if access_error:
+            return access_error
+
         try:
-            send_ticket_email(order)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(
-                f"Email failed for order {order.order_number}: {e.__class__.__name__} - {e}"
-            )
-            # Don't block the user — ticket is already saved in the DB.
-            # They can always resend from the admin panel.
-            pass
+            order, created = _confirm_order_and_issue_tickets(order)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if created:
+            _notify_and_email(order, title="Your tickets are confirmed! 🎉")
 
         return Response({"success": True, "message": "Order confirmed. Ticket email dispatched."})
-
 
 
 @csrf_exempt
@@ -200,49 +231,18 @@ def stripe_webhook(request: HttpRequest) -> HttpResponse:
             payment = Payment.objects.select_related("order").get(stripe_payment_intent_id=pi_id)
         except Payment.DoesNotExist:
             return HttpResponse(status=200)
+
         payment.status = "succeeded"
         payment.raw_response = intent
         payment.save(update_fields=["status", "raw_response"])
-        order = payment.order
-        if order.status != "confirmed":
-            order.status = "confirmed"
-            order.save(update_fields=["status"])
-            
-            # Create Ticket rows for each item in the order
-            tickets_to_create = []
-            for item in order.items.all():
-                for _ in range(item.quantity):
-                    tickets_to_create.append(
-                        Ticket(
-                            order=order,
-                            order_item=item,
-                            event=order.event,
-                            ticket_type=item.ticket_type,
-                            attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
-                            attendee_email=order.attendee_email,
-                            status="valid",
-                            qr_code_data=uuid.uuid4(),
-                        )
-                    )
-            if tickets_to_create:
-                Ticket.objects.bulk_create(tickets_to_create)
 
-            # Fire in-app notification
-            if order.attendee:
-                create_notification(
-                    recipient=order.attendee,
-                    notification_type="ticket_confirmed",
-                    title="Your tickets are confirmed! 🎉",
-                    message=(
-                        f"Your order #{order.order_number} for "
-                        f"{order.event.title if order.event else 'the event'} has been confirmed. "
-                        f"Check your tickets below."
-                    ),
-                    event=order.event,
-                    action_url=f"/confirmation/{order.order_number}",
-                )
-            
-            send_ticket_email(order)
+        try:
+            order, created = _confirm_order_and_issue_tickets(payment.order)
+        except ValueError:
+            return HttpResponse(status=200)
+
+        if created:
+            _notify_and_email(order, title="Your tickets are confirmed! 🎉")
 
     return HttpResponse(status=200)
 
@@ -251,23 +251,28 @@ class MpesaInitiateView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        order_number = request.data.get("order_number")
-        phone = request.data.get("phone")
-        try:
-            attendee = request.user if request.user.is_authenticated else None
-        except Exception:
-            attendee = None
-        order = Order.objects.filter(order_number=order_number, attendee=attendee, status="pending").first()
+        order_number = (request.data.get("order_number") or "").strip()
+        phone = (request.data.get("phone") or "").strip()
+        if not order_number:
+            return Response({"detail": "order_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = Order.objects.filter(order_number=order_number, status="pending").first()
         if not order:
             return Response({"detail": "Order not found or not payable."}, status=status.HTTP_400_BAD_REQUEST)
+
+        access_error = _validate_confirmation_access(request, order)
+        if access_error:
+            return access_error
+
         if not phone:
             return Response({"detail": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
         service = MpesaService()
         try:
             payment = service.stk_push(order, phone_number=phone)
             return Response({"checkout_request_id": payment.mpesa_checkout_request_id}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"detail": f"Mpesa Service unavailable: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"detail": f"Mpesa Service unavailable: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @csrf_exempt
@@ -294,13 +299,12 @@ class MpesaQueryView(APIView):
             payment = Payment.objects.select_related("order").get(mpesa_checkout_request_id=checkout_request_id)
         except Payment.DoesNotExist:
             return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+
         try:
             attendee = request.user if request.user.is_authenticated else None
         except Exception:
             attendee = None
         if payment.order.attendee != attendee:
             return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
-        
-        return Response({"status": payment.status}, status=status.HTTP_200_OK)
 
+        return Response({"status": payment.status}, status=status.HTTP_200_OK)

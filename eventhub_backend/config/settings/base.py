@@ -251,3 +251,6 @@ AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
 # Rate limiting (django-ratelimit uses per-view decorators; add shared toggles here)
 RATELIMIT_ENABLE = env.bool("RATELIMIT_ENABLE", default=True)
 
+# Payments simulation mode (safe-by-default off unless explicitly enabled per environment)
+ENABLE_SIMULATED_PAYMENTS = env.bool("ENABLE_SIMULATED_PAYMENTS", default=False)
+SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS = env.int("SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS", default=3600)

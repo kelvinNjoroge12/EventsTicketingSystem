@@ -9,21 +9,21 @@ import PaymentForm from '../components/checkout/PaymentForm';
 import { fetchEvent } from '../lib/eventsApi';
 import { api } from '../lib/apiClient';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
+
+const SIMULATED_PAYMENTS_ENABLED =
+  import.meta.env.VITE_ENABLE_SIMULATED_PAYMENTS === 'true' || import.meta.env.DEV;
 
 const CheckoutPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { cart } = useCart();
-  const { user, token } = useAuth();
 
   const [event, setEvent] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [attendeeData, setAttendeeData] = useState(null);
-  const [orderNumber, setOrderNumber] = useState(null);
+  const [orderContext, setOrderContext] = useState(null);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   const steps = [
     { id: 'attendee', number: 1, label: 'Your Details' },
@@ -66,10 +66,9 @@ const CheckoutPage = () => {
     setError('');
 
     try {
-      // 1. Create the order (requires auth)
-      let currentOrderNumber = orderNumber;
-
-      if (!currentOrderNumber) {
+      // 1. Create pending order once and reuse it while user retries payment.
+      let currentOrderContext = orderContext;
+      if (!currentOrderContext?.orderNumber) {
         const payload = {
           event_slug: slug,
           items: (cart.items || []).map(item => ({
@@ -86,78 +85,63 @@ const CheckoutPage = () => {
           attendee_phone: attendeeData.phone,
         };
 
-        try {
-          const order = await api.post('/api/orders/create/', payload);
-          currentOrderNumber = order.order_number || order.data?.order_number;
-          setOrderNumber(currentOrderNumber);
-        } catch (orderErr) {
-          // If not authenticated, generate a local reference number for demo
-          if (orderErr?.response?.status === 401 || orderErr?.status === 401) {
-            currentOrderNumber = `ORD-${Date.now()}`;
-            setOrderNumber(currentOrderNumber);
-          } else {
-            throw orderErr;
-          }
+        const order = await api.post('/api/orders/create/', payload);
+        const createdOrderNumber = order?.order_number;
+        const simulationToken = order?.simulation_token;
+        const orderStatus = order?.status;
+        if (!createdOrderNumber) {
+          throw new Error('Order creation failed. Please try again.');
         }
+
+        currentOrderContext = {
+          orderNumber: createdOrderNumber,
+          simulationToken: simulationToken || '',
+          status: orderStatus || 'pending',
+        };
+        setOrderContext(currentOrderContext);
       }
 
-      // 2. Handle payment method
+      const confirmationPayload = {
+        order_number: currentOrderContext.orderNumber,
+        simulation_token: currentOrderContext.simulationToken,
+        attendee_email: attendeeData.email,
+      };
+
+      // 2. Handle payment and only navigate after backend confirms order.
       if (cart.total === 0) {
-        // Free ticket
-        try {
-          await api.post('/api/payments/free/confirm/', { order_number: currentOrderNumber });
-        } catch {
-          // non-critical — navigate anyway
+        if (currentOrderContext.status !== 'confirmed') {
+          await api.post('/api/payments/free/confirm/', confirmationPayload);
         }
         setIsProcessing(false);
-        navigate(`/confirmation/${currentOrderNumber}`, {
-          state: { event, orderId: currentOrderNumber, attendeeData, paymentData, cart },
+        navigate(`/confirmation/${currentOrderContext.orderNumber}`, {
+          state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
+        });
+        return;
+      }
+
+      if (SIMULATED_PAYMENTS_ENABLED) {
+        await api.post('/api/payments/simulate/confirm/', confirmationPayload);
+        setIsProcessing(false);
+        navigate(`/confirmation/${currentOrderContext.orderNumber}`, {
+          state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
         });
         return;
       }
 
       if (paymentData.paymentMethod === 'card') {
-        // Stripe — in demo mode just advance (no real charge)
-        try {
-          await api.post('/api/payments/stripe/create-intent/', {
-            order_number: currentOrderNumber,
-          });
-        } catch {
-          // Stripe not configured yet — fallback to backend simulation
-          try {
-            await api.post('/api/payments/simulate/confirm/', { order_number: currentOrderNumber });
-          } catch (e) {
-            console.error("Simulation fallback failed", e)
-            throw e;
-          }
-        }
+        await api.post('/api/payments/stripe/create-intent/', confirmationPayload);
+        setError('Payment intent created. Complete the Stripe frontend confirmation step to finalize the order.');
         setIsProcessing(false);
-        navigate(`/confirmation/${currentOrderNumber}`, {
-          state: { event, orderId: currentOrderNumber, attendeeData, paymentData, cart },
-        });
         return;
       }
 
       if (paymentData.paymentMethod === 'mpesa') {
-        // M-Pesa — in demo mode just advance
-        try {
-          await api.post('/api/payments/mpesa/initiate/', {
-            order_number: currentOrderNumber,
-            phone: paymentData.mpesaPhone,
-          });
-        } catch {
-          // M-Pesa not configured yet — fallback to backend simulation
-          try {
-            await api.post('/api/payments/simulate/confirm/', { order_number: currentOrderNumber });
-          } catch (e) {
-            console.error("Simulation fallback failed", e)
-            throw e;
-          }
-        }
-        setIsProcessing(false);
-        navigate(`/confirmation/${currentOrderNumber}`, {
-          state: { event, orderId: currentOrderNumber, attendeeData, paymentData, cart },
+        await api.post('/api/payments/mpesa/initiate/', {
+          ...confirmationPayload,
+          phone: paymentData.mpesaPhone,
         });
+        setError('M-Pesa request initiated. Complete callback confirmation before showing success.');
+        setIsProcessing(false);
         return;
       }
 
@@ -191,7 +175,7 @@ const CheckoutPage = () => {
       <PageWrapper>
         <div className="max-w-7xl mx-auto px-4 py-24 flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-[#1E4DB7]" />
-          <p className="text-[#64748B]">Loading checkout…</p>
+          <p className="text-[#64748B]">Loading checkout...</p>
         </div>
       </PageWrapper>
     );
@@ -280,7 +264,7 @@ const CheckoutPage = () => {
                       <div className="p-6 rounded-2xl border border-[#E2E8F0] bg-white text-center">
                         <CheckCircle2 className="w-14 h-14 mx-auto mb-3 text-[#16A34A]" />
                         <h2 className="text-xl font-semibold text-[#0F172A] mb-1">Free Ticket</h2>
-                        <p className="text-[#64748B] text-sm">No payment needed — click below to claim your ticket.</p>
+                        <p className="text-[#64748B] text-sm">No payment needed - click below to claim your ticket.</p>
                       </div>
                       <button
                         disabled={isProcessing}
@@ -289,7 +273,7 @@ const CheckoutPage = () => {
                         style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}
                       >
                         {isProcessing
-                          ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing…</>
+                          ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
                           : 'Claim Free Ticket'}
                       </button>
                     </div>
@@ -308,7 +292,7 @@ const CheckoutPage = () => {
                       onClick={() => { setCurrentStep(0); setError(''); }}
                       className="text-[#64748B] hover:text-[#0F172A] text-sm font-medium"
                     >
-                      ← Back to details
+                      &larr; Back to details
                     </button>
                   </div>
                 </motion.div>
@@ -349,7 +333,7 @@ const CheckoutPage = () => {
                     {(cart.items || []).map((item, idx) => (
                       <div key={idx} className="flex justify-between">
                         <span className="text-[#64748B]">
-                          {item.ticketType} × {item.quantity}
+                          {item.ticketType} x {item.quantity}
                         </span>
                         <span className="font-medium text-[#0F172A]">
                           {currency} {((item.unitPrice || 0) * (item.quantity || 1)).toLocaleString()}
@@ -389,7 +373,7 @@ const CheckoutPage = () => {
                   {/* Trust badge */}
                   <div className="flex items-center justify-center gap-1.5 text-xs text-[#94A3B8] pt-2">
                     <span>🔒</span>
-                    <span>Secure · Instant QR ticket · SSL encrypted</span>
+                    <span>Secure - Instant QR ticket - SSL encrypted</span>
                   </div>
                 </div>
               </div>

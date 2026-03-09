@@ -13,11 +13,12 @@ import { format } from 'date-fns';
 import PageWrapper from '../components/layout/PageWrapper';
 import EventCard from '../components/cards/EventCard';
 import CustomButton from '../components/ui/CustomButton';
-import { fetchEvents } from '../lib/eventsApi';
-import { useQuery } from '@tanstack/react-query';
+import { fetchEvent, fetchEvents } from '../lib/eventsApi';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
+import eventQueryKeys from '../lib/eventQueryKeys';
 
 // Define filter cards styling statically 
 const filterCards = [
@@ -44,6 +45,7 @@ const FilterCardWrapper = ({ title, icon: Icon, hoverClass, children }) => (
 );
 
 const EventsPage = () => {
+  const queryClient = useQueryClient();
   // Filter states
   const [filters, setFilters] = useState({
     category: '',
@@ -57,9 +59,44 @@ const EventsPage = () => {
 
   // Fetch all events via React Query (cached with staleTime configuration in main.jsx)
   const { data: allEvents = [], isLoading } = useQuery({
-    queryKey: ['events', 'all'],
-    queryFn: () => fetchEvents()
+    queryKey: eventQueryKeys.list({ ordering: 'start_date' }),
+    queryFn: () => fetchEvents({ ordering: 'start_date' })
   });
+
+  useEffect(() => {
+    if (!allEvents.length) return undefined;
+    let cancelled = false;
+    let idleId = null;
+    let timerId = null;
+
+    const warmLikelyClicks = () => {
+      allEvents.slice(0, 8).forEach((event, index) => {
+        setTimeout(() => {
+          if (cancelled || !event?.slug) return;
+          const detailKey = eventQueryKeys.detail(event.slug);
+          const state = queryClient.getQueryState(detailKey);
+          if (state?.dataUpdatedAt && Date.now() - state.dataUpdatedAt < 5 * 60 * 1000) return;
+          queryClient.prefetchQuery({
+            queryKey: detailKey,
+            queryFn: () => fetchEvent(event.slug),
+            staleTime: 5 * 60 * 1000,
+          });
+        }, index * 140);
+      });
+    };
+
+    if ('requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(warmLikelyClicks, { timeout: 2200 });
+    } else {
+      timerId = setTimeout(warmLikelyClicks, 420);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId && 'cancelIdleCallback' in window) window.cancelIdleCallback(idleId);
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [allEvents, queryClient]);
 
   // Filter and sort events
   const filteredEvents = useMemo(() => {
