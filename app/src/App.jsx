@@ -25,6 +25,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const MyTicketsPage = lazy(() => import('./pages/MyTicketsPage'));
+const FindTicketPage = lazy(() => import('./pages/FindTicketPage'));
 const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage'));
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
 const OrganizerDashboardPage = lazy(() => import('./pages/OrganizerDashboardPage'));
@@ -69,6 +70,7 @@ const AppRoutes = () => {
         <Route path="/forgot-password" element={<Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense>} />
         <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense>} />
         <Route path="/organizer-profile" element={<Suspense fallback={<PageLoader />}><OrganizerProfilePage /></Suspense>} />
+        <Route path="/find-ticket" element={<Suspense fallback={<PageLoader />}><FindTicketPage /></Suspense>} />
         <Route path="/my-tickets" element={<Suspense fallback={<PageLoader />}><MyTicketsPage /></Suspense>} />
         <Route path="/settings" element={<Suspense fallback={<PageLoader />}><AccountSettingsPage /></Suspense>} />
         <Route path="/organizer-dashboard" element={<Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>} />

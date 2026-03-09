@@ -220,9 +220,10 @@ const Navbar = () => {
   // ─── STANDARD / ATTENDEE NAVBAR ───────────────────────────────
   const navLinks = [
     { name: 'Home', path: '/', icon: Home },
-    { name: 'Events', path: '/events', icon: CalendarDays },
-    ...(isAuthenticated ? [{ name: 'My Tickets', path: '/my-tickets', icon: Ticket }] : []),
-    ...(isOrganizer ? [{ name: 'Create Event', path: '/create-event', icon: Plus, highlight: true }] : []),
+    { name: 'Create Event', path: '/create-event', icon: Plus },
+    ...(isAuthenticated ?
+      [{ name: 'My Tickets', path: '/my-tickets', icon: Ticket }] :
+      [{ name: 'Search for My Ticket', path: '/find-ticket', icon: Search }]),
   ];
 
   return (
@@ -239,35 +240,7 @@ const Navbar = () => {
               <span className="text-xl font-bold text-white tracking-tight">EventHub</span>
             </Link>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-1 flex-shrink-0" role="navigation">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className={`
-                    relative px-3 py-2 text-sm font-medium transition-all rounded-lg flex items-center gap-1.5
-                    ${link.highlight
-                      ? 'bg-white text-[#1E4DB7] hover:bg-blue-50 shadow-sm ml-1 font-bold'
-                      : isActive(link.path)
-                        ? 'text-white bg-white/15'
-                        : 'text-white/80 hover:text-white hover:bg-white/10'}
-                  `}
-                >
-                  {link.icon && <link.icon className="w-4 h-4" />}
-                  {link.name}
-                  {isActive(link.path) && !link.highlight && (
-                    <motion.div
-                      layoutId="attendeeNavUnderline"
-                      className="absolute bottom-1 left-2 right-2 h-0.5 bg-white rounded-full"
-                      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    />
-                  )}
-                </Link>
-              ))}
-            </nav>
-
-            {/* Search bar – red outline/lightning */}
+            {/* Search bar – moved to the left after logo */}
             <form
               onSubmit={handleSearch}
               className="hidden md:flex flex-1 max-w-xs items-center"
@@ -289,6 +262,34 @@ const Navbar = () => {
                 </button>
               </div>
             </form>
+
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-1 flex-shrink-0" role="navigation">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className={`
+                    relative px-3 py-2 text-sm font-medium transition-all rounded-lg flex items-center gap-1.5
+                    ${isActive(link.path)
+                      ? 'text-white bg-white/15'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'}
+                  `}
+                >
+                  {link.icon && <link.icon className="w-4 h-4" />}
+                  {link.name}
+                  {isActive(link.path) && (
+                    <motion.div
+                      layoutId="attendeeNavUnderline"
+                      className="absolute bottom-1 left-2 right-2 h-0.5 bg-white rounded-full"
+                      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                    />
+                  )}
+                </Link>
+              ))}
+            </nav>
+
+
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -340,17 +341,18 @@ const Navbar = () => {
                   </AnimatePresence>
                 </div>
               ) : (
-                <div className="hidden md:flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-1">
                   <Link
                     to="/login"
-                    className="text-white text-sm font-semibold px-4 py-2 hover:bg-white/10 rounded-lg transition-colors"
+                    className="text-white/80 text-sm font-semibold px-3 py-2 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
                   >
                     Login
                   </Link>
-                  <Link to="/signup">
-                    <button className="px-4 py-2 rounded-lg bg-white text-[#1E4DB7] text-sm font-bold hover:bg-blue-50 shadow-sm transition-colors border-0">
-                      Sign Up
-                    </button>
+                  <Link
+                    to="/signup"
+                    className="text-white/80 text-sm font-semibold px-3 py-2 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
+                  >
+                    Sign Up
                   </Link>
                 </div>
               )}
@@ -383,7 +385,6 @@ const Navbar = () => {
                     className={`
                       flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors
                       ${isActive(link.path) ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}
-                      ${link.highlight ? 'bg-white !text-[#1E4DB7] font-bold mt-2' : ''}
                     `}
                   >
                     {link.icon && <link.icon className="w-5 h-5" />}
@@ -423,16 +424,12 @@ const Navbar = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <Link to="/login">
-                        <button className="w-full px-4 py-2.5 rounded-xl border-2 border-white text-white text-sm font-semibold hover:bg-white/10 transition-colors">
-                          Login
-                        </button>
+                    <div className="flex flex-col gap-1 pt-2">
+                      <Link to="/login" className="flex items-center gap-3 px-4 py-3 text-white/80 font-medium rounded-xl hover:bg-white/10">
+                        Login
                       </Link>
-                      <Link to="/signup">
-                        <button className="w-full px-4 py-2.5 rounded-xl bg-white text-[#1E4DB7] text-sm font-bold hover:bg-blue-50 transition-colors">
-                          Sign Up
-                        </button>
+                      <Link to="/signup" className="flex items-center gap-3 px-4 py-3 text-white/80 font-medium rounded-xl hover:bg-white/10">
+                        Sign Up
                       </Link>
                     </div>
                   )}
