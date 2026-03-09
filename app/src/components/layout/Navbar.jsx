@@ -95,7 +95,7 @@ const Navbar = () => {
                     key={link.name}
                     to={link.path}
                     className={`
-                      relative px-3 py-2 text-sm font-medium transition-all rounded-lg flex items-center gap-1.5
+                      relative px-4 py-2 text-sm font-medium transition-all rounded-full flex items-center gap-1.5
                       ${isActive(link.path)
                         ? 'text-white bg-white/15'
                         : 'text-white/80 hover:text-white hover:bg-white/10'}
@@ -112,10 +112,15 @@ const Navbar = () => {
                     )}
                   </Link>
                 ))}
-                {/* Create Event – stands out */}
+                {/* Create Event */}
                 <Link
                   to="/create-event"
-                  className="ml-2 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-[#1E4DB7] text-sm font-bold hover:bg-blue-50 shadow-sm transition-colors"
+                  className={`
+                    relative px-4 py-2 text-sm font-medium transition-all rounded-full flex items-center gap-1.5
+                    ${isActive('/create-event')
+                      ? 'text-white bg-white/15'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'}
+                  `}
                 >
                   <Plus className="w-4 h-4" />
                   Create Event
@@ -127,10 +132,14 @@ const Navbar = () => {
                 <div className="relative" ref={profileRef}>
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-white/10 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-sm font-bold border border-white/30">
-                      {user?.name?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+                    <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center text-sm font-bold border border-white/30 overflow-hidden">
+                      {user?.avatar ? (
+                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4" />
+                      )}
                     </div>
                     <span className="text-sm font-medium text-white hidden sm:block">{user?.name?.split(' ')[0]}</span>
                   </button>
@@ -186,7 +195,8 @@ const Navbar = () => {
                     <Link
                       key={link.name}
                       to={link.path}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-5 py-3 rounded-full text-base font-medium transition-colors
                         ${isActive(link.path) ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                     >
                       {link.icon && <link.icon className="w-5 h-5" />}
@@ -195,15 +205,24 @@ const Navbar = () => {
                   ))}
                   <Link
                     to="/create-event"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white text-[#1E4DB7] font-bold mt-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-5 py-3 rounded-full text-base font-medium transition-colors
+                        ${isActive('/create-event') ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                   >
                     <Plus className="w-5 h-5" /> Create Event
                   </Link>
                   <div className="pt-3 mt-3 border-t border-white/10 space-y-1">
-                    <Link to="/settings" className="flex items-center gap-3 px-4 py-3 text-white/80 font-medium rounded-xl hover:bg-white/10">
+                    <Link
+                      to="/settings"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10"
+                    >
                       <Settings className="w-5 h-5" /> Settings
                     </Link>
-                    <button onClick={logout} className="flex items-center gap-3 w-full px-4 py-3 text-left text-white/80 font-medium rounded-xl hover:bg-red-500/20">
+                    <button
+                      onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                      className="flex items-center gap-3 w-full px-5 py-3 text-left text-white/80 font-medium rounded-full hover:bg-red-500/20"
+                    >
                       <LogOut className="w-5 h-5" /> Logout
                     </button>
                   </div>
@@ -270,7 +289,7 @@ const Navbar = () => {
                   key={link.name}
                   to={link.path}
                   className={`
-                    relative px-3 py-2 text-sm font-medium transition-all rounded-lg flex items-center gap-1.5
+                    relative px-4 py-2 text-sm font-medium transition-all rounded-full flex items-center gap-1.5
                     ${isActive(link.path)
                       ? 'text-white bg-white/15'
                       : 'text-white/80 hover:text-white hover:bg-white/10'}
@@ -299,8 +318,12 @@ const Navbar = () => {
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-sm font-bold border border-white/30">
-                      {user.name?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+                    <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center text-sm font-bold border border-white/30 overflow-hidden">
+                      {user?.avatar ? (
+                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4" />
+                      )}
                     </div>
                     <span className="text-sm font-medium text-white hidden sm:block">{user.name?.split(' ')[0]}</span>
                   </button>
@@ -344,13 +367,13 @@ const Navbar = () => {
                 <div className="hidden md:flex items-center gap-1">
                   <Link
                     to="/login"
-                    className="text-white/80 text-sm font-semibold px-3 py-2 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
+                    className="text-white/80 text-sm font-semibold px-4 py-2 hover:bg-white/10 hover:text-white rounded-full transition-colors"
                   >
                     Login
                   </Link>
                   <Link
                     to="/signup"
-                    className="text-white/80 text-sm font-semibold px-3 py-2 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
+                    className="text-white/80 text-sm font-semibold px-4 py-2 hover:bg-white/10 hover:text-white rounded-full transition-colors"
                   >
                     Sign Up
                   </Link>
@@ -378,12 +401,14 @@ const Navbar = () => {
               className="md:hidden border-t border-white/10 bg-[#1E4DB7] overflow-hidden"
             >
               <nav className="px-4 py-4 space-y-1">
-                {navLinks.map((link) => (
+                {/* 1. Home Link */}
+                {navLinks.filter(l => l.name === 'Home').map((link) => (
                   <Link
                     key={link.name}
                     to={link.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
                     className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors
+                      flex items-center gap-3 px-5 py-3 rounded-full text-base font-medium transition-colors
                       ${isActive(link.path) ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}
                     `}
                   >
@@ -392,43 +417,59 @@ const Navbar = () => {
                   </Link>
                 ))}
 
-                {/* Mobile Search */}
-                <form onSubmit={handleSearch} className="pt-2">
+                {/* 2. Mobile Search - Immediately after home */}
+                <form onSubmit={(e) => { handleSearch(e); setIsMobileMenuOpen(false); }} className="py-2">
                   <div className="relative">
                     <input
                       type="text"
                       placeholder="Search events..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-4 pr-10 py-3 rounded-xl bg-white/10 border-2 border-[#ef4444] text-white placeholder:text-white/60 text-sm focus:outline-none focus:bg-white/20 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)]"
+                      className="w-full pl-5 pr-10 py-3 rounded-full bg-white/10 border-2 border-[#ef4444] text-white placeholder:text-white/60 text-sm focus:outline-none focus:bg-white/20 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)] transition-all"
                     />
-                    <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-[#ef4444] text-white">
+                    <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#ef4444] text-white hover:bg-[#dc2626]">
                       <Search className="w-4 h-4" />
                     </button>
                   </div>
                 </form>
 
+                {/* 3. The rest of the navLinks */}
+                {navLinks.filter(l => l.name !== 'Home').map((link) => (
+                  <Link
+                    key={link.name}
+                    to={link.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-5 py-3 rounded-full text-base font-medium transition-colors
+                      ${isActive(link.path) ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}
+                    `}
+                  >
+                    {link.icon && <link.icon className="w-5 h-5" />}
+                    {link.name}
+                  </Link>
+                ))}
+
                 <div className="pt-4 mt-2 border-t border-white/10 space-y-2">
                   {isAuthenticated ? (
                     <div className="flex flex-col gap-1">
                       {isOrganizer && (
-                        <Link to="/organizer-dashboard" className="flex items-center gap-3 px-4 py-3 text-white/80 font-medium rounded-xl hover:bg-white/10">
+                        <Link to="/organizer-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors">
                           <LayoutDashboard className="w-5 h-5" /> Dashboard
                         </Link>
                       )}
-                      <Link to="/settings" className="flex items-center gap-3 px-4 py-3 text-white/80 font-medium rounded-xl hover:bg-white/10">
+                      <Link to="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors">
                         <Settings className="w-5 h-5" /> Settings
                       </Link>
-                      <button onClick={logout} className="flex items-center gap-3 w-full px-4 py-3 text-left text-white/80 font-medium rounded-xl hover:bg-red-500/20">
+                      <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 w-full px-5 py-3 text-left text-white/80 font-medium rounded-full hover:bg-red-500/20 transition-colors">
                         <LogOut className="w-5 h-5" /> Logout
                       </button>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1 pt-2">
-                      <Link to="/login" className="flex items-center gap-3 px-4 py-3 text-white/80 font-medium rounded-xl hover:bg-white/10">
+                      <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors">
                         Login
                       </Link>
-                      <Link to="/signup" className="flex items-center gap-3 px-4 py-3 text-white/80 font-medium rounded-xl hover:bg-white/10">
+                      <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors">
                         Sign Up
                       </Link>
                     </div>
