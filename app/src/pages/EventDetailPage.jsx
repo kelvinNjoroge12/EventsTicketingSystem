@@ -161,28 +161,8 @@ const EventDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [navOffset, setNavOffset] = useState(64);
-  const [isTabSticky, setIsTabSticky] = useState(false);
 
   const contentStartRef = useRef(null);
-  const tabBarRef = useRef(null);
-
-  const getNavHeight = () => {
-    const header = document.querySelector('header');
-    return header?.getBoundingClientRect().height || 64;
-  };
-
-  const getTabHeight = () =>
-    tabBarRef.current?.getBoundingClientRect().height || 52;
-
-  const scrollTabBarIntoView = (behavior = 'smooth') => {
-    const bar = tabBarRef.current;
-    if (!bar) return;
-    const navHeight = getNavHeight();
-    const top = bar.getBoundingClientRect().top;
-    const y = top + window.scrollY - (navHeight + 8);
-    window.scrollTo({ top: y, behavior });
-  };
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -191,39 +171,18 @@ const EventDetailPage = () => {
     // If we scroll mid-animation, the document height collapse breaks the smooth scroll
     // and hides the new headings behind the sticky tab bar.
     setTimeout(() => {
-      scrollTabBarIntoView('smooth');
+      if (contentStartRef.current) {
+        const top = contentStartRef.current.getBoundingClientRect().top;
+        // 64px is the height of the main top Navbar. If the top of our content 
+        // is hiding above the Navbar (because user scrolled down), auto-scroll it back.
+        if (top < 64) {
+          const y = top + window.scrollY - 64;
+          // Subtly offset by 5px so the sticky tab bar sits perfectly flush under Navbar
+          window.scrollTo({ top: y - 5, behavior: 'smooth' });
+        }
+      }
     }, 250);
   };
-
-  useEffect(() => {
-    const updateNavOffset = () => setNavOffset(getNavHeight());
-    updateNavOffset();
-    window.addEventListener('resize', updateNavOffset);
-    return () => window.removeEventListener('resize', updateNavOffset);
-  }, []);
-
-  useEffect(() => {
-    let rafId = null;
-    const onScroll = () => {
-      if (rafId) return;
-      rafId = window.requestAnimationFrame(() => {
-        rafId = null;
-        const bar = tabBarRef.current;
-        if (!bar) return;
-        const navHeight = getNavHeight();
-        const rect = bar.getBoundingClientRect();
-        setIsTabSticky(rect.top <= navHeight + 1);
-      });
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
-      if (rafId) window.cancelAnimationFrame(rafId);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, []);
 
   // 1. Main event — served from hover-prefetch cache instantly on revisit
   useEffect(() => {
@@ -245,7 +204,6 @@ const EventDetailPage = () => {
     retry: false,
     placeholderData: () => buildEventDetailPlaceholderFromList(placeholderEventFromList),
   });
-
 
   // 2. Related events — low-priority background fetch
   const { data: relatedEvents = [] } = useQuery({
@@ -334,7 +292,7 @@ const EventDetailPage = () => {
     <PageWrapper>
       <ClassicTicketLoader visible={showClassicLoader} />
       {/* ── HERO SECTION ── */}
-      <div className="relative w-full h-[36vh] min-h-[240px] max-h-[360px] md:h-[42vh] md:min-h-[300px] md:max-h-[420px]" style={{ overflow: 'hidden' }}>
+      <div className="relative w-full h-[320px] md:h-[480px]" style={{ overflow: 'hidden' }}>
         {/* Background — proper <img> for LCP priority, falls back to gradient */}
         {event.bannerImage ? (
           <img
@@ -374,7 +332,7 @@ const EventDetailPage = () => {
 
         {/* Content */}
         <div className="absolute inset-0 flex flex-col justify-end">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 w-full">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
             {/* Breadcrumb */}
             <nav className="flex flex-wrap items-center gap-1 sm:gap-2 text-white/70 text-[10px] sm:text-xs mb-4">
               <Link to="/" className="hover:text-white transition-colors">Home</Link>
@@ -484,18 +442,14 @@ const EventDetailPage = () => {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-10 w-full" style={{ overflowX: 'hidden' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full" style={{ overflowX: 'hidden' }}>
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden" ref={contentStartRef}>
 
             {/* ── TABS ── */}
-            <div
-              ref={tabBarRef}
-              className="sticky z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0"
-              style={{ top: navOffset }}
-            >
+            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
               <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full flex-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
                 {tabs.map((tab) => (
                   <button
@@ -516,12 +470,9 @@ const EventDetailPage = () => {
                 ))}
               </div>
             </div>
-            {isTabSticky && (
-              <div aria-hidden="true" style={{ height: `${navOffset}px` }} />
-            )}
 
             {/* ── TAB CONTENT ── */}
-            <div className="min-h-[50vh] pt-2">
+            <div className="min-h-[50vh]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
