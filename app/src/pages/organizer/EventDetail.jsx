@@ -15,7 +15,20 @@ import {
   Mail,
   X,
   Plus,
+  Tag,
+  Trash2,
+  Power,
+  Mic,
+  CalendarRange,
+  Award,
+  Ticket,
+  Pencil,
+  ToggleLeft,
+  ToggleRight,
+  ClipboardList,
+  Palette
 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,6 +94,277 @@ const OrganizerEventDetail = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [savingQuickEdit, setSavingQuickEdit] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const queryClient = useQueryClient();
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoForm, setPromoForm] = useState({
+    code: '',
+    discount_type: 'percent',
+    discount_value: '',
+    usage_limit: '',
+    expiry: '',
+    is_active: true
+  });
+
+  const { data: promoCodesData, isLoading: isPromoCodesLoading } = useQuery({
+    queryKey: ['promo_codes', detail?.slug],
+    queryFn: async () => {
+      const response = await api.get(`/api/events/${detail?.slug}/promo-codes/`);
+      return Array.isArray(response?.results) ? response.results : (Array.isArray(response) ? response : []);
+    },
+    enabled: !!detail?.slug,
+  });
+
+  const createPromoMutation = useMutation({
+    mutationFn: async (payload) => api.post(`/api/events/${detail?.slug}/promo-codes/`, payload),
+    onSuccess: () => {
+      toast.success('Promo code created successfully.');
+      setShowPromoModal(false);
+      setPromoForm({
+        code: '',
+        discount_type: 'percent',
+        discount_value: '',
+        usage_limit: '',
+        expiry: '',
+        is_active: true
+      });
+      queryClient.invalidateQueries({ queryKey: ['promo_codes', detail?.slug] });
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to create promo code.');
+    }
+  });
+
+  const deletePromoMutation = useMutation({
+    mutationFn: async (id) => api.delete(`/api/events/${detail?.slug}/promo-codes/${id}/`),
+    onSuccess: () => {
+      toast.success('Promo code deleted.');
+      queryClient.invalidateQueries({ queryKey: ['promo_codes', detail?.slug] });
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to delete promo code.');
+    }
+  });
+
+  const togglePromoMutation = useMutation({
+    mutationFn: async ({ id, is_active }) => api.patch(`/api/events/${detail?.slug}/promo-codes/${id}/`, { is_active }),
+    onSuccess: () => {
+      toast.success('Promo code status updated.');
+      queryClient.invalidateQueries({ queryKey: ['promo_codes', detail?.slug] });
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to update promo code.');
+    }
+  });
+
+  const handleCreatePromo = () => {
+    if (!promoForm.code || !promoForm.discount_value) {
+      toast.error('Code and discount value are required.');
+      return;
+    }
+    const payload = {
+      code: promoForm.code.toUpperCase().replace(/\s+/g, ''),
+      discount_type: promoForm.discount_type,
+      discount_value: Number(promoForm.discount_value),
+      is_active: promoForm.is_active,
+    };
+    if (promoForm.usage_limit) payload.usage_limit = Number(promoForm.usage_limit);
+    if (promoForm.expiry) payload.expiry = new Date(promoForm.expiry).toISOString();
+
+    createPromoMutation.mutate(payload);
+  };
+
+  // ── Ticket Management ──
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [editingTicket, setEditingTicket] = useState(null);
+  const [ticketForm, setTicketForm] = useState({
+    name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true
+  });
+
+  const { data: managedTickets = [], isLoading: isManagedTicketsLoading } = useQuery({
+    queryKey: ['managed_tickets', detail?.slug],
+    queryFn: async () => {
+      const res = await api.get(`/api/events/${detail?.slug}/tickets/`);
+      return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    },
+    enabled: !!detail?.slug,
+  });
+
+  const createTicketMutation = useMutation({
+    mutationFn: async (payload) => api.post(`/api/events/${detail?.slug}/tickets/create/`, payload),
+    onSuccess: () => {
+      toast.success('Ticket tier created.');
+      setShowTicketModal(false);
+      setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
+      queryClient.invalidateQueries({ queryKey: ['managed_tickets', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to create ticket tier.')
+  });
+
+  const updateTicketMutation = useMutation({
+    mutationFn: async ({ id, ...payload }) => api.patch(`/api/events/${detail?.slug}/tickets/${id}/`, payload),
+    onSuccess: () => {
+      toast.success('Ticket tier updated.');
+      setShowTicketModal(false);
+      setEditingTicket(null);
+      setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
+      queryClient.invalidateQueries({ queryKey: ['managed_tickets', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to update ticket tier.')
+  });
+
+  const toggleTicketMutation = useMutation({
+    mutationFn: async ({ id, is_active }) => api.patch(`/api/events/${detail?.slug}/tickets/${id}/`, { is_active }),
+    onSuccess: () => {
+      toast.success('Ticket sales status updated.');
+      queryClient.invalidateQueries({ queryKey: ['managed_tickets', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to toggle ticket.')
+  });
+
+  const deleteTicketMutation = useMutation({
+    mutationFn: async (id) => api.delete(`/api/events/${detail?.slug}/tickets/${id}/`),
+    onSuccess: () => {
+      toast.success('Ticket tier deleted.');
+      queryClient.invalidateQueries({ queryKey: ['managed_tickets', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to delete ticket tier.')
+  });
+
+  const openEditTicket = (ticket) => {
+    setEditingTicket(ticket);
+    setTicketForm({
+      name: ticket.name || '',
+      ticket_class: ticket.ticket_class || 'paid',
+      price: ticket.price ?? '',
+      quantity: ticket.quantity ?? '',
+      description: ticket.description || '',
+      is_active: ticket.is_active ?? true
+    });
+    setShowTicketModal(true);
+  };
+
+  const handleSaveTicket = () => {
+    if (!ticketForm.name || !ticketForm.quantity) {
+      toast.error('Name and quantity are required.');
+      return;
+    }
+    const payload = {
+      name: ticketForm.name,
+      ticket_class: ticketForm.ticket_class,
+      price: Number(ticketForm.price || 0),
+      quantity: Number(ticketForm.quantity),
+      description: ticketForm.description,
+      is_active: ticketForm.is_active,
+    };
+    if (editingTicket) {
+      updateTicketMutation.mutate({ id: editingTicket.id, ...payload });
+    } else {
+      createTicketMutation.mutate(payload);
+    }
+  };
+
+  const [showSpeakerModal, setShowSpeakerModal] = useState(false);
+  const [speakerForm, setSpeakerForm] = useState({
+    name: '', title: '', organization: '', bio: '', twitter: '', linkedin: '', is_mc: false, sort_order: 0
+  });
+
+  const [showSponsorModal, setShowSponsorModal] = useState(false);
+  const [sponsorForm, setSponsorForm] = useState({
+    name: '', website: '', tier: 'partner', sort_order: 0
+  });
+
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: 0
+  });
+
+  const { data: speakersData = [], isLoading: isSpeakersLoading } = useQuery({
+    queryKey: ['speakers', detail?.slug],
+    queryFn: async () => {
+      const res = await api.get(`/api/events/${detail?.slug}/speakers/`);
+      return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    },
+    enabled: !!detail?.slug,
+  });
+
+  const { data: sponsorsData = [], isLoading: isSponsorsLoading } = useQuery({
+    queryKey: ['sponsors', detail?.slug],
+    queryFn: async () => {
+      const res = await api.get(`/api/events/${detail?.slug}/sponsors/`);
+      return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    },
+    enabled: !!detail?.slug,
+  });
+
+  const { data: scheduleData = [], isLoading: isScheduleLoading } = useQuery({
+    queryKey: ['schedule', detail?.slug],
+    queryFn: async () => {
+      const res = await api.get(`/api/events/${detail?.slug}/schedule/`);
+      return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    },
+    enabled: !!detail?.slug,
+  });
+
+  const createSpeakerMutation = useMutation({
+    mutationFn: async (payload) => api.post(`/api/events/${detail?.slug}/speakers/`, payload),
+    onSuccess: () => {
+      toast.success('Speaker added.');
+      setShowSpeakerModal(false);
+      setSpeakerForm({ name: '', title: '', organization: '', bio: '', twitter: '', linkedin: '', is_mc: false, sort_order: 0 });
+      queryClient.invalidateQueries({ queryKey: ['speakers', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to add speaker.')
+  });
+
+  const deleteSpeakerMutation = useMutation({
+    mutationFn: async (id) => api.delete(`/api/events/${detail?.slug}/speakers/${id}/`),
+    onSuccess: () => {
+      toast.success('Speaker removed.');
+      queryClient.invalidateQueries({ queryKey: ['speakers', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to remove speaker.')
+  });
+
+  const createSponsorMutation = useMutation({
+    mutationFn: async (payload) => api.post(`/api/events/${detail?.slug}/sponsors/`, payload),
+    onSuccess: () => {
+      toast.success('Sponsor added.');
+      setShowSponsorModal(false);
+      setSponsorForm({ name: '', website: '', tier: 'partner', sort_order: 0 });
+      queryClient.invalidateQueries({ queryKey: ['sponsors', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to add sponsor.')
+  });
+
+  const deleteSponsorMutation = useMutation({
+    mutationFn: async (id) => api.delete(`/api/events/${detail?.slug}/sponsors/${id}/`),
+    onSuccess: () => {
+      toast.success('Sponsor removed.');
+      queryClient.invalidateQueries({ queryKey: ['sponsors', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to remove sponsor.')
+  });
+
+  const createScheduleMutation = useMutation({
+    mutationFn: async (payload) => api.post(`/api/events/${detail?.slug}/schedule/`, payload),
+    onSuccess: () => {
+      toast.success('Schedule item added.');
+      setShowScheduleModal(false);
+      setScheduleForm({ title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: 0 });
+      queryClient.invalidateQueries({ queryKey: ['schedule', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to add schedule item.')
+  });
+
+  const deleteScheduleMutation = useMutation({
+    mutationFn: async (id) => api.delete(`/api/events/${detail?.slug}/schedule/${id}/`),
+    onSuccess: () => {
+      toast.success('Schedule item removed.');
+      queryClient.invalidateQueries({ queryKey: ['schedule', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to remove schedule item.')
+  });
+
   const [quickEdit, setQuickEdit] = useState(() => ({
     title: detail?.title || detail?.name || '',
     description: detail?.description || '',
@@ -88,7 +372,36 @@ const OrganizerEventDetail = ({
     time: detail?.startTime || detail?.time || '',
     location: detail?.venueName || detail?.location || '',
     address: detail?.address || '',
+    theme_color: detail?.theme_color || '#1E4DB7',
+    accent_color: detail?.accent_color || '#7C3AED',
   }));
+
+  const { data: waitlistUsers = [], isLoading: isWaitlistLoading } = useQuery({
+    queryKey: ['waitlist', detail?.slug],
+    queryFn: async () => {
+      const res = await api.get(`/api/events/${detail?.slug}/waitlist/`);
+      return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    },
+    enabled: !!detail?.slug,
+  });
+
+  const notifyWaitlistMutation = useMutation({
+    mutationFn: async (id) => api.post(`/api/events/${detail?.slug}/waitlist/${id}/notify/`),
+    onSuccess: () => {
+      toast.success('Waitlist entry notified successfully.');
+      queryClient.invalidateQueries({ queryKey: ['waitlist', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to notify entry.')
+  });
+
+  const deleteWaitlistMutation = useMutation({
+    mutationFn: async (id) => api.delete(`/api/events/${detail?.slug}/waitlist/${id}/`),
+    onSuccess: () => {
+      toast.success('Waitlist entry removed.');
+      queryClient.invalidateQueries({ queryKey: ['waitlist', detail?.slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to remove entry.')
+  });
 
   useEffect(() => {
     if (!detail) return;
@@ -99,6 +412,8 @@ const OrganizerEventDetail = ({
       time: detail.startTime || detail.time || '',
       location: detail.venueName || detail.location || '',
       address: detail.address || '',
+      theme_color: detail.theme_color || '#1E4DB7',
+      accent_color: detail.accent_color || '#7C3AED',
     });
   }, [detail]);
 
@@ -173,6 +488,8 @@ const OrganizerEventDetail = ({
         start_time: quickEdit.time,
         venue_name: quickEdit.location,
         venue_address: quickEdit.address,
+        theme_color: quickEdit.theme_color,
+        accent_color: quickEdit.accent_color,
       });
       toast.success('Event updated');
       if (onRefreshEvent) onRefreshEvent();
@@ -239,8 +556,15 @@ const OrganizerEventDetail = ({
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview" className="text-xs lg:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="tickets" className="text-xs lg:text-sm">Tickets</TabsTrigger>
           <TabsTrigger value="attendees" className="text-xs lg:text-sm">Attendees</TabsTrigger>
+          <TabsTrigger value="waitlist" className="text-xs lg:text-sm">Waitlist</TabsTrigger>
           <TabsTrigger value="analytics" className="text-xs lg:text-sm">Analytics</TabsTrigger>
+          <TabsTrigger value="promocodes" className="text-xs lg:text-sm">Promo Codes</TabsTrigger>
+          <TabsTrigger value="speakers" className="text-xs lg:text-sm">Speakers</TabsTrigger>
+          <TabsTrigger value="schedule" className="text-xs lg:text-sm">Schedule</TabsTrigger>
+          <TabsTrigger value="sponsors" className="text-xs lg:text-sm">Sponsors</TabsTrigger>
+          <TabsTrigger value="design" className="text-xs lg:text-sm">Design</TabsTrigger>
           <TabsTrigger value="edit" className="text-xs lg:text-sm">Edit Event</TabsTrigger>
         </TabsList>
 
@@ -589,9 +913,8 @@ const OrganizerEventDetail = ({
                   <button
                     key={option.id}
                     onClick={() => setEntryView(option.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                      entryView === option.id ? 'bg-[#1E4DB7] text-white border-[#1E4DB7]' : 'border-[#E2E8F0] text-gray-600'
-                    }`}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${entryView === option.id ? 'bg-[#1E4DB7] text-white border-[#1E4DB7]' : 'border-[#E2E8F0] text-gray-600'
+                      }`}
                   >
                     {option.label}
                   </button>
@@ -655,6 +978,307 @@ const OrganizerEventDetail = ({
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="promocodes" className="space-y-4 lg:space-y-6">
+          <Card>
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Promo Codes</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Manage discount codes for your ticket buyers.</p>
+              </div>
+              <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowPromoModal(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Create Promo Code
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isPromoCodesLoading ? (
+                <p className="text-sm text-gray-500">Loading promo codes...</p>
+              ) : promoCodesData && promoCodesData.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase">Code</th>
+                        <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase">Discount</th>
+                        <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase">Usage</th>
+                        <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {promoCodesData.map((promo) => (
+                        <tr key={promo.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <Tag className="w-4 h-4 text-[#C58B1A]" />
+                              <span className="font-bold text-[#0F172A]">{promo.code}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm font-medium text-[#0F172A]">
+                            {promo.discount_type === 'percent' ? `${promo.discount_value}%` : formatMoney(promo.discount_value)}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-500">
+                            {promo.times_used} {promo.usage_limit ? `/ ${promo.usage_limit}` : 'uses'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={promo.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'} variant="outline">
+                              {promo.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-right flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={promo.is_active ? "Deactivate" : "Activate"}
+                              onClick={() => togglePromoMutation.mutate({ id: promo.id, is_active: !promo.is_active })}
+                              className="text-gray-400 hover:text-[#1E4DB7]"
+                            >
+                              <Power className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deletePromoMutation.mutate(promo.id)}
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Tag className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-[#0F172A] font-medium text-sm">No promo codes</p>
+                  <p className="text-gray-500 text-xs mt-1">Create discount codes to boost ticket sales.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tickets" className="space-y-4 lg:space-y-6">
+          <Card>
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Ticket Tiers</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Manage pricing, quantities, and sales status for each tier.</p>
+              </div>
+              <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => { setEditingTicket(null); setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true }); setShowTicketModal(true); }}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Ticket Tier
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isManagedTicketsLoading ? (
+                <p className="text-sm text-gray-500">Loading tickets...</p>
+              ) : managedTickets && managedTickets.length > 0 ? (
+                <div className="space-y-3">
+                  {managedTickets.map(ticket => {
+                    const soldPct = ticket.quantity ? Math.round((ticket.quantity_sold / ticket.quantity) * 100) : 0;
+                    return (
+                      <div key={ticket.id} className="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Ticket className="w-4 h-4 text-[#C58B1A]" />
+                              <h4 className="font-bold text-[#0F172A]">{ticket.name}</h4>
+                              <Badge className={ticket.is_active ? 'bg-green-100 text-green-700 text-[10px]' : 'bg-gray-100 text-gray-500 text-[10px]'} variant="outline">
+                                {ticket.is_active ? 'On Sale' : 'Paused'}
+                              </Badge>
+                              {ticket.is_sold_out && <Badge className="bg-red-100 text-red-700 text-[10px]" variant="outline">Sold Out</Badge>}
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                              <span>Class: <strong className="text-[#0F172A] capitalize">{ticket.ticket_class}</strong></span>
+                              <span>Price: <strong className="text-[#0F172A]">{formatMoney(ticket.price)}</strong></span>
+                              <span>Sold: <strong className="text-[#0F172A]">{ticket.quantity_sold || 0}</strong> / {ticket.quantity}</span>
+                              <span>Available: <strong className="text-[#0F172A]">{ticket.quantity_available ?? (ticket.quantity - (ticket.quantity_sold || 0))}</strong></span>
+                            </div>
+                            <div className="w-full max-w-xs h-1.5 bg-gray-200 rounded-full overflow-hidden mt-2">
+                              <div className="h-full bg-[#C58B1A] rounded-full transition-all" style={{ width: `${soldPct}%` }} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditTicket(ticket)} className="text-gray-400 hover:text-[#1E4DB7]">
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title={ticket.is_active ? 'Pause Sales' : 'Resume Sales'} onClick={() => toggleTicketMutation.mutate({ id: ticket.id, is_active: !ticket.is_active })} className="text-gray-400 hover:text-[#C58B1A]">
+                              {ticket.is_active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteTicketMutation.mutate(ticket.id)} className="text-gray-400 hover:text-red-500">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Ticket className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-[#0F172A] font-medium text-sm">No ticket tiers yet</p>
+                  <p className="text-gray-500 text-xs mt-1">Create your first ticket tier to start selling.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="attendees" className="space-y-4 lg:space-y-6">
+          <Card>
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Speakers / Lineup</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Manage speakers and hosts for your event.</p>
+              </div>
+              <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowSpeakerModal(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Speaker
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isSpeakersLoading ? (
+                <p className="text-sm text-gray-500">Loading speakers...</p>
+              ) : speakersData && speakersData.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {speakersData.map(speaker => (
+                    <div key={speaker.id} className="border border-gray-100 rounded-xl p-4 flex gap-4 relative group hover:shadow-md transition-shadow">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => deleteSpeakerMutation.mutate(speaker.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                        {speaker.avatar_url ? (
+                          <img src={speaker.avatar_url} alt={speaker.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Mic className="w-6 h-6 m-3 text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#0F172A]">{speaker.name}</h4>
+                        <p className="text-xs text-gray-500">{speaker.title} {speaker.organization ? `@ ${speaker.organization}` : ''}</p>
+                        {speaker.is_mc && <Badge className="mt-1 bg-purple-100 text-purple-700 text-[10px]" variant="outline">Host / MC</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Mic className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-[#0F172A] font-medium text-sm">No speakers added</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="schedule" className="space-y-4 lg:space-y-6">
+          <Card>
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Event Schedule</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Manage event agenda and sessions.</p>
+              </div>
+              <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowScheduleModal(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Session
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isScheduleLoading ? (
+                <p className="text-sm text-gray-500">Loading schedule...</p>
+              ) : scheduleData && scheduleData.length > 0 ? (
+                <div className="space-y-4">
+                  {scheduleData.map(session => (
+                    <div key={session.id} className="flex gap-4 p-4 border border-gray-100 rounded-xl relative group hover:shadow-md transition-shadow">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => deleteScheduleMutation.mutate(session.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <div className="w-20 flex-shrink-0 text-center flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2">
+                        <p className="text-sm font-bold text-[#0F172A]">{session.start_time.substring(0, 5)}</p>
+                        {session.end_time && <p className="text-xs text-gray-500">to {session.end_time.substring(0, 5)}</p>}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#0F172A]">{session.title}</h4>
+                        {session.speaker_name && <p className="text-sm text-[#1E4DB7]">Speaker: {session.speaker_name}</p>}
+                        {session.location && <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> {session.location}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <CalendarRange className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-[#0F172A] font-medium text-sm">No schedule items added</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sponsors" className="space-y-4 lg:space-y-6">
+          <Card>
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Event Sponsors</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Manage sponsors and partners.</p>
+              </div>
+              <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowSponsorModal(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Sponsor
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isSponsorsLoading ? (
+                <p className="text-sm text-gray-500">Loading sponsors...</p>
+              ) : sponsorsData && sponsorsData.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {sponsorsData.map(sponsor => (
+                    <div key={sponsor.id} className="border border-gray-100 rounded-xl p-4 text-center relative group hover:shadow-md transition-shadow">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => deleteSponsorMutation.mutate(sponsor.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                      <div className="h-16 flex items-center justify-center mb-3">
+                        {sponsor.logo_url ? (
+                          <img src={sponsor.logo_url} alt={sponsor.name} className="max-h-full max-w-full object-contain" />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 font-bold">{sponsor.name.charAt(0)}</div>
+                        )}
+                      </div>
+                      <h4 className="font-bold text-[#0F172A] text-sm truncate">{sponsor.name}</h4>
+                      <Badge className="mt-2 text-[10px] capitalize" variant="outline">{sponsor.tier}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Award className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-[#0F172A] font-medium text-sm">No sponsors added</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="edit" className="space-y-4 lg:space-y-6">
           <Card>
             <CardHeader>
@@ -701,7 +1325,354 @@ const OrganizerEventDetail = ({
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="design" className="space-y-4 lg:space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base lg:text-lg font-bold text-[#0F172A]">
+                <Palette className="w-5 h-5 text-[#1E4DB7]" />
+                Event Branding
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Theme Color</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="color"
+                      className="w-12 h-12 p-1 border-gray-200 cursor-pointer rounded-lg"
+                      value={quickEdit.theme_color}
+                      onChange={(e) => updateQuickEditField('theme_color', e.target.value)}
+                    />
+                    <Input
+                      type="text"
+                      className="flex-1 uppercase font-mono"
+                      value={quickEdit.theme_color}
+                      onChange={(e) => updateQuickEditField('theme_color', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Accent Color</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="color"
+                      className="w-12 h-12 p-1 border-gray-200 cursor-pointer rounded-lg"
+                      value={quickEdit.accent_color}
+                      onChange={(e) => updateQuickEditField('accent_color', e.target.value)}
+                    />
+                    <Input
+                      type="text"
+                      className="flex-1 uppercase font-mono"
+                      value={quickEdit.accent_color}
+                      onChange={(e) => updateQuickEditField('accent_color', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Branding Preview */}
+              <div className="mt-8">
+                <Label className="text-gray-500 mb-2 block">Live Preview</Label>
+                <div className="p-6 rounded-xl border border-gray-200 bg-white shadow-sm max-w-md mx-auto relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: quickEdit.theme_color }}></div>
+                  <h4 className="font-bold text-lg mb-2" style={{ color: quickEdit.theme_color }}>Ticket Booth Preview</h4>
+                  <p className="text-sm text-gray-600 mb-6">This is how your event's buttons and accents will appear to buyers.</p>
+
+                  <div className="space-y-3">
+                    <Button className="w-full text-white font-medium" style={{ backgroundColor: quickEdit.theme_color, border: 'none' }}>
+                      Primary Action
+                    </Button>
+                    <Button variant="outline" className="w-full" style={{ color: quickEdit.theme_color, borderColor: quickEdit.theme_color }}>
+                      Secondary Option
+                    </Button>
+                  </div>
+
+                  <div className="mt-6">
+                    <span className="text-xs font-semibold px-2 py-1 rounded-md text-white" style={{ backgroundColor: quickEdit.accent_color }}>
+                      Featured Accent
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100">
+                <Button className="bg-[#1E4DB7] hover:bg-[#163B90]" onClick={handleQuickSave} disabled={savingQuickEdit}>
+                  {savingQuickEdit ? 'Saving...' : 'Save Theme'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {showPromoModal && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowPromoModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex items-center justify-between">
+              <h3 className="font-semibold">Create Promo Code</h3>
+              <button onClick={() => setShowPromoModal(false)} className="p-1 rounded-full hover:bg-white/20">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <Label className="text-xs mb-1.5 text-gray-500 block">Code Name *</Label>
+                <Input
+                  value={promoForm.code}
+                  onChange={(e) => setPromoForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                  placeholder="e.g. EARLYBIRD20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Discount Type</Label>
+                  <select
+                    value={promoForm.discount_type}
+                    onChange={(e) => setPromoForm((prev) => ({ ...prev, discount_type: e.target.value }))}
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="percent">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Discount Value *</Label>
+                  <Input
+                    type="number"
+                    value={promoForm.discount_value}
+                    onChange={(e) => setPromoForm((prev) => ({ ...prev, discount_value: e.target.value }))}
+                    placeholder="e.g. 20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Usage Limit (Optional)</Label>
+                  <Input
+                    type="number"
+                    value={promoForm.usage_limit}
+                    onChange={(e) => setPromoForm((prev) => ({ ...prev, usage_limit: e.target.value }))}
+                    placeholder="e.g. 50"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Expiry Date (Optional)</Label>
+                  <Input
+                    type="date"
+                    value={promoForm.expiry}
+                    onChange={(e) => setPromoForm((prev) => ({ ...prev, expiry: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="promo-active"
+                  checked={promoForm.is_active}
+                  onChange={(e) => setPromoForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+                  className="rounded text-[#1E4DB7] focus:ring-[#1E4DB7]"
+                />
+                <Label htmlFor="promo-active" className="text-sm cursor-pointer">Activate immediately</Label>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setShowPromoModal(false)}>Cancel</Button>
+                <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white" onClick={handleCreatePromo} disabled={createPromoMutation.isPending}>
+                  {createPromoMutation.isPending ? 'Saving...' : 'Create Code'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTicketModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowTicketModal(false); setEditingTicket(null); }}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex items-center justify-between">
+              <h3 className="font-semibold">{editingTicket ? 'Edit Ticket Tier' : 'New Ticket Tier'}</h3>
+              <button onClick={() => { setShowTicketModal(false); setEditingTicket(null); }} className="p-1 rounded-full hover:bg-white/20">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <Label className="text-xs mb-1.5 text-gray-500 block">Tier Name *</Label>
+                <Input value={ticketForm.name} onChange={e => setTicketForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. VIP, Early Bird" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Ticket Class</Label>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={ticketForm.ticket_class} onChange={e => setTicketForm(p => ({ ...p, ticket_class: e.target.value }))}>
+                    <option value="free">Free</option>
+                    <option value="paid">Paid</option>
+                    <option value="vip">VIP</option>
+                    <option value="early_bird">Early Bird</option>
+                    <option value="donation">Donation</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Price (KES)</Label>
+                  <Input type="number" value={ticketForm.price} onChange={e => setTicketForm(p => ({ ...p, price: e.target.value }))} placeholder="0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Quantity *</Label>
+                  <Input type="number" value={ticketForm.quantity} onChange={e => setTicketForm(p => ({ ...p, quantity: e.target.value }))} placeholder="100" />
+                </div>
+                <div className="flex items-end pb-1">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="ticket-active" checked={ticketForm.is_active} onChange={e => setTicketForm(p => ({ ...p, is_active: e.target.checked }))} className="rounded text-[#1E4DB7]" />
+                    <Label htmlFor="ticket-active" className="text-sm cursor-pointer">Active</Label>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs mb-1.5 text-gray-500 block">Description (Optional)</Label>
+                <textarea className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#C58B1A]/20 focus:border-[#C58B1A]" rows={2} value={ticketForm.description} onChange={e => setTicketForm(p => ({ ...p, description: e.target.value }))} placeholder="What's included in this tier..." />
+              </div>
+              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-3">
+                <Button variant="outline" onClick={() => { setShowTicketModal(false); setEditingTicket(null); }}>Cancel</Button>
+                <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white" onClick={handleSaveTicket} disabled={createTicketMutation.isPending || updateTicketMutation.isPending}>
+                  {(createTicketMutation.isPending || updateTicketMutation.isPending) ? 'Saving...' : (editingTicket ? 'Save Changes' : 'Create Tier')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSpeakerModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSpeakerModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex justify-between">
+              <h3 className="font-semibold">Add Speaker</h3>
+              <button onClick={() => setShowSpeakerModal(false)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <Label>Name *</Label>
+                <Input value={speakerForm.name} onChange={e => setSpeakerForm(p => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Title/Role</Label>
+                  <Input value={speakerForm.title} onChange={e => setSpeakerForm(p => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Organization</Label>
+                  <Input value={speakerForm.organization} onChange={e => setSpeakerForm(p => ({ ...p, organization: e.target.value }))} />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" id="is_mc" checked={speakerForm.is_mc} onChange={e => setSpeakerForm(p => ({ ...p, is_mc: e.target.checked }))} className="rounded text-[#1E4DB7]" />
+                <Label htmlFor="is_mc" className="cursor-pointer">Is this speaker the Host / MC?</Label>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="outline" onClick={() => setShowSpeakerModal(false)}>Cancel</Button>
+                <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white" onClick={() => createSpeakerMutation.mutate(speakerForm)} disabled={createSpeakerMutation.isPending}>Add</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSponsorModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSponsorModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex justify-between">
+              <h3 className="font-semibold">Add Sponsor</h3>
+              <button onClick={() => setShowSponsorModal(false)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <Label>Sponsor Name *</Label>
+                <Input value={sponsorForm.name} onChange={e => setSponsorForm(p => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Tier</Label>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={sponsorForm.tier} onChange={e => setSponsorForm(p => ({ ...p, tier: e.target.value }))}>
+                    <option value="platinum">Platinum</option>
+                    <option value="gold">Gold</option>
+                    <option value="silver">Silver</option>
+                    <option value="bronze">Bronze</option>
+                    <option value="partner">Partner</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Website</Label>
+                  <Input value={sponsorForm.website} placeholder="https://" onChange={e => setSponsorForm(p => ({ ...p, website: e.target.value }))} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="outline" onClick={() => setShowSponsorModal(false)}>Cancel</Button>
+                <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white" onClick={() => createSponsorMutation.mutate(sponsorForm)} disabled={createSponsorMutation.isPending}>Add</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowScheduleModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex justify-between">
+              <h3 className="font-semibold">Add Schedule Item</h3>
+              <button onClick={() => setShowScheduleModal(false)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div>
+                <Label>Session Title *</Label>
+                <Input value={scheduleForm.title} onChange={e => setScheduleForm(p => ({ ...p, title: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Start Time *</Label>
+                  <Input type="time" value={scheduleForm.start_time} onChange={e => setScheduleForm(p => ({ ...p, start_time: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>End Time</Label>
+                  <Input type="time" value={scheduleForm.end_time} onChange={e => setScheduleForm(p => ({ ...p, end_time: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Location / Room</Label>
+                  <Input value={scheduleForm.location} onChange={e => setScheduleForm(p => ({ ...p, location: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Speaker (Optional)</Label>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={scheduleForm.speaker} onChange={e => setScheduleForm(p => ({ ...p, speaker: e.target.value }))}>
+                    <option value="">None</option>
+                    {speakersData.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="outline" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
+                <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white" onClick={() => {
+                  const payload = { ...scheduleForm };
+                  if (!payload.speaker) delete payload.speaker;
+                  createScheduleMutation.mutate(payload);
+                }} disabled={createScheduleMutation.isPending}>Add</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

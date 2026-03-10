@@ -11,6 +11,9 @@ import {
   Clock,
   Info,
   ArrowLeft,
+  Mic,
+  Trash2,
+  Award
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,8 +37,9 @@ import { fetchCategories } from '@/lib/eventsApi';
 const steps = [
   { id: 1, label: 'Event Details', icon: Info },
   { id: 2, label: 'Tickets', icon: DollarSign },
-  { id: 3, label: 'Settings', icon: Users },
-  { id: 4, label: 'Review', icon: Check },
+  { id: 3, label: 'Lineup', icon: Mic },
+  { id: 4, label: 'Settings', icon: Users },
+  { id: 5, label: 'Review', icon: Check },
 ];
 
 const OrganizerCreateEvent = ({ onBack, onCreated }) => {
@@ -62,6 +66,17 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
   const [ticketTypes, setTicketTypes] = useState([
     { id: '1', name: 'General Admission', price: 0, quantity: 100 },
   ]);
+
+  const [speakers, setSpeakers] = useState([{ id: '1', name: '', title: '' }]);
+  const [sponsors, setSponsors] = useState([{ id: '1', name: '', website: '' }]);
+
+  const addSpeaker = () => setSpeakers((prev) => [...prev, { id: Date.now().toString(), name: '', title: '' }]);
+  const updateSpeaker = (id, field, value) => setSpeakers((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+  const removeSpeaker = (id) => setSpeakers((prev) => prev.filter((s) => s.id !== id));
+
+  const addSponsor = () => setSponsors((prev) => [...prev, { id: Date.now().toString(), name: '', website: '' }]);
+  const updateSponsor = (id, field, value) => setSponsors((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+  const removeSponsor = (id) => setSponsors((prev) => prev.filter((s) => s.id !== id));
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -92,7 +107,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
   };
 
   const handleNext = () => {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep((prev) => prev + 1);
     }
   };
@@ -111,6 +126,9 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         return eventData.name && eventData.date && eventData.time && eventData.location && eventData.category;
       case 2:
         return ticketTypes.every((ticket) => ticket.name && ticket.quantity > 0);
+      case 3:
+        return speakers.every((s) => s.name.trim() !== '' || (s.name.trim() === '' && s.title.trim() === '')) &&
+          sponsors.every((s) => s.name.trim() !== '' || (s.name.trim() === '' && s.website.trim() === ''));
       default:
         return true;
     }
@@ -142,6 +160,8 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         refund_policy: 'no_refund',
         theme_color: '#1E4DB7',
         accent_color: '#7C3AED',
+        send_reminders: eventData.sendReminders,
+        enable_waitlist: eventData.enableWaitlist,
       };
 
       let createdEvent;
@@ -173,6 +193,24 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
           }).catch(() => null)
         );
         await Promise.allSettled(ticketPromises);
+      }
+
+      if (speakers.some(s => s.name.trim()) && createdEvent?.slug) {
+        const speakerPromises = speakers.filter(s => s.name.trim()).map(s =>
+          api.post(`/api/events/${createdEvent.slug}/speakers/`, {
+            name: s.name, title: s.title, organization: '', bio: '', twitter: '', linkedin: '', is_mc: false, sort_order: 0
+          }).catch(() => null)
+        );
+        await Promise.allSettled(speakerPromises);
+      }
+
+      if (sponsors.some(s => s.name.trim()) && createdEvent?.slug) {
+        const sponsorPromises = sponsors.filter(s => s.name.trim()).map(s =>
+          api.post(`/api/events/${createdEvent.slug}/sponsors/`, {
+            name: s.name, website: s.website, tier: 'partner', sort_order: 0
+          }).catch(() => null)
+        );
+        await Promise.allSettled(sponsorPromises);
       }
 
       toast.success('Event created successfully!');
@@ -399,6 +437,89 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         return (
           <div className="space-y-4 lg:space-y-6 animate-slide-in-right">
             <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm lg:text-base">Speakers / Lineup</CardTitle>
+                <Button variant="outline" size="sm" onClick={addSpeaker}>
+                  <Mic className="w-4 h-4 mr-2" /> Add Speaker
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3 lg:space-y-4">
+                {speakers.map((speaker, index) => (
+                  <div key={speaker.id} className="flex flex-col md:flex-row gap-3 border border-gray-100 p-4 rounded-xl relative group">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeSpeaker(speaker.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-sm">Speaker Name</Label>
+                      <Input
+                        placeholder="e.g. John Doe"
+                        value={speaker.name}
+                        onChange={(e) => updateSpeaker(speaker.id, 'name', e.target.value)}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-sm">Title / Role</Label>
+                      <Input
+                        placeholder="e.g. Software Engineer"
+                        value={speaker.title}
+                        onChange={(e) => updateSpeaker(speaker.id, 'title', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm lg:text-base">Event Sponsors</CardTitle>
+                <Button variant="outline" size="sm" onClick={addSponsor}>
+                  <Award className="w-4 h-4 mr-2" /> Add Sponsor
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3 lg:space-y-4">
+                {sponsors.map((sponsor, index) => (
+                  <div key={sponsor.id} className="flex flex-col md:flex-row gap-3 border border-gray-100 p-4 rounded-xl relative group">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeSponsor(sponsor.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-sm">Sponsor Name</Label>
+                      <Input
+                        placeholder="e.g. TechCorp"
+                        value={sponsor.name}
+                        onChange={(e) => updateSponsor(sponsor.id, 'name', e.target.value)}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-sm">Website URL</Label>
+                      <Input
+                        placeholder="https://"
+                        value={sponsor.website}
+                        onChange={(e) => updateSponsor(sponsor.id, 'website', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-4 lg:space-y-6 animate-slide-in-right">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm lg:text-base">Privacy Settings</CardTitle>
               </CardHeader>
@@ -454,7 +575,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <div className="space-y-4 lg:space-y-6 animate-slide-in-right">
             <Card className="overflow-hidden">
@@ -618,7 +739,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
           {currentStep === 1 ? 'Cancel' : 'Back'}
         </Button>
 
-        {currentStep < 4 ? (
+        {currentStep < 5 ? (
           <Button onClick={handleNext} disabled={!isStepValid()} className="bg-[#1E4DB7] hover:bg-[#163B90] text-xs lg:text-sm">
             Next
             <ChevronRight className="w-4 h-4 ml-1.5" />

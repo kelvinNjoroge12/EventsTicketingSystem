@@ -221,6 +221,8 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "speakers",
             "schedule",
             "sponsors",
+            "send_reminders",
+            "enable_waitlist",
         ]
 
     def get_tickets(self, obj: Event):
@@ -327,6 +329,8 @@ class EventCreateSerializer(serializers.ModelSerializer):
             "stickers",
             "scheduled_publish_at",
             "status",
+            "send_reminders",
+            "enable_waitlist",
         ]
         read_only_fields = ["id"]
 

@@ -64,6 +64,8 @@ urlpatterns = [
     path("api/notifications/", include("apps.notifications.urls")),
     # New Finances / Budgeting module
     path("api/finances/", include("apps.finances.urls")),
+    # Waitlist management (join + organizer view)
+    path("api/events/<slug:slug>/waitlist/", include("apps.waitlist.urls")),
 ]
 
 if settings.DEBUG:

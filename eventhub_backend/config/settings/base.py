@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "apps.analytics.apps.AnalyticsConfig",
     "apps.notifications.apps.NotificationsConfig",
     "apps.finances.apps.FinancesConfig",
+    "apps.waitlist.apps.WaitlistConfig",
 ]
 
 MIDDLEWARE = [
@@ -255,3 +256,12 @@ RATELIMIT_ENABLE = env.bool("RATELIMIT_ENABLE", default=True)
 # Payments simulation mode (safe-by-default off unless explicitly enabled per environment)
 ENABLE_SIMULATED_PAYMENTS = env.bool("ENABLE_SIMULATED_PAYMENTS", default=False)
 SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS = env.int("SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS", default=3600)
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "send_daily_event_reminders": {
+        "task": "send_event_reminders",
+        "schedule": crontab(minute=0, hour='*'),  # Runs every hour
+    },
+}

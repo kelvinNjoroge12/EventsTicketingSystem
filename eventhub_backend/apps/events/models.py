@@ -97,6 +97,9 @@ class Event(TimeStampedModel):
     scheduled_publish_at = models.DateTimeField(null=True, blank=True)
     attendee_count = models.PositiveIntegerField(default=0)
     view_count = models.PositiveIntegerField(default=0)
+    send_reminders = models.BooleanField(default=True)
+    enable_waitlist = models.BooleanField(default=False)
+    reminders_sent = models.BooleanField(default=False)
 
     class Meta:
         indexes = [
