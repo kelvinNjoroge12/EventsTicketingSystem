@@ -161,6 +161,7 @@ const EventDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [navOffset, setNavOffset] = useState(64);
 
   const contentStartRef = useRef(null);
   const tabBarRef = useRef(null);
@@ -192,6 +193,13 @@ const EventDetailPage = () => {
       scrollTabBarIntoView('smooth');
     }, 250);
   };
+
+  useEffect(() => {
+    const updateNavOffset = () => setNavOffset(getNavHeight());
+    updateNavOffset();
+    window.addEventListener('resize', updateNavOffset);
+    return () => window.removeEventListener('resize', updateNavOffset);
+  }, []);
 
   // 1. Main event — served from hover-prefetch cache instantly on revisit
   useEffect(() => {
@@ -459,7 +467,11 @@ const EventDetailPage = () => {
           <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden" ref={contentStartRef}>
 
             {/* ── TABS ── */}
-            <div ref={tabBarRef} className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
+            <div
+              ref={tabBarRef}
+              className="sticky z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0"
+              style={{ top: navOffset }}
+            >
               <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full flex-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
                 {tabs.map((tab) => (
                   <button
@@ -482,7 +494,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── TAB CONTENT ── */}
-            <div className="min-h-[50vh] pt-2">
+            <div className="min-h-[50vh] pt-6">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
