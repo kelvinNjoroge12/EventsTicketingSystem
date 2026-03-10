@@ -48,6 +48,7 @@ const OrganizerHeader = ({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [scrolled, setScrolled] = useState(false);
+  const [clearedIds, setClearedIds] = useState([]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -77,18 +78,42 @@ const OrganizerHeader = ({
       .map((item, index) => {
         const title = item.title || item.subject || item.notification_type || item.type || '';
         const message = item.message || item.body || item.description || '';
+        const createdAt = item.created_at || item.timestamp || item.date || item.time;
         return {
           id: item.id ?? item.notification_id ?? item.uuid ?? `${index}`,
           title,
           message,
-          time: item.time || formatRelativeTime(item.created_at || item.timestamp || item.date),
+          time: item.time || formatRelativeTime(createdAt),
+          createdAt,
           read: item.read ?? item.is_read ?? false,
         };
       })
       .filter((item) => item.title || item.message);
   }, [notificationsData]);
 
-  const unreadCount = unreadCountData ?? notifications.filter((n) => !n.read).length;
+  const storageKey = user?.id
+    ? `eventhub.notifications.cleared.${user.id}`
+    : 'eventhub.notifications.cleared.anon';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!storageKey) return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setClearedIds(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setClearedIds([]);
+    }
+  }, [storageKey]);
+
+  const visibleNotifications = useMemo(() => {
+    if (!clearedIds.length) return notifications;
+    const clearedSet = new Set(clearedIds.map(String));
+    return notifications.filter((n) => !clearedSet.has(String(n.id)));
+  }, [notifications, clearedIds]);
+
+  const unreadCount = unreadCountData ?? visibleNotifications.filter((n) => !n.read).length;
 
   const markReadMutation = useMutation({
     mutationFn: (id) => markNotificationRead(id),
@@ -117,6 +142,22 @@ const OrganizerHeader = ({
     markReadMutation.mutate(id);
   };
   const markAllAsRead = () => markAllMutation.mutate();
+  const clearNotifications = () => {
+    if (!notifications.length) return;
+    const next = Array.from(new Set([...clearedIds, ...notifications.map((n) => String(n.id))]));
+    setClearedIds(next);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        // no-op
+      }
+    }
+    if (unreadCount > 0) {
+      markAllMutation.mutate();
+    }
+    toast.success('Notifications cleared.');
+  };
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -183,18 +224,25 @@ const OrganizerHeader = ({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
+            <DropdownMenuLabel className="flex items-center justify-between gap-2">
               <span>Notifications</span>
-              {unreadCount > 0 && (
-                <button onClick={markAllAsRead} className="text-xs text-[#1E4DB7] hover:text-[#C58B1A]">
-                  Mark all read
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {visibleNotifications.length > 0 && (
+                  <button onClick={clearNotifications} className="text-xs text-[#1E4DB7] hover:text-[#C58B1A]">
+                    Clear
+                  </button>
+                )}
+                {unreadCount > 0 && (
+                  <button onClick={markAllAsRead} className="text-xs text-[#1E4DB7] hover:text-[#C58B1A]">
+                    Mark all read
+                  </button>
+                )}
+              </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="max-h-64 overflow-auto">
-              {notifications.length > 0 ? (
-                notifications.map((notification) => (
+              {visibleNotifications.length > 0 ? (
+                visibleNotifications.map((notification) => (
                   <DropdownMenuItem
                     key={notification.id}
                     className={cn('flex flex-col items-start gap-1 p-3 cursor-pointer', !notification.read && 'bg-[#C58B1A]/5')}
