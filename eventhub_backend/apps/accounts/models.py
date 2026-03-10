@@ -31,6 +31,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
     password_reset_token = models.UUIDField(null=True, blank=True)
     password_reset_token_expires = models.DateTimeField(null=True, blank=True)
+    must_reset_password = models.BooleanField(default=False)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
 
     USERNAME_FIELD = "email"

@@ -20,7 +20,9 @@ const LoginPage = () => {
       const user = await login(formData.email, formData.password);
 
       const intendedDestination = location.state?.from?.pathname;
-      if (intendedDestination) {
+      if (user?.must_reset_password) {
+        navigate('/force-password-reset', { replace: true });
+      } else if (intendedDestination) {
         navigate(intendedDestination, { replace: true });
       } else if (user?.role === 'checkin' || user?.role === 'staff') {
         navigate('/organizer-checkin', { replace: true });

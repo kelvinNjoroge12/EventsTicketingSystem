@@ -160,6 +160,11 @@ class ChangePasswordView(APIView):
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        try:
+            request.user.must_reset_password = False
+            request.user.save(update_fields=["must_reset_password"])
+        except Exception:
+            pass
         return Response({"message": "Password updated successfully."})
 
 
@@ -409,7 +414,8 @@ class OrganizerTeamInviteView(APIView):
             if created:
                 temp_password = User.objects.make_random_password()
                 member.set_password(temp_password)
-                member.save(update_fields=["password"])
+                member.must_reset_password = True
+                member.save(update_fields=["password", "must_reset_password"])
             else:
                 temp_password = None
 

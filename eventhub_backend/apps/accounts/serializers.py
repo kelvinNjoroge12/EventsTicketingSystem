@@ -71,6 +71,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "avatar",
             "role",
             "is_email_verified",
+            "must_reset_password",
             "organizer_profile",
             "organization_name",
             "organization_bio",
@@ -83,6 +84,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "role",
             "is_email_verified",
+            "must_reset_password",
             "organizer_profile",
             "assigned_events",
             "created_at",
@@ -272,7 +274,8 @@ class ResetPasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_password"])
         user.password_reset_token = None
         user.password_reset_token_expires = None
-        user.save(update_fields=["password", "password_reset_token", "password_reset_token_expires"])
+        user.must_reset_password = False
+        user.save(update_fields=["password", "password_reset_token", "password_reset_token_expires", "must_reset_password"])
         return user
 
 

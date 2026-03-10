@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, TicketCheck } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
-import OrganizerHeader from '../components/organizer/OrganizerHeader';
+import CheckInStaffHeader from '../components/organizer/CheckInStaffHeader';
 import { useAuth } from '../context/AuthContext';
 
 const OrganizerCheckInLanding = () => {
@@ -24,7 +24,7 @@ const OrganizerCheckInLanding = () => {
 
   return (
     <PageWrapper className="bg-[#F8FAFC]">
-      <OrganizerHeader title="Check-In" showMenu={false} useSidebarOffset={false} />
+      <CheckInStaffHeader />
       <div className="min-h-screen bg-[#F8FAFC] pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center gap-3 mb-6">

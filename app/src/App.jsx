@@ -1,6 +1,7 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -35,6 +36,7 @@ const OrganizerDashboardPage = lazy(() => import('./pages/OrganizerDashboardPage
 const CheckInPage = lazy(() => import('./pages/CheckInPage'));
 const TicketVerificationPage = lazy(() => import('./pages/TicketVerificationPage'));
 const OrganizerCheckInLanding = lazy(() => import('./pages/OrganizerCheckInLanding'));
+const ForcePasswordResetPage = lazy(() => import('./pages/ForcePasswordResetPage'));
 
 // Loading fallback — plain CSS spinner, no framer-motion transforms
 const PageLoader = () => (
@@ -56,6 +58,45 @@ const ScrollToTop = () => {
 };
 
 // All routes — NO motion wrappers around pages (motion transforms break fixed positioning on iOS)
+const PasswordResetGate = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user?.must_reset_password) return;
+    if (location.pathname === '/force-password-reset') return;
+    navigate('/force-password-reset', { replace: true });
+  }, [user, location.pathname, navigate]);
+
+  return null;
+};
+
+const CheckInStaffGate = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.must_reset_password) return;
+    const isStaff = user.role === 'checkin' || user.role === 'staff';
+    if (!isStaff) return;
+    const allowed = [
+      /^\/organizer-checkin\/?$/,
+      /^\/organizer\/events\/[^/]+\/checkin\/?$/,
+      /^\/force-password-reset\/?$/,
+      /^\/settings\/?$/,
+    ];
+    const isAllowed = allowed.some((regex) => regex.test(location.pathname));
+    if (!isAllowed) {
+      navigate('/organizer-checkin', { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
+
+  return null;
+};
+
 const AppRoutes = () => {
   const { toasts, removeToast } = useToast();
   const location = useLocation();
@@ -63,11 +104,13 @@ const AppRoutes = () => {
     /^\/organizer-dashboard\/?$/.test(location.pathname) ||
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
     /^\/organizer-checkin\/?$/.test(location.pathname) ||
+    /^\/force-password-reset\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
     /^\/edit-event\/[^/]+\/?$/.test(location.pathname);
   const hideFooter =
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
     /^\/organizer-checkin\/?$/.test(location.pathname) ||
+    /^\/force-password-reset\/?$/.test(location.pathname) ||
     /^\/settings\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
     /^\/edit-event\/[^/]+\/?$/.test(location.pathname) ||
@@ -76,6 +119,8 @@ const AppRoutes = () => {
   return (
     <>
       <ScrollToTop />
+      <PasswordResetGate />
+      <CheckInStaffGate />
       {!isOrganizerRoute && <Navbar />}
       <Toaster position="top-right" />
       <Toast toasts={toasts} removeToast={removeToast} />
@@ -102,6 +147,7 @@ const AppRoutes = () => {
         <Route path="/organizer-dashboard" element={<Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>} />
         <Route path="/organizer-checkin" element={<Suspense fallback={<PageLoader />}><OrganizerCheckInLanding /></Suspense>} />
         <Route path="/organizer/events/:slug/checkin" element={<Suspense fallback={<PageLoader />}><CheckInPage /></Suspense>} />
+        <Route path="/force-password-reset" element={<Suspense fallback={<PageLoader />}><ForcePasswordResetPage /></Suspense>} />
         <Route path="/verify-email" element={<Suspense fallback={<PageLoader />}><EmailVerificationPage /></Suspense>} />
         <Route path="/t/:uuid" element={<Suspense fallback={<PageLoader />}><TicketVerificationPage /></Suspense>} />
         <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense>} />
