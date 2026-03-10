@@ -100,6 +100,8 @@ const mapDetailEvent = (e) => {
         isAlmostSoldOut: t.is_almost_sold_out || false,
       })) || [],
     promoCodes: e.promo_codes || [],
+    enableWaitlist: e.enable_waitlist ?? false,
+    sendReminders: e.send_reminders ?? true,
     speakers: (e.speakers || []).map(s => ({
       ...s,
       avatar: s.avatar_url || s.avatar
@@ -161,6 +163,8 @@ export const buildEventDetailPlaceholderFromList = (event) => {
     tags: Array.isArray(event.tags) ? event.tags : [],
     tickets: [],
     promoCodes: [],
+    enableWaitlist: false,
+    sendReminders: true,
     speakers: [],
     mc: null,
     schedule: [],

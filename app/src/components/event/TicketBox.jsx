@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, ChevronDown, ChevronUp, Tag, Check, ShoppingCart } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
+import { api } from '../lib/apiClient';
 
 const TicketBox = ({
   event,
@@ -33,6 +34,9 @@ const TicketBox = ({
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
   const [appliedPromo, setAppliedPromo] = useState(null);
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '', notes: '' });
+  const [waitlistStatus, setWaitlistStatus] = useState({ loading: false, error: '', success: '' });
 
   const handleQuantityChange = (ticketId, delta) => {
     setQuantities(prev => {
@@ -87,6 +91,33 @@ const TicketBox = ({
   };
 
   const { subtotal, discount, serviceFee, total } = calculatePrice();
+  const allSoldOut = event.tickets.every((ticket) => (ticket.remaining ?? 0) <= 0);
+  const waitlistAllowed = allSoldOut && (event.enableWaitlist ?? event.enable_waitlist) && event.slug;
+
+  const handleWaitlistSubmit = async () => {
+    setWaitlistStatus({ loading: false, error: '', success: '' });
+    if (!waitlistForm.name.trim() || !waitlistForm.email.trim()) {
+      setWaitlistStatus({ loading: false, error: 'Name and email are required.', success: '' });
+      return;
+    }
+    if (!event.slug) {
+      setWaitlistStatus({ loading: false, error: 'Event information is missing.', success: '' });
+      return;
+    }
+    try {
+      setWaitlistStatus({ loading: true, error: '', success: '' });
+      await api.post(`/api/events/${event.slug}/waitlist/join/`, {
+        name: waitlistForm.name.trim(),
+        email: waitlistForm.email.trim(),
+        phone: waitlistForm.phone.trim(),
+        notes: waitlistForm.notes.trim(),
+      });
+      setWaitlistStatus({ loading: false, error: '', success: 'You are on the waitlist. We will email you when tickets open.' });
+      setWaitlistForm({ name: '', email: '', phone: '', notes: '' });
+    } catch (err) {
+      setWaitlistStatus({ loading: false, error: err?.message || 'Failed to join waitlist.', success: '' });
+    }
+  };
 
   const handleGetTickets = () => {
     const items = selectedTickets.map(t => ({
@@ -274,6 +305,84 @@ const TicketBox = ({
             </>
           )}
         </div>
+
+        {waitlistAllowed && (
+          <div className="mb-6 p-4 border border-[#E2E8F0] rounded-xl bg-[#F8FAFC]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#0F172A]">Sold out — join the waitlist</p>
+                <p className="text-xs text-[#64748B]">We will notify you when more tickets become available.</p>
+              </div>
+              <CustomButton
+                variant="outline"
+                size="sm"
+                onClick={() => setShowWaitlist((prev) => !prev)}
+              >
+                {showWaitlist ? 'Hide form' : 'Join waitlist'}
+              </CustomButton>
+            </div>
+
+            <AnimatePresence>
+              {showWaitlist && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Full name *"
+                      value={waitlistForm.name}
+                      onChange={(e) => setWaitlistForm((prev) => ({ ...prev, name: e.target.value }))}
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email address *"
+                      value={waitlistForm.email}
+                      onChange={(e) => setWaitlistForm((prev) => ({ ...prev, email: e.target.value }))}
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Phone (optional)"
+                      value={waitlistForm.phone}
+                      onChange={(e) => setWaitlistForm((prev) => ({ ...prev, phone: e.target.value }))}
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Notes (optional)"
+                      value={waitlistForm.notes}
+                      onChange={(e) => setWaitlistForm((prev) => ({ ...prev, notes: e.target.value }))}
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                    />
+                  </div>
+
+                  {waitlistStatus.error && (
+                    <p className="mt-2 text-xs text-[#DC2626]">{waitlistStatus.error}</p>
+                  )}
+                  {waitlistStatus.success && (
+                    <p className="mt-2 text-xs text-[#16A34A]">{waitlistStatus.success}</p>
+                  )}
+
+                  <div className="mt-3">
+                    <CustomButton
+                      variant="primary"
+                      size="sm"
+                      onClick={handleWaitlistSubmit}
+                      disabled={waitlistStatus.loading}
+                    >
+                      {waitlistStatus.loading ? 'Joining...' : 'Submit waitlist'}
+                    </CustomButton>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* CTA Button */}
         <CustomButton

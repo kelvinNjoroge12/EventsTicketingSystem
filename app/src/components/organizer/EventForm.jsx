@@ -596,6 +596,35 @@ export const TicketsStep = ({ data, onChange, errors }) => {
           />
         )}
       </div>
+
+      {/* Event Options */}
+      <div className="pt-6 border-t border-[#E2E8F0] space-y-3">
+        <label className="block text-sm font-semibold text-[#0F172A]">Event Options</label>
+        <div className="flex items-center justify-between gap-4 p-4 bg-white border border-[#E2E8F0] rounded-xl">
+          <div>
+            <p className="text-sm font-medium text-[#0F172A]">Enable Waitlist</p>
+            <p className="text-xs text-[#64748B]">Allow guests to join when tickets sell out.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={Boolean(data.enableWaitlist)}
+            onChange={(e) => onChange('enableWaitlist', e.target.checked)}
+            className="w-4 h-4 rounded border-[#CBD5E1] text-[#1E4DB7] focus:ring-[#1E4DB7]"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-4 p-4 bg-white border border-[#E2E8F0] rounded-xl">
+          <div>
+            <p className="text-sm font-medium text-[#0F172A]">Send Reminders</p>
+            <p className="text-xs text-[#64748B]">Email attendees before the event starts.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={Boolean(data.sendReminders)}
+            onChange={(e) => onChange('sendReminders', e.target.checked)}
+            className="w-4 h-4 rounded border-[#CBD5E1] text-[#1E4DB7] focus:ring-[#1E4DB7]"
+          />
+        </div>
+      </div>
     </div>
   );
 };

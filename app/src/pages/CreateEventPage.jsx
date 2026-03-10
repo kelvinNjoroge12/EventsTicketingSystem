@@ -33,6 +33,13 @@ const CreateEventPage = () => {
   const [scheduledDate, setScheduledDate] = useState('');
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(!!slug);
+  const [initialSubresources, setInitialSubresources] = useState({
+    tickets: [],
+    speakers: [],
+    sponsors: [],
+    schedule: [],
+    mcId: null,
+  });
   const pageTitle = slug ? 'Edit Event' : 'Create Event';
 
   // Fetch categories and event if editing
@@ -46,73 +53,82 @@ const CreateEventPage = () => {
 
         setCategories(cats);
 
-        if (eventData) {
-          const unmapRefundPolicy = (val) => ({ 'no_refund': 'No Refund', '48_hours': '48 Hours', '7_days': '7 Days', 'custom': 'Custom' }[val] || 'No Refund');
+          if (eventData) {
+            const unmapRefundPolicy = (val) => ({ 'no_refund': 'No Refund', '48_hours': '48 Hours', '7_days': '7 Days', 'custom': 'Custom' }[val] || 'No Refund');
 
           // Map fetched event data to form data
-          setFormData({
-            title: eventData.title || '',
-            category: eventData.rawCategory || '',
-            tags: eventData.tags || [],
-            eventType: 'public',
-            format: eventData.format === 'in_person' ? 'In-Person' : eventData.format === 'online' ? 'Online' : 'Hybrid',
-            themeColor: eventData.themeColor || '#1E4DB7',
-            accentColor: eventData.accentColor || '#7C3AED',
-            startDate: eventData.startDate || '',
-            startTime: eventData.startTime || '',
-            endDate: eventData.endDate || '',
-            endTime: eventData.endTime || '',
-            timezone: eventData.timezone || 'EAT',
-            venueName: eventData.venueName || '',
-            address: eventData.address || '',
-            city: eventData.city || '',
-            country: eventData.country || 'Kenya',
-            streamingLink: eventData.streamingLink || '',
-            description: eventData.description || '',
-            coverImage: null,
-            coverImagePreview: eventData.bannerImage || '',
-            speakers: (eventData.speakers || []).map(s => ({
-              id: s.id,
-              name: s.name || '',
-              title: s.title || '',
-              organization: s.organization || '',
-              bio: s.bio || '',
-              photo: null,
-              photoPreview: s.avatar || ''
-            })),
-            hasMC: !!eventData.mc,
-            mcName: eventData.mc?.name || '',
-            mcBio: eventData.mc?.bio || '',
-            mcPhoto: null,
-            mcPhotoPreview: eventData.mc?.avatar || '',
-            schedule: (eventData.schedule || []).map(item => ({
-              id: item.id,
-              title: item.title || '',
-              time: item.time || '',
-              description: item.description || ''
-            })),
-            sponsors: (eventData.sponsors || []).map(s => ({
-              id: s.id,
-              name: s.name || '',
-              website: s.website || '',
-              tier: s.tier || '',
-              logo: null,
-              logoPreview: s.logo || ''
-            })),
-            tickets: eventData.tickets.length > 0
-              ? eventData.tickets.map(t => ({
-                id: t.id,
-                type: t.type,
-                price: t.price,
-                quantity: t.quantity || 100,
-                description: t.description || ''
-              }))
-              : [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
-            refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
-            customRefundPolicy: eventData.customRefundPolicy || '',
-          });
-          setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
-        }
+            setFormData({
+              title: eventData.title || '',
+              category: eventData.rawCategory || '',
+              tags: eventData.tags || [],
+              eventType: 'public',
+              format: eventData.format === 'in_person' ? 'In-Person' : eventData.format === 'online' ? 'Online' : 'Hybrid',
+              themeColor: eventData.themeColor || '#1E4DB7',
+              accentColor: eventData.accentColor || '#7C3AED',
+              startDate: eventData.startDate || '',
+              startTime: eventData.startTime || '',
+              endDate: eventData.endDate || '',
+              endTime: eventData.endTime || '',
+              timezone: eventData.timezone || 'EAT',
+              venueName: eventData.venueName || '',
+              address: eventData.address || '',
+              city: eventData.city || '',
+              country: eventData.country || 'Kenya',
+              streamingLink: eventData.streamingLink || '',
+              description: eventData.description || '',
+              coverImage: null,
+              coverImagePreview: eventData.bannerImage || '',
+              speakers: (eventData.speakers || []).map(s => ({
+                id: s.id,
+                name: s.name || '',
+                title: s.title || '',
+                organization: s.organization || '',
+                bio: s.bio || '',
+                photo: null,
+                photoPreview: s.avatar || ''
+              })),
+              hasMC: !!eventData.mc,
+              mcName: eventData.mc?.name || '',
+              mcBio: eventData.mc?.bio || '',
+              mcPhoto: null,
+              mcPhotoPreview: eventData.mc?.avatar || '',
+              schedule: (eventData.schedule || []).map(item => ({
+                id: item.id,
+                title: item.title || '',
+                time: item.time || '',
+                description: item.description || ''
+              })),
+              sponsors: (eventData.sponsors || []).map(s => ({
+                id: s.id,
+                name: s.name || '',
+                website: s.website || '',
+                tier: s.tier || '',
+                logo: null,
+                logoPreview: s.logo || ''
+              })),
+              tickets: eventData.tickets.length > 0
+                ? eventData.tickets.map(t => ({
+                  id: t.id,
+                  type: t.type,
+                  price: t.price,
+                  quantity: t.quantity || 100,
+                  description: t.description || ''
+                }))
+                : [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
+              refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
+              customRefundPolicy: eventData.customRefundPolicy || '',
+              enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
+              sendReminders: eventData.sendReminders ?? eventData.send_reminders ?? true,
+            });
+            setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
+            setInitialSubresources({
+              tickets: (eventData.tickets || []).map(t => t.id).filter(Boolean),
+              speakers: (eventData.speakers || []).map(s => s.id).filter(Boolean),
+              sponsors: (eventData.sponsors || []).map(s => s.id).filter(Boolean),
+              schedule: (eventData.schedule || []).map(item => item.id).filter(Boolean),
+              mcId: eventData.mc?.id || null,
+            });
+          }
       } catch (err) {
         console.error('Failed to load data', err);
       } finally {
@@ -153,6 +169,8 @@ const CreateEventPage = () => {
     tickets: [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
     refundPolicy: 'No Refund',
     customRefundPolicy: '',
+    enableWaitlist: false,
+    sendReminders: true,
   });
 
   const [errors, setErrors] = useState({});
@@ -220,6 +238,12 @@ const CreateEventPage = () => {
     return `https://${url}`;
   };
 
+  const parseStartTime = (value) => {
+    if (!value) return '';
+    const match = String(value).match(/\d{1,2}:\d{2}/);
+    return match ? match[0] : '';
+  };
+
   const buildPayload = (status = 'pending') => {
     const data = {
       title: formData.title,
@@ -240,6 +264,8 @@ const CreateEventPage = () => {
       refund_policy: mapRefundPolicy(formData.refundPolicy),
       theme_color: formData.themeColor || '#1E4DB7',
       accent_color: formData.accentColor || '#7C3AED',
+      enable_waitlist: Boolean(formData.enableWaitlist),
+      send_reminders: Boolean(formData.sendReminders),
       ...(status === 'draft' && { status: 'draft' }),
     };
 
@@ -273,85 +299,197 @@ const CreateEventPage = () => {
         : await api.post('/api/events/create/', payload);
     }
 
-    // Create ticket types separately if any
+    const eventSlug = event.slug || slug;
+    const ticketClassMap = {
+      'Standard': 'paid',
+      'VIP': 'vip',
+      'Early Bird': 'early_bird',
+      'Free': 'free',
+      'Donation': 'donation',
+    };
+
+    const tasks = [];
+
+    // Tickets (create or update)
     if (formData.tickets.length > 0) {
-      const ticketClassMap = {
-        'Standard': 'paid',
-        'VIP': 'vip',
-        'Early Bird': 'early_bird',
-        'Free': 'free',
-        'Donation': 'donation',
-      };
-      const ticketPromises = formData.tickets.map(ticket =>
-        api.post(`/api/events/${event.slug}/tickets/create/`, {
+      formData.tickets.forEach((ticket) => {
+        const payloadData = {
           name: ticket.type,
           ticket_class: ticketClassMap[ticket.type] || 'paid',
           price: ticket.type === 'Free' ? 0 : ticket.price,
           quantity: ticket.quantity,
-          description: ticket.description,
-        }).catch(err => console.warn('Ticket creation failed:', err))
-      );
-      await Promise.allSettled(ticketPromises);
-    }
-
-    // Create speakers
-    if (formData.speakers.length > 0) {
-      const speakerPromises = formData.speakers.map((speaker, idx) => {
-        if (!speaker.name) return Promise.resolve();
-        const fd = new FormData();
-        fd.append('name', speaker.name);
-        fd.append('title', speaker.title || '');
-        fd.append('organization', speaker.organization || '');
-        fd.append('bio', speaker.bio || '');
-        fd.append('is_mc', 'false');
-        fd.append('sort_order', String(idx));
-        if (speaker.photo) fd.append('avatar', speaker.photo);
-        return api.postForm(`/api/events/${event.slug}/speakers/`, fd)
-          .catch(err => console.warn('Speaker creation failed:', err));
+          description: ticket.description || '',
+        };
+        if (ticket.id) {
+          tasks.push(
+            api.patch(`/api/events/${eventSlug}/tickets/${ticket.id}/`, payloadData)
+              .catch(err => console.warn('Ticket update failed:', err))
+          );
+        } else {
+          tasks.push(
+            api.post(`/api/events/${eventSlug}/tickets/create/`, payloadData)
+              .catch(err => console.warn('Ticket creation failed:', err))
+          );
+        }
       });
-      await Promise.allSettled(speakerPromises);
     }
 
-    // Create MC
+    // Speakers (create or update)
+    if (formData.speakers.length > 0) {
+      formData.speakers.forEach((speaker, idx) => {
+        if (!speaker.name) return;
+        const hasPhoto = !!speaker.photo;
+        if (speaker.id) {
+          if (hasPhoto) {
+            const fd = new FormData();
+            fd.append('name', speaker.name);
+            fd.append('title', speaker.title || '');
+            fd.append('organization', speaker.organization || '');
+            fd.append('bio', speaker.bio || '');
+            fd.append('is_mc', 'false');
+            fd.append('sort_order', String(idx));
+            fd.append('avatar', speaker.photo);
+            tasks.push(
+              api.patchForm(`/api/events/${eventSlug}/speakers/${speaker.id}/`, fd)
+                .catch(err => console.warn('Speaker update failed:', err))
+            );
+          } else {
+            tasks.push(
+              api.patch(`/api/events/${eventSlug}/speakers/${speaker.id}/`, {
+                name: speaker.name,
+                title: speaker.title || '',
+                organization: speaker.organization || '',
+                bio: speaker.bio || '',
+                is_mc: false,
+                sort_order: idx,
+              }).catch(err => console.warn('Speaker update failed:', err))
+            );
+          }
+        } else {
+          const fd = new FormData();
+          fd.append('name', speaker.name);
+          fd.append('title', speaker.title || '');
+          fd.append('organization', speaker.organization || '');
+          fd.append('bio', speaker.bio || '');
+          fd.append('is_mc', 'false');
+          fd.append('sort_order', String(idx));
+          if (speaker.photo) fd.append('avatar', speaker.photo);
+          tasks.push(
+            api.postForm(`/api/events/${eventSlug}/speakers/`, fd)
+              .catch(err => console.warn('Speaker creation failed:', err))
+          );
+        }
+      });
+    }
+
+    // MC (create or update)
     if (formData.hasMC && formData.mcName) {
-      const mcFd = new FormData();
-      mcFd.append('name', formData.mcName);
-      mcFd.append('bio', formData.mcBio || '');
-      mcFd.append('is_mc', 'true');
-      mcFd.append('sort_order', '0');
-      if (formData.mcPhoto) mcFd.append('avatar', formData.mcPhoto);
-      await api.postForm(`/api/events/${event.slug}/speakers/`, mcFd)
-        .catch(err => console.warn('MC creation failed:', err));
+      const hasPhoto = !!formData.mcPhoto;
+      if (initialSubresources.mcId) {
+        if (hasPhoto) {
+          const mcFd = new FormData();
+          mcFd.append('name', formData.mcName);
+          mcFd.append('bio', formData.mcBio || '');
+          mcFd.append('is_mc', 'true');
+          mcFd.append('sort_order', '0');
+          mcFd.append('avatar', formData.mcPhoto);
+          tasks.push(
+            api.patchForm(`/api/events/${eventSlug}/speakers/${initialSubresources.mcId}/`, mcFd)
+              .catch(err => console.warn('MC update failed:', err))
+          );
+        } else {
+          tasks.push(
+            api.patch(`/api/events/${eventSlug}/speakers/${initialSubresources.mcId}/`, {
+              name: formData.mcName,
+              bio: formData.mcBio || '',
+              is_mc: true,
+              sort_order: 0,
+            }).catch(err => console.warn('MC update failed:', err))
+          );
+        }
+      } else {
+        const mcFd = new FormData();
+        mcFd.append('name', formData.mcName);
+        mcFd.append('bio', formData.mcBio || '');
+        mcFd.append('is_mc', 'true');
+        mcFd.append('sort_order', '0');
+        if (formData.mcPhoto) mcFd.append('avatar', formData.mcPhoto);
+        tasks.push(
+          api.postForm(`/api/events/${eventSlug}/speakers/`, mcFd)
+            .catch(err => console.warn('MC creation failed:', err))
+        );
+      }
     }
 
-    // Create schedule items
+    // Schedule items (create or update)
     if (formData.schedule.length > 0) {
-      const schedulePromises = formData.schedule.map((item, idx) => {
-        if (!item.title) return Promise.resolve();
-        return api.post(`/api/events/${event.slug}/schedule/`, {
+      formData.schedule.forEach((item, idx) => {
+        if (!item.title) return;
+        const payloadData = {
           title: item.title,
           description: item.description || '',
-          start_time: item.time || '00:00',
+          start_time: parseStartTime(item.time) || '00:00',
           sort_order: idx,
-        }).catch(err => console.warn('Schedule item creation failed:', err));
+        };
+        if (item.id) {
+          tasks.push(
+            api.patch(`/api/events/${eventSlug}/schedule/${item.id}/`, payloadData)
+              .catch(err => console.warn('Schedule update failed:', err))
+          );
+        } else {
+          tasks.push(
+            api.post(`/api/events/${eventSlug}/schedule/`, payloadData)
+              .catch(err => console.warn('Schedule creation failed:', err))
+          );
+        }
       });
-      await Promise.allSettled(schedulePromises);
     }
 
-    // Create sponsors
+    // Sponsors (create or update)
     if (formData.sponsors.length > 0) {
-      const sponsorPromises = formData.sponsors.map((sponsor, idx) => {
-        if (!sponsor.name) return Promise.resolve();
-        const fd = new FormData();
-        fd.append('name', sponsor.name);
-        fd.append('website', ensureUrl(sponsor.website));
-        fd.append('tier', (sponsor.tier || 'bronze').toLowerCase());
-        fd.append('sort_order', String(idx));
-        if (sponsor.logo) fd.append('logo', sponsor.logo);
-        return api.postForm(`/api/events/${event.slug}/sponsors/`, fd)
-          .catch(err => console.warn('Sponsor creation failed:', err));
+      formData.sponsors.forEach((sponsor, idx) => {
+        if (!sponsor.name) return;
+        const hasLogo = !!sponsor.logo;
+        const tierValue = (sponsor.tier || 'bronze').toLowerCase();
+        if (sponsor.id) {
+          if (hasLogo) {
+            const fd = new FormData();
+            fd.append('name', sponsor.name);
+            fd.append('website', ensureUrl(sponsor.website));
+            fd.append('tier', tierValue);
+            fd.append('sort_order', String(idx));
+            fd.append('logo', sponsor.logo);
+            tasks.push(
+              api.patchForm(`/api/events/${eventSlug}/sponsors/${sponsor.id}/`, fd)
+                .catch(err => console.warn('Sponsor update failed:', err))
+            );
+          } else {
+            tasks.push(
+              api.patch(`/api/events/${eventSlug}/sponsors/${sponsor.id}/`, {
+                name: sponsor.name,
+                website: ensureUrl(sponsor.website),
+                tier: tierValue,
+                sort_order: idx,
+              }).catch(err => console.warn('Sponsor update failed:', err))
+            );
+          }
+        } else {
+          const fd = new FormData();
+          fd.append('name', sponsor.name);
+          fd.append('website', ensureUrl(sponsor.website));
+          fd.append('tier', tierValue);
+          fd.append('sort_order', String(idx));
+          if (sponsor.logo) fd.append('logo', sponsor.logo);
+          tasks.push(
+            api.postForm(`/api/events/${eventSlug}/sponsors/`, fd)
+              .catch(err => console.warn('Sponsor creation failed:', err))
+          );
+        }
       });
-      await Promise.allSettled(sponsorPromises);
+    }
+
+    if (tasks.length > 0) {
+      await Promise.allSettled(tasks);
     }
 
     return event;
