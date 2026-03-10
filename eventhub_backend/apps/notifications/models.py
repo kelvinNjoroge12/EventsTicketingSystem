@@ -4,6 +4,23 @@ from django.db import models
 
 from common.models import TimeStampedModel
 
+class NotificationPreference(TimeStampedModel):
+    user = models.OneToOneField(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="notification_preferences",
+    )
+    email_new_sales = models.BooleanField(default=True)
+    email_event_reminders = models.BooleanField(default=True)
+    email_marketing = models.BooleanField(default=False)
+    push_check_ins = models.BooleanField(default=True)
+    push_event_updates = models.BooleanField(default=True)
+    sms_important = models.BooleanField(default=False)
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"NotificationPreference({self.user_id})"
+
+
 
 class Notification(TimeStampedModel):
     """In-app notification for attendees and organizers."""

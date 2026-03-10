@@ -11,6 +11,7 @@ import {
   Eye,
   Trash2,
   Plus,
+  QrCode,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ const getStatusColor = (status) => {
   }
 };
 
-const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, onDeleteEvent }) => {
+const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, onDeleteEvent, onCheckInEvent }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -195,6 +196,18 @@ const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, o
                       <Eye className="w-4 h-4 mr-2" />
                       View
                     </DropdownMenuItem>
+                    {onCheckInEvent && (
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCheckInEvent(event);
+                        }}
+                      >
+                        <QrCode className="w-4 h-4 mr-2" />
+                        Check-in
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onClick={(e) => {

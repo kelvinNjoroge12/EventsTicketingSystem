@@ -122,6 +122,44 @@ async function request(path, options = {}, retry = true) {
   return data?.data ?? data;
 }
 
+const extractFilename = (disposition, fallback) => {
+  if (!disposition) return fallback;
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?\"?([^\";]+)\"?/i);
+  if (!match) return fallback;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+};
+
+const download = async (path) => {
+  const url = `${API_BASE_URL}${path}`;
+  const tokens = getAuthTokens();
+  const headers = {};
+  if (tokens?.tokens?.access) {
+    headers.Authorization = `Bearer ${tokens.tokens.access}`;
+  }
+
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const message =
+      data?.error?.message ||
+      data?.detail ||
+      "Download failed. Please try again.";
+    const error = new Error(message);
+    error.response = data;
+    error.status = res.status;
+    throw error;
+  }
+
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition");
+  const filename = extractFilename(disposition, "export.csv");
+  return { blob, filename };
+};
+
 export const api = {
   request,
   get: (path) => request(path),
@@ -144,6 +182,7 @@ export const api = {
       body: formData,
       headers: {},
     }),
+  download,
   getAuthTokens,
   saveAuthTokens,
   clearAuthTokens,

@@ -1,21 +1,44 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import logging
 
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import OrganizerTeamMember
 from apps.events.models import Event
-from apps.orders.models import Order, Ticket
+from apps.notifications.serializers import create_notification
+from apps.orders.models import Order
 from apps.orders.utils import send_ticket_email
 from .models import CheckIn
 from .serializers import CheckInSerializer, QRScanSerializer
 
 logger = logging.getLogger(__name__)
+
+
+def _can_manage_checkin(user, event) -> bool:
+    if not user or not event:
+        return False
+    if user.is_staff or user.role == "admin":
+        return True
+    if event.organizer_id == user.id:
+        return True
+    if user.role not in ["checkin", "staff"]:
+        return False
+
+    membership = (
+        OrganizerTeamMember.objects.filter(member=user, organizer=event.organizer)
+        .prefetch_related("assigned_events")
+        .first()
+    )
+    if not membership:
+        return False
+    if membership.assigned_events.exists():
+        return membership.assigned_events.filter(id=event.id).exists()
+    return True
 
 
 class QRScanView(APIView):
@@ -29,12 +52,29 @@ class QRScanView(APIView):
 
     def post(self, request, slug):
         event = get_object_or_404(Event, slug=slug)
-        if event.organizer != request.user and not request.user.is_staff:
-            raise PermissionDenied("Only the event organizer can perform check-ins.")
+        if not _can_manage_checkin(request.user, event):
+            raise PermissionDenied("Only assigned staff can perform check-ins.")
 
         serializer = QRScanSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        if serializer.ticket.event_id != event.id:
+            return Response(
+                {"detail": "Ticket does not belong to this event."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         checkin = serializer.save(user=request.user, event=event)
+
+        if event.organizer and event.organizer != request.user:
+            create_notification(
+                recipient=event.organizer,
+                notification_type="checkin_success",
+                title="Check-in recorded",
+                message=f"{checkin.attendee_name} checked in for {event.title}.",
+                event=event,
+                action_url=f"/organizer/events/{event.slug}/checkin",
+            )
 
         return Response(
             {
@@ -57,8 +97,8 @@ class CheckInListView(generics.ListAPIView):
 
     def get_queryset(self):
         event = get_object_or_404(Event, slug=self.kwargs["slug"])
-        if event.organizer != self.request.user and not self.request.user.is_staff:
-            raise PermissionDenied("Only the event organizer can view check-ins.")
+        if not _can_manage_checkin(self.request.user, event):
+            raise PermissionDenied("Only assigned staff can view check-ins.")
         return CheckIn.objects.filter(event=event).select_related("ticket", "checked_in_by").order_by("-created_at")
 
 
@@ -72,8 +112,8 @@ class AttendanceDashboardView(APIView):
 
     def get(self, request, slug):
         event = get_object_or_404(Event, slug=slug)
-        if event.organizer != request.user and not request.user.is_staff:
-            raise PermissionDenied("Only the event organizer can view attendance.")
+        if not _can_manage_checkin(request.user, event):
+            raise PermissionDenied("Only assigned staff can view attendance.")
 
         orders = Order.objects.filter(
             event=event, status="confirmed"
@@ -95,17 +135,21 @@ class AttendanceDashboardView(APIView):
             elif order.email_error:
                 email_failed_count += 1
 
+            first_ticket = tickets[0] if tickets else None
+
             rows.append({
                 "order_number": order.order_number,
                 "attendee_name": f"{order.attendee_first_name} {order.attendee_last_name}",
                 "attendee_email": order.attendee_email,
                 "attendee_phone": order.attendee_phone,
+                "qr_code_uuid": str(first_ticket.qr_code_data) if first_ticket else "",
                 "tickets": [
                     {
                         "id": str(t.id),
-                        "ticket_type": t.ticket_type.name if t.ticket_type else "—",
+                        "ticket_type": t.ticket_type.name if t.ticket_type else "-",
                         "status": t.status,
                         "qr_code_data": str(t.qr_code_data),
+                        "qr_code_uuid": str(t.qr_code_data),
                         "checked_in_at": t.checked_in_at.isoformat() if t.checked_in_at else None,
                     }
                     for t in tickets
@@ -144,8 +188,8 @@ class ResendTicketEmailView(APIView):
 
     def post(self, request, slug):
         event = get_object_or_404(Event, slug=slug)
-        if event.organizer != request.user and not request.user.is_staff:
-            raise PermissionDenied("Only the event organizer can resend tickets.")
+        if not _can_manage_checkin(request.user, event):
+            raise PermissionDenied("Only assigned staff can resend tickets.")
 
         order_number = request.data.get("order_number")
         if not order_number:
@@ -167,7 +211,7 @@ class ResendTicketEmailView(APIView):
 class RetrieveTicketView(APIView):
     """
     POST /api/checkin/retrieve-ticket/
-    Public endpoint — attendee provides order_number + email to recover their lost ticket.
+    Public endpoint - attendee provides order_number + email to recover their lost ticket.
     Body: { "order_number": "EH...", "email": "..." }
     """
     permission_classes = [permissions.AllowAny]

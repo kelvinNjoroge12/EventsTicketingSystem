@@ -124,6 +124,7 @@ const CheckInPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [manualEntry, setManualEntry] = useState('');
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualHelper, setManualHelper] = useState('');
   const [attendance, setAttendance] = useState(null);
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(true);
   const [event, setEvent] = useState(null);
@@ -181,6 +182,7 @@ const CheckInPage = () => {
     const entry = manualEntry.trim();
     if (!entry) return;
     performScan(entry);
+    setManualHelper('');
   };
 
   const attendees = attendance?.attendees || [];
@@ -220,17 +222,30 @@ const CheckInPage = () => {
   });
 
   const toggleCheckIn = (guest) => {
-    if (!guest.scanCode) return;
-    performScan(guest.scanCode);
+    if (guest.scanCode) {
+      performScan(guest.scanCode);
+      return;
+    }
+    setShowManualEntry(true);
+    setManualEntry(guest.id?.toString() || guest.email || '');
+    setManualHelper('No QR code found. Enter the order number or ticket ID to check in.');
   };
 
-  if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
+  const isOrganizer = user && (user.role === 'organizer' || user.role === 'admin');
+  const isStaff = user && (user.is_staff || user.role === 'staff' || user.role === 'checkin');
+  const assignedEvents = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
+  const isAssigned = !assignedEvents.length || assignedEvents.some((value) => (
+    String(value) === String(event?.id) || String(value) === String(event?.slug)
+  ));
+  const canAccess = Boolean(user && (isOrganizer || (isStaff && isAssigned)));
+
+  if (!canAccess) {
     return (
       <PageWrapper className="bg-[#F8FAFC]">
         <div className="text-center py-20">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-[#0F172A]">Access Denied</h2>
-          <p className="text-[#64748B] mt-2">Only event organizers can access check-in.</p>
+          <p className="text-[#64748B] mt-2">You do not have permission to access this event check-in.</p>
         </div>
       </PageWrapper>
     );
@@ -315,7 +330,12 @@ const CheckInPage = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setShowManualEntry((prev) => !prev)}
+                    onClick={() => {
+                      setShowManualEntry((prev) => {
+                        if (prev) setManualHelper('');
+                        return !prev;
+                      });
+                    }}
                     className="text-xs lg:text-sm"
                   >
                     <Keyboard className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1.5" />
@@ -327,7 +347,7 @@ const CheckInPage = () => {
                   <div className="flex gap-2 animate-slide-in-up">
                     <Input
                       type="text"
-                      placeholder="Enter ticket QR UUID"
+                      placeholder="Enter QR code, order number, or ticket ID"
                       value={manualEntry}
                       onChange={(e) => setManualEntry(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleManualCheckIn()}
@@ -337,6 +357,9 @@ const CheckInPage = () => {
                       <CheckCircle className="w-4 h-4" />
                     </Button>
                   </div>
+                )}
+                {manualHelper && (
+                  <p className="text-xs text-gray-500">{manualHelper}</p>
                 )}
               </CardContent>
             </Card>

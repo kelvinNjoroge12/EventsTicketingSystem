@@ -1,6 +1,6 @@
 ﻿
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -14,6 +14,7 @@ import {
   Ticket,
   X,
   DollarSign,
+  QrCode,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PageWrapper from '../components/layout/PageWrapper';
@@ -23,8 +24,6 @@ import OrganizerHeader from '../components/organizer/OrganizerHeader';
 import OrganizerDashboardOverview from './organizer/Dashboard';
 import OrganizerMyEvents from './organizer/MyEvents';
 import OrganizerEventDetail from './organizer/EventDetail';
-import OrganizerCheckInSelect from './organizer/CheckInSelect';
-import OrganizerCreateEvent from './organizer/CreateEvent';
 import OrganizerSettings from './organizer/Settings';
 import { api } from '../lib/apiClient';
 import { fetchEvent } from '../lib/eventsApi';
@@ -86,6 +85,129 @@ const resolveStatus = (event) => {
   return raw === 'published' ? 'upcoming' : raw;
 };
 
+const parseDateValue = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const buildRevenueSeriesFromEntries = (entries, range) => {
+  const now = new Date();
+  const buckets = [];
+  const values = new Map();
+
+  const addValue = (label, amount) => {
+    values.set(label, (values.get(label) || 0) + amount);
+  };
+
+  if (range === 'year') {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    months.forEach((label) => buckets.push(label));
+    entries.forEach((entry) => {
+      const date = parseDateValue(entry.date || entry.created_at || entry.created || entry.recorded_at);
+      if (!date || date.getFullYear() !== now.getFullYear()) return;
+      addValue(months[date.getMonth()], Number(entry.amount || entry.revenue || 0));
+    });
+  } else if (range === 'week') {
+    const start = new Date(now);
+    const day = start.getDay() || 7;
+    start.setDate(start.getDate() - (day - 1));
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    labels.forEach((label) => buckets.push(label));
+    entries.forEach((entry) => {
+      const date = parseDateValue(entry.date || entry.created_at || entry.created || entry.recorded_at);
+      if (!date) return;
+      const diffDays = Math.floor((date - start) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0 || diffDays > 6) return;
+      addValue(labels[diffDays], Number(entry.amount || entry.revenue || 0));
+    });
+  } else {
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let i = 1; i <= daysInMonth; i += 1) {
+      buckets.push(String(i));
+    }
+    entries.forEach((entry) => {
+      const date = parseDateValue(entry.date || entry.created_at || entry.created || entry.recorded_at);
+      if (!date || date.getFullYear() !== year || date.getMonth() !== month) return;
+      addValue(String(date.getDate()), Number(entry.amount || entry.revenue || 0));
+    });
+  }
+
+  return buckets.map((label) => ({ name: label, revenue: values.get(label) || 0 }));
+};
+
+const normalizeRevenueSeries = (data) => {
+  if (!data) return [];
+  const list = Array.isArray(data) ? data : data?.results || data?.series || data?.data || [];
+  if (!Array.isArray(list)) return [];
+  return list.map((item) => ({
+    name: item.name || item.label || item.period || item.date || item.day || '',
+    revenue: Number(item.revenue ?? item.amount ?? item.value ?? 0),
+  }));
+};
+
+const extractPercentValue = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') {
+    return extractPercentValue(
+      value.percent ?? value.percentage ?? value.change ?? value.delta ?? null
+    );
+  }
+  if (typeof value === 'string') {
+    const numeric = Number(value.replace('%', '').trim());
+    if (Number.isNaN(numeric)) return null;
+    return numeric;
+  }
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return null;
+  if (Math.abs(numeric) > 0 && Math.abs(numeric) < 1) return numeric * 100;
+  return numeric;
+};
+
+const computePercentChange = (current, previous) => {
+  const currentNum = Number(current);
+  const previousNum = Number(previous);
+  if (Number.isNaN(currentNum) || Number.isNaN(previousNum) || previousNum === 0) return null;
+  return ((currentNum - previousNum) / previousNum) * 100;
+};
+
+const buildStatChanges = (statsData) => {
+  if (!statsData) return {};
+  const kpis = statsData.kpis || statsData.stats || statsData || {};
+  const deltas = statsData.changes || statsData.deltas || statsData.trends || statsData.percent_changes || {};
+  const previous = statsData.previous_kpis || statsData.previous || statsData.prior || statsData.comparison || {};
+
+  const buildChange = (deltaKey, currentKey, snakeKey) => (
+    extractPercentValue(deltas[deltaKey]) ??
+    extractPercentValue(deltas[currentKey]) ??
+    extractPercentValue(deltas[snakeKey]) ??
+    computePercentChange(kpis[currentKey] ?? kpis[snakeKey], previous[currentKey] ?? previous[snakeKey])
+  );
+
+  return {
+    totalEvents: buildChange('total_events', 'totalEvents', 'total_events'),
+    totalAttendees: buildChange('total_attendees', 'totalAttendees', 'total_attendees'),
+    totalCheckins: buildChange('total_checkins', 'totalCheckins', 'total_checkins'),
+    totalRevenue: buildChange('total_revenue', 'totalRevenue', 'total_revenue'),
+    totalExpenses: buildChange('total_expenses', 'totalExpenses', 'total_expenses'),
+    netProfit: buildChange('net_profit', 'netProfit', 'net_profit'),
+  };
+};
+
+const normalizeStats = (stats) => ({
+  totalEvents: stats?.totalEvents ?? stats?.total_events ?? 0,
+  publishedEvents: stats?.publishedEvents ?? stats?.published_events ?? 0,
+  draftEvents: stats?.draftEvents ?? stats?.draft_events ?? 0,
+  totalAttendees: stats?.totalAttendees ?? stats?.total_attendees ?? 0,
+  totalCheckins: stats?.totalCheckins ?? stats?.total_checkins ?? 0,
+  checkinPercent: stats?.checkinPercent ?? stats?.checkin_percent ?? 0,
+  totalRevenue: stats?.totalRevenue ?? stats?.total_revenue ?? 0,
+  totalExpenses: stats?.totalExpenses ?? stats?.total_expenses ?? 0,
+  netProfit: stats?.netProfit ?? stats?.net_profit ?? 0,
+});
+
 const normalizeEvent = (event) => {
   const category = event.category?.name || event.category_name || event.category || 'General';
   const date = event.start_date || event.date || '';
@@ -120,11 +242,12 @@ const normalizeEvent = (event) => {
 const OrganizerDashboardPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedEventId, setSelectedEventId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [checkInEventId, setCheckInEventId] = useState('');
+  const [revenueRange, setRevenueRange] = useState('month');
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showRevenueForm, setShowRevenueForm] = useState(false);
   const [entryView, setEntryView] = useState('all');
@@ -134,7 +257,17 @@ const OrganizerDashboardPage = () => {
 
   const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
 
-  const { data: eventsData, isLoading: isLoadingEvents } = useQuery({
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (!tab) return;
+    const allowed = ['dashboard', 'events', 'checkin', 'create', 'settings'];
+    if (allowed.includes(tab)) {
+      setCurrentPage(tab);
+    }
+  }, [location.search]);
+
+  const { data: eventsData } = useQuery({
     queryKey: ['organizer_events'],
     queryFn: async () => {
       const data = await api.get('/api/events/organizer/');
@@ -160,8 +293,8 @@ const OrganizerDashboardPage = () => {
   });
 
   const { data: globalStatsData, isLoading: isLoadingGlobalStats } = useQuery({
-    queryKey: ['dashboard_stats', 'all'],
-    queryFn: () => api.get('/api/finances/dashboard-stats/'),
+    queryKey: ['dashboard_stats', 'all', revenueRange],
+    queryFn: () => api.get(`/api/finances/dashboard-stats/?range=${revenueRange}`),
     enabled: !!hasAccess,
     staleTime: 5 * 60 * 1000,
   });
@@ -205,16 +338,36 @@ const OrganizerDashboardPage = () => {
     staleTime: 60 * 1000,
   });
 
-  const overviewStats = globalStatsData?.kpis || EMPTY_STATS;
-  const selectedStats = eventStatsData?.kpis || EMPTY_STATS;
+  const overviewStats = normalizeStats(globalStatsData?.kpis || globalStatsData || EMPTY_STATS);
+  const statsChanges = buildStatChanges(globalStatsData);
+  const selectedStats = normalizeStats(eventStatsData?.kpis || eventStatsData || EMPTY_STATS);
   const eventAttendees = eventAttendeesData || [];
   const eventExpenses = eventExpensesData || [];
   const eventRevenues = eventRevenuesData || [];
 
-  useEffect(() => {
-    if (events.length === 0 || checkInEventId) return;
-    setCheckInEventId(String(events[0].id));
-  }, [events, checkInEventId]);
+  const { data: revenueSeriesData } = useQuery({
+    queryKey: ['dashboard_revenue_series', revenueRange],
+    queryFn: async () => {
+      try {
+        const data = await api.get(`/api/finances/revenue-series/?range=${revenueRange}`);
+        return apiList(data);
+      } catch (err) {
+        try {
+          const allRevenues = await api.get('/api/finances/revenues/');
+          return buildRevenueSeriesFromEntries(apiList(allRevenues), revenueRange);
+        } catch {
+          return [];
+        }
+      }
+    },
+    enabled: !!hasAccess,
+    staleTime: 60 * 1000,
+  });
+
+  const normalizedRevenueSeries = useMemo(
+    () => normalizeRevenueSeries(revenueSeriesData),
+    [revenueSeriesData]
+  );
 
   useEffect(() => {
     if (!selectedEvent) return;
@@ -275,6 +428,22 @@ const OrganizerDashboardPage = () => {
     },
   });
 
+  const deleteEventMutation = useMutation({
+    mutationFn: async (eventItem) => {
+      const identifier = eventItem?.slug || eventItem?.id;
+      if (!identifier) throw new Error('Missing event identifier');
+      return api.delete(`/api/events/${identifier}/`);
+    },
+    onSuccess: () => {
+      toast.success('Event deleted.');
+      queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to delete event.');
+    },
+  });
+
   const revenueBreakdownTotals = eventRevenues.reduce((acc, item) => {
     const key = item.source || 'other';
     acc[key] = (acc[key] || 0) + Number(item.amount || 0);
@@ -313,19 +482,29 @@ const OrganizerDashboardPage = () => {
   };
 
   const handleCreateEvent = () => {
-    setCurrentPage('create');
+    navigate('/create-event');
   };
 
-  const handleCreatedEvent = () => {
-    queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
-    setCurrentPage('events');
-  };
 
-  const openCheckinForSelected = (eventId) => {
-    const targetId = eventId || checkInEventId;
-    const eventItem = events.find((item) => String(item.id) === String(targetId));
-    if (!eventItem?.slug) return;
+  const openCheckinForEvent = (eventItem) => {
+    if (!eventItem?.slug) {
+      toast.error('Select a valid event to start check-in.');
+      return;
+    }
     navigate(`/organizer/events/${eventItem.slug}/checkin`);
+  };
+
+  const handlePageChange = (page) => {
+    if (page === 'create') {
+      navigate('/create-event');
+      return;
+    }
+    if (page === 'checkin') {
+      setCurrentPage('events');
+      toast.info('Select an event to start check-in.');
+      return;
+    }
+    setCurrentPage(page);
   };
 
   const selectedRevenueSource = REVENUE_SOURCES.find((item) => item.id === revenueForm.source) || REVENUE_SOURCES[1];
@@ -388,10 +567,13 @@ const OrganizerDashboardPage = () => {
           <OrganizerDashboardOverview
             events={events}
             stats={overviewStats}
+            statChanges={statsChanges}
             onEventClick={openEventDetail}
             onViewAll={() => setCurrentPage('events')}
             isLoadingStats={isLoadingGlobalStats}
-            revenueSeries={[]}
+            revenueSeries={normalizedRevenueSeries}
+            range={revenueRange}
+            onRangeChange={setRevenueRange}
           />
         );
       case 'events':
@@ -401,7 +583,8 @@ const OrganizerDashboardPage = () => {
             onEventClick={openEventDetail}
             onCreateEvent={handleCreateEvent}
             onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
-            onDeleteEvent={() => {}}
+            onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}
+            onCheckInEvent={openCheckinForEvent}
           />
         );
       case 'event-detail':
@@ -413,7 +596,7 @@ const OrganizerDashboardPage = () => {
             attendees={eventAttendees}
             attendeesLoading={isLoadingEventAttendees}
             onBack={handleBackToEvents}
-            onCheckIn={() => openCheckinForSelected(selectedEvent.id)}
+            onCheckIn={() => openCheckinForEvent(selectedEvent)}
             onEditEvent={handleEditEvent}
             onOpenExpense={() => setShowExpenseForm(true)}
             onOpenRevenue={() => setShowRevenueForm(true)}
@@ -431,18 +614,23 @@ const OrganizerDashboardPage = () => {
         ) : null;
       case 'checkin':
         return (
-          <OrganizerCheckInSelect
-            events={events}
-            isLoadingEvents={isLoadingEvents}
-            checkInEventId={checkInEventId}
-            onSelectEvent={setCheckInEventId}
-            onOpenCheckin={openCheckinForSelected}
-          />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600 bg-white border border-[#E2E8F0] rounded-xl px-4 py-3">
+              <QrCode className="w-4 h-4 text-[#C58B1A]" />
+              Choose an event below to open the check-in screen.
+            </div>
+            <OrganizerMyEvents
+              events={events}
+              onEventClick={openEventDetail}
+              onCreateEvent={handleCreateEvent}
+              onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
+              onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}
+              onCheckInEvent={openCheckinForEvent}
+            />
+          </div>
         );
-      case 'create':
-        return <OrganizerCreateEvent onBack={() => setCurrentPage('events')} onCreated={handleCreatedEvent} />;
       case 'settings':
-        return <OrganizerSettings />;
+        return <OrganizerSettings events={events} />;
       default:
         return null;
     }
@@ -452,7 +640,7 @@ const OrganizerDashboardPage = () => {
     <PageWrapper className="bg-[#F8FAFC]">
       <div className="min-h-screen flex">
         <div className="hidden lg:block">
-          <OrganizerSidebar currentPage={currentPage} onPageChange={setCurrentPage} />
+          <OrganizerSidebar currentPage={currentPage} onPageChange={handlePageChange} />
         </div>
 
         {sidebarOpen && (
@@ -466,7 +654,7 @@ const OrganizerDashboardPage = () => {
           <OrganizerMobileNav
             currentPage={currentPage}
             onPageChange={(page) => {
-              setCurrentPage(page);
+              handlePageChange(page);
               setSidebarOpen(false);
             }}
             onClose={() => setSidebarOpen(false)}
@@ -479,6 +667,7 @@ const OrganizerDashboardPage = () => {
             onMenuClick={() => setSidebarOpen(true)}
             showMenu
           />
+          <div className="h-16 shrink-0" />
 
           <main className="flex-1 p-4 lg:p-6 overflow-auto">
             <div className="max-w-7xl mx-auto">{renderPage()}</div>

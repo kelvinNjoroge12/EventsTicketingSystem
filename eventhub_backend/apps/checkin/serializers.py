@@ -1,9 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
+
+import uuid
 
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.orders.models import Ticket
+from apps.orders.models import Order, Ticket
 from .models import CheckIn
 
 
@@ -21,13 +23,46 @@ class CheckInSerializer(serializers.ModelSerializer):
 class QRScanSerializer(serializers.Serializer):
     """Accepts a QR code UUID and validates the ticket."""
 
-    qr_code_data = serializers.UUIDField()
+    qr_code_data = serializers.CharField()
 
     def validate_qr_code_data(self, value):
+        raw_value = str(value).strip()
+        if not raw_value:
+            raise serializers.ValidationError("QR code data is required.")
+
+        ticket = None
+        parsed_uuid = None
+
         try:
-            ticket = Ticket.objects.select_related("event", "order").get(qr_code_data=value)
-        except Ticket.DoesNotExist:
-            raise serializers.ValidationError("Invalid QR code — ticket not found.")
+            parsed_uuid = uuid.UUID(raw_value)
+        except ValueError:
+            parsed_uuid = None
+
+        if parsed_uuid:
+            ticket = Ticket.objects.select_related("event", "order").filter(
+                qr_code_data=parsed_uuid
+            ).first()
+            if not ticket:
+                ticket = Ticket.objects.select_related("event", "order").filter(
+                    id=parsed_uuid
+                ).first()
+
+        if ticket is None:
+            order = Order.objects.filter(order_number__iexact=raw_value).first()
+            if order:
+                valid_ticket = order.tickets.filter(status="valid").first()
+                if valid_ticket:
+                    ticket = valid_ticket
+                else:
+                    any_ticket = order.tickets.first()
+                    if any_ticket:
+                        raise serializers.ValidationError(
+                            "All tickets for this order are already checked in."
+                        )
+                    raise serializers.ValidationError("No tickets found for this order.")
+
+        if ticket is None:
+            raise serializers.ValidationError("Invalid QR code, order number, or ticket ID.")
 
         if ticket.status != "valid":
             raise serializers.ValidationError(

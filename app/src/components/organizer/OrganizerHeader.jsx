@@ -1,8 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Bell, Calendar, Menu } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import {
+  fetchNotifications,
+  fetchUnreadCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from '@/lib/eventsApi';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,17 +21,28 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const initialNotifications = [
-  { id: 1, title: 'New ticket sale!', message: 'Someone just bought a VIP ticket', time: '2 min ago', read: false },
-  { id: 2, title: 'Event reminder', message: 'Your next event starts tomorrow', time: '1 hour ago', read: false },
-  { id: 3, title: 'Check-in alert', message: '50 guests have checked in', time: '3 hours ago', read: true },
-  { id: 4, title: 'Payment received', message: 'Payout has been processed', time: '5 hours ago', read: true },
-];
+const apiList = (value) => (Array.isArray(value) ? value : value?.results || []);
+
+const formatRelativeTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
 
 const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [scrolled, setScrolled] = useState(false);
-  const [notificationList, setNotificationList] = useState(initialNotifications);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -30,13 +50,62 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const unreadCount = notificationList.filter((n) => !n.read).length;
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => fetchNotifications(),
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
+  const { data: unreadCountData } = useQuery({
+    queryKey: ['notifications', 'unread_count'],
+    queryFn: fetchUnreadCount,
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
+  const notifications = useMemo(() => {
+    const items = apiList(notificationsData);
+    return items.map((item, index) => ({
+      id: item.id ?? item.notification_id ?? item.uuid ?? `${index}`,
+      title: item.title || item.subject || item.type || 'Notification',
+      message: item.message || item.body || item.description || '',
+      time: item.time || formatRelativeTime(item.created_at || item.timestamp || item.date),
+      read: item.read ?? item.is_read ?? false,
+    }));
+  }, [notificationsData]);
+
+  const unreadCount = unreadCountData ?? notifications.filter((n) => !n.read).length;
+
+  const markReadMutation = useMutation({
+    mutationFn: (id) => markNotificationRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread_count'] });
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update notification.');
+    },
+  });
+
+  const markAllMutation = useMutation({
+    mutationFn: () => markAllNotificationsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread_count'] });
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update notifications.');
+    },
+  });
+
   const markAsRead = (id) => {
-    setNotificationList((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    if (!id) return;
+    markReadMutation.mutate(id);
   };
-  const markAllAsRead = () => {
-    setNotificationList((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
+  const markAllAsRead = () => markAllMutation.mutate();
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -52,7 +121,7 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
   return (
     <header
       className={cn(
-        'fixed top-0 right-0 h-16 z-30 transition-all duration-300 flex items-center justify-between px-4 lg:px-6',
+        'fixed top-0 right-0 h-16 z-40 transition-all duration-300 flex items-center justify-between px-4 lg:px-6',
         'lg:left-64 left-0',
         scrolled
           ? 'bg-white/95 backdrop-blur-xl shadow-sm border-b border-gray-100'
@@ -106,24 +175,31 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="max-h-64 overflow-auto">
-              {notificationList.map((notification) => (
-                <DropdownMenuItem
-                  key={notification.id}
-                  className={cn('flex flex-col items-start gap-1 p-3 cursor-pointer', !notification.read && 'bg-[#C58B1A]/5')}
-                  onClick={() => markAsRead(notification.id)}
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    <span className="text-sm font-medium flex-1">{notification.title}</span>
-                    {!notification.read && <span className="w-2 h-2 bg-[#C58B1A] rounded-full" />}
-                  </div>
-                  <span className="text-xs text-gray-500">{notification.message}</span>
-                  <span className="text-xs text-[#C58B1A]">{notification.time}</span>
-                </DropdownMenuItem>
-              ))}
+              {notifications.length > 0 ? (
+                notifications.map((notification) => (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    className={cn('flex flex-col items-start gap-1 p-3 cursor-pointer', !notification.read && 'bg-[#C58B1A]/5')}
+                    onClick={() => markAsRead(notification.id)}
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <span className="text-sm font-medium flex-1">{notification.title}</span>
+                      {!notification.read && <span className="w-2 h-2 bg-[#C58B1A] rounded-full" />}
+                    </div>
+                    <span className="text-xs text-gray-500">{notification.message}</span>
+                    <span className="text-xs text-[#C58B1A]">{notification.time}</span>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <div className="p-4 text-sm text-gray-500 text-center">No notifications yet.</div>
+              )}
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-[#1E4DB7] font-medium cursor-pointer">
-              View all notifications
+            <DropdownMenuItem
+              className="justify-center text-[#1E4DB7] font-medium cursor-pointer"
+              onClick={() => navigate('/organizer-dashboard?tab=settings')}
+            >
+              Notification settings
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -139,11 +215,10 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Billing</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/organizer-profile')}>Profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/organizer-dashboard?tab=settings')}>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-[#B91C1C]">Logout</DropdownMenuItem>
+            <DropdownMenuItem className="text-[#B91C1C]" onClick={logout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -80,6 +80,7 @@ const OrganizerEventDetail = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [savingQuickEdit, setSavingQuickEdit] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [quickEdit, setQuickEdit] = useState(() => ({
     title: detail?.title || detail?.name || '',
     description: detail?.description || '',
@@ -179,6 +180,27 @@ const OrganizerEventDetail = ({
       toast.error(err?.message || 'Failed to update event');
     } finally {
       setSavingQuickEdit(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!detail?.slug) return;
+    setIsExporting(true);
+    try {
+      const { blob, filename } = await api.download(`/api/events/${detail.slug}/analytics/export/`);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || `${detail.slug}-analytics.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Export started.');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to export analytics.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -359,7 +381,7 @@ const OrganizerEventDetail = ({
                       className="pl-10 w-full sm:w-48 lg:w-64"
                     />
                   </div>
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" onClick={handleExport} disabled={isExporting}>
                     <Download className="w-4 h-4" />
                   </Button>
                 </div>

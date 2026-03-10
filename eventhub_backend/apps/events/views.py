@@ -5,8 +5,9 @@ from django.db import models
 from django.db.models import Exists, OuterRef, Prefetch, Q, Subquery
 from django.shortcuts import get_object_or_404
 from django_ratelimit.decorators import ratelimit
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -122,6 +123,24 @@ class EventDetailView(generics.RetrieveAPIView):
             response["Cache-Control"] = "no-store, no-cache, private"
         return response
 
+    def delete(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
+
+        if request.user.is_staff or request.user.role == "admin":
+            qs = Event.objects.all()
+        else:
+            if request.user.role != "organizer":
+                raise PermissionDenied("Only organizers can delete events.")
+            qs = Event.objects.filter(organizer=request.user)
+
+        event = get_object_or_404(qs, slug=kwargs.get(self.lookup_field))
+        event.status = "cancelled"
+        event.save(update_fields=["status"])
+        cache.clear()
+        cache.delete(f"events:detail:v2:{event.slug}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class EventCreateView(generics.CreateAPIView):
     serializer_class = EventCreateSerializer
@@ -159,7 +178,7 @@ class EventDeleteView(generics.DestroyAPIView):
         instance.status = "cancelled"
         instance.save(update_fields=["status"])
         cache.clear()
-        cache.delete(f"events:detail:{instance.slug}")
+        cache.delete(f"events:detail:v2:{instance.slug}")
 
 
 class EventPublishView(generics.UpdateAPIView):

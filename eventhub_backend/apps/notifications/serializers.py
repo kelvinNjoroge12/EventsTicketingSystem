@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.utils import timezone
 from rest_framework import serializers
-from .models import Notification
+from .models import Notification, NotificationPreference
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -20,6 +20,19 @@ class NotificationSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationPreference
+        fields = [
+            "email_new_sales",
+            "email_event_reminders",
+            "email_marketing",
+            "push_check_ins",
+            "push_event_updates",
+            "sms_important",
+        ]
 
 
 def create_notification(

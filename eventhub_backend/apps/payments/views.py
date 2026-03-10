@@ -123,6 +123,20 @@ def _notify_and_email(order: Order, title: str):
             action_url=f"/confirmation/{order.order_number}",
         )
 
+    if order.event and order.event.organizer and order.event.organizer != order.attendee:
+        create_notification(
+            recipient=order.event.organizer,
+            notification_type="ticket_confirmed",
+            title="New ticket sale",
+            message=(
+                f"New order #{order.order_number} for "
+                f"{order.event.title if order.event else 'your event'} "
+                f"by {order.attendee_first_name} {order.attendee_last_name}."
+            ),
+            event=order.event,
+            action_url=f"/organizer/events/{order.event.slug}",
+        )
+
     try:
         send_ticket_email(order)
     except Exception as exc:  # pragma: no cover

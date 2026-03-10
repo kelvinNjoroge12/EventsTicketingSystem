@@ -52,6 +52,8 @@ urlpatterns = [
     path("api/", include("apps.tickets.urls")),
     path("api/orders/", include("apps.orders.urls")),
     path("api/payments/", include("apps.payments.urls")),
+    path("api/settings/", include("apps.accounts.settings_urls")),
+    path("api/organizer/", include("apps.accounts.team_urls")),
     # Per-event nested resources: speakers, schedule, sponsors, check-in, analytics
     path("api/events/<slug:slug>/speakers/", include("apps.speakers.urls")),
     path("api/events/<slug:slug>/schedule/", include("apps.schedules.urls")),

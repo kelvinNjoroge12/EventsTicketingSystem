@@ -8,7 +8,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from common.validators import validate_upload_image
-from .models import OrganizerProfile
+from .models import OrganizerProfile, OrganizerTeamMember
 
 User = get_user_model()
 
@@ -45,6 +45,19 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     organizer_profile = OrganizerProfileSerializer(read_only=True)
+    organization_name = serializers.CharField(
+        source="organizer_profile.organization_name", required=False, allow_blank=True
+    )
+    organization_bio = serializers.CharField(
+        source="organizer_profile.organization_bio", required=False, allow_blank=True
+    )
+    website = serializers.CharField(
+        source="organizer_profile.website", required=False, allow_blank=True
+    )
+    logo = serializers.ImageField(
+        source="organizer_profile.logo", required=False, allow_null=True
+    )
+    assigned_events = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -58,14 +71,55 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "role",
             "is_email_verified",
             "organizer_profile",
+            "organization_name",
+            "organization_bio",
+            "website",
+            "logo",
+            "assigned_events",
             "created_at",
         ]
-        read_only_fields = ("email", "role", "is_email_verified", "organizer_profile", "created_at")
+        read_only_fields = (
+            "role",
+            "is_email_verified",
+            "organizer_profile",
+            "assigned_events",
+            "created_at",
+        )
 
     def validate_avatar(self, value):
         if value:
             validate_upload_image(value)
         return value
+
+    def validate_email(self, value):
+        value = value.lower().strip()
+        if self.instance and self.instance.email.lower() == value:
+            return value
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+    def get_assigned_events(self, obj):
+        memberships = OrganizerTeamMember.objects.filter(member=obj).prefetch_related("assigned_events")
+        event_ids = set()
+        for membership in memberships:
+            for event in membership.assigned_events.all():
+                event_ids.add(str(event.id))
+        return list(event_ids)
+
+    def update(self, instance, validated_data):
+        organizer_data = validated_data.pop("organizer_profile", {})
+        instance = super().update(instance, validated_data)
+
+        if organizer_data:
+            profile, _ = OrganizerProfile.objects.get_or_create(user=instance, defaults={
+                "organization_name": organizer_data.get("organization_name", ""),
+            })
+            for field, value in organizer_data.items():
+                setattr(profile, field, value)
+            profile.save()
+
+        return instance
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -209,3 +263,29 @@ class EmailVerificationSerializer(serializers.Serializer):
 class ResendVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
+
+class OrganizerTeamMemberSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    email = serializers.EmailField(source="member.email", read_only=True)
+    assigned_events = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrganizerTeamMember
+        fields = ["id", "name", "email", "role", "assigned_events"]
+
+    def get_name(self, obj):
+        return obj.member.get_full_name() or obj.member.email
+
+    def get_assigned_events(self, obj):
+        return [str(event.id) for event in obj.assigned_events.all()]
+
+
+class UserSessionSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    device = serializers.CharField()
+    location = serializers.CharField(allow_blank=True)
+    current = serializers.BooleanField()
+
+
+class SecuritySettingsSerializer(serializers.Serializer):
+    two_factor_enabled = serializers.BooleanField()

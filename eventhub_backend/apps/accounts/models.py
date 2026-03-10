@@ -15,6 +15,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         ("attendee", "Attendee"),
         ("organizer", "Organizer"),
         ("admin", "Admin"),
+        ("staff", "Staff"),
+        ("checkin", "Check-in Staff"),
     )
 
     email = models.EmailField(unique=True)
@@ -65,3 +67,73 @@ class OrganizerProfile(TimeStampedModel):
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"OrganizerProfile({self.user.email})"
 
+
+class UserSecuritySettings(TimeStampedModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="security_settings")
+    two_factor_enabled = models.BooleanField(default=False)
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"SecuritySettings({self.user_id})"
+
+
+class UserSession(TimeStampedModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
+    refresh_jti = models.CharField(max_length=255, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    device = models.CharField(max_length=255, blank=True)
+    last_seen = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "revoked_at"]),
+            models.Index(fields=["refresh_jti"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"Session({self.user_id}, revoked={bool(self.revoked_at)})"
+
+
+class Integration(TimeStampedModel):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
+    description = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.name
+
+
+class UserIntegration(TimeStampedModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="integrations")
+    integration = models.ForeignKey(Integration, on_delete=models.CASCADE, related_name="connections")
+    is_connected = models.BooleanField(default=False)
+    connected_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("user", "integration")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.user_id} -> {self.integration.slug}"
+
+
+class OrganizerTeamMember(TimeStampedModel):
+    ROLE_CHOICES = (
+        ("owner", "Owner"),
+        ("admin", "Admin"),
+        ("checkin", "Check-in Staff"),
+    )
+
+    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organizer_team")
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name="team_memberships")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="checkin")
+    assigned_events = models.ManyToManyField("events.Event", related_name="assigned_staff", blank=True)
+
+    class Meta:
+        unique_together = ("organizer", "member")
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"TeamMember({self.organizer_id} -> {self.member_id})"

@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 
 const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
 
-const StatCard = ({ title, value, change, changeType, icon: Icon, delay }) => {
+const StatCard = ({ title, value, change, changeType, icon: Icon, delay, changeLabel }) => {
   const [animated, setAnimated] = useState(false);
 
   useEffect(() => {
@@ -54,12 +54,15 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, delay }) => {
             <div
               className={cn(
                 'flex items-center gap-1 text-xs font-medium',
-                changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                changeType === 'positive' && 'text-green-600',
+                changeType === 'negative' && 'text-red-600',
+                changeType === 'neutral' && 'text-gray-400'
               )}
             >
-              {changeType === 'positive' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {changeType === 'positive' && <TrendingUp className="w-3 h-3" />}
+              {changeType === 'negative' && <TrendingDown className="w-3 h-3" />}
               <span>{change}</span>
-              <span className="text-gray-400 ml-1 hidden sm:inline">vs last month</span>
+              {changeLabel && <span className="text-gray-400 ml-1 hidden sm:inline">{changeLabel}</span>}
             </div>
           </div>
           <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -126,7 +129,17 @@ const emptyRevenueSeries = [
   { name: 'Sun', revenue: 0 },
 ];
 
-const OrganizerDashboardOverview = ({ events, stats, onEventClick, onViewAll, isLoadingStats, revenueSeries }) => {
+const OrganizerDashboardOverview = ({
+  events,
+  stats,
+  statChanges = {},
+  onEventClick,
+  onViewAll,
+  isLoadingStats,
+  revenueSeries,
+  range = 'month',
+  onRangeChange,
+}) => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -136,47 +149,59 @@ const OrganizerDashboardOverview = ({ events, stats, onEventClick, onViewAll, is
   const categoryData = useMemo(() => buildCategoryData(events), [events]);
   const recentEvents = events.slice(0, 4);
 
+  const formatChange = (value) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+      return { label: '—', type: 'neutral' };
+    }
+    const numeric = Number(value);
+    const rounded = Math.round(numeric);
+    const label = `${numeric >= 0 ? '+' : ''}${rounded}%`;
+    return { label, type: numeric >= 0 ? 'positive' : 'negative' };
+  };
+
+  const changeLabel = range === 'week' ? 'vs last week' : range === 'year' ? 'vs last year' : 'vs last month';
+
   const statsCards = [
     {
       title: 'Total Events',
       value: isLoadingStats ? '...' : String(stats.totalEvents ?? 0),
-      change: '+12%',
-      changeType: 'positive',
+      change: formatChange(statChanges.totalEvents).label,
+      changeType: formatChange(statChanges.totalEvents).type,
       icon: Calendar,
     },
     {
       title: 'Total Guests',
       value: isLoadingStats ? '...' : Number(stats.totalAttendees ?? 0).toLocaleString(),
-      change: '+8%',
-      changeType: 'positive',
+      change: formatChange(statChanges.totalAttendees).label,
+      changeType: formatChange(statChanges.totalAttendees).type,
       icon: Users,
     },
     {
       title: 'Total Check-ins',
       value: isLoadingStats ? '...' : Number(stats.totalCheckins ?? 0).toLocaleString(),
-      change: '+15%',
-      changeType: 'positive',
+      change: formatChange(statChanges.totalCheckins).label,
+      changeType: formatChange(statChanges.totalCheckins).type,
       icon: CheckCircle,
     },
     {
       title: 'Revenue',
       value: isLoadingStats ? '...' : formatMoney(stats.totalRevenue ?? 0),
-      change: '+23%',
-      changeType: 'positive',
+      change: formatChange(statChanges.totalRevenue).label,
+      changeType: formatChange(statChanges.totalRevenue).type,
       icon: DollarSign,
     },
     {
       title: 'Expenses',
       value: isLoadingStats ? '...' : formatMoney(stats.totalExpenses ?? 0),
-      change: '+5%',
-      changeType: 'negative',
+      change: formatChange(statChanges.totalExpenses).label,
+      changeType: formatChange(statChanges.totalExpenses).type,
       icon: Receipt,
     },
     {
       title: 'Net Profit',
       value: isLoadingStats ? '...' : formatMoney(stats.netProfit ?? 0),
-      change: '+11%',
-      changeType: 'positive',
+      change: formatChange(statChanges.netProfit).label,
+      changeType: formatChange(statChanges.netProfit).type,
       icon: Wallet,
     },
   ];
@@ -196,7 +221,12 @@ const OrganizerDashboardOverview = ({ events, stats, onEventClick, onViewAll, is
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-6">
         {statsCards.map((stat, index) => (
-          <StatCard key={stat.title} {...stat} delay={index * 100} />
+          <StatCard
+            key={stat.title}
+            {...stat}
+            delay={index * 100}
+            changeLabel={stat.changeType === 'neutral' ? '' : changeLabel}
+          />
         ))}
       </div>
 
@@ -205,15 +235,20 @@ const OrganizerDashboardOverview = ({ events, stats, onEventClick, onViewAll, is
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Revenue Overview</CardTitle>
             <div className="flex gap-1 lg:gap-2">
-              <Button variant="outline" size="sm" className="text-xs h-7 lg:h-8">Week</Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs bg-[#C58B1A] text-white border-[#C58B1A] h-7 lg:h-8"
-              >
-                Month
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs h-7 lg:h-8">Year</Button>
+              {['week', 'month', 'year'].map((option) => (
+                <Button
+                  key={option}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRangeChange && onRangeChange(option)}
+                  className={cn(
+                    'text-xs h-7 lg:h-8 capitalize',
+                    range === option && 'bg-[#C58B1A] text-white border-[#C58B1A]'
+                  )}
+                >
+                  {option}
+                </Button>
+              ))}
             </div>
           </CardHeader>
           <CardContent>

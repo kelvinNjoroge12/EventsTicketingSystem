@@ -3,8 +3,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Notification
-from .serializers import NotificationSerializer
+from .models import Notification, NotificationPreference
+from .serializers import NotificationSerializer, NotificationPreferenceSerializer
 
 
 class NotificationListView(generics.ListAPIView):
@@ -71,3 +71,24 @@ class UnreadCountView(APIView):
             recipient=request.user, is_read=False
         ).count()
         return Response({"count": count})
+
+
+class NotificationPreferenceView(APIView):
+    """
+    GET /api/settings/notifications/
+    PUT /api/settings/notifications/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+        serializer = NotificationPreferenceSerializer(prefs)
+        return Response(serializer.data)
+
+    def put(self, request):
+        prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+        serializer = NotificationPreferenceSerializer(prefs, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

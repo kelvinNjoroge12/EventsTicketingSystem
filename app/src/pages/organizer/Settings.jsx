@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   User,
   Bell,
@@ -11,7 +11,9 @@ import {
   Phone,
   Save,
   Check,
+  Plus,
 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,37 +21,340 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/apiClient';
+import { useAuth } from '@/context/AuthContext';
+import {
+  fetchNotificationPreferences,
+  updateNotificationPreferences,
+  fetchIntegrations,
+  connectIntegration,
+  disconnectIntegration,
+  fetchTeamMembers,
+  inviteTeamMember,
+  updateTeamMember,
+  removeTeamMember,
+  fetchSecuritySettings,
+  updateTwoFactor,
+  fetchSessions,
+  revokeSession,
+} from '@/lib/organizerSettingsApi';
 
-const OrganizerSettings = () => {
+const DEFAULT_NOTIFICATIONS = {
+  emailNewSales: true,
+  emailEventReminders: true,
+  emailMarketing: false,
+  pushCheckIns: true,
+  pushEventUpdates: true,
+  smsImportant: false,
+};
+
+const INTEGRATION_COLORS = {
+  Mailchimp: '#FFE01B',
+  Zapier: '#FF4A00',
+  Slack: '#4A154B',
+  'Google Analytics': '#E37400',
+  Zoom: '#2D8CFF',
+  HubSpot: '#FF7A59',
+};
+
+const FALLBACK_INTEGRATIONS = [
+  { id: 'mailchimp', name: 'Mailchimp', description: 'Email marketing', connected: false },
+  { id: 'zapier', name: 'Zapier', description: 'Automation', connected: false },
+  { id: 'slack', name: 'Slack', description: 'Team messaging', connected: false },
+  { id: 'google-analytics', name: 'Google Analytics', description: 'Analytics', connected: false },
+  { id: 'zoom', name: 'Zoom', description: 'Video conferencing', connected: false },
+  { id: 'hubspot', name: 'HubSpot', description: 'CRM', connected: false },
+];
+
+const normalizeProfile = (profile) => ({
+  firstName: profile?.first_name || '',
+  lastName: profile?.last_name || '',
+  email: profile?.email || '',
+  phone: profile?.phone_number || '',
+  bio: profile?.organizer_profile?.organization_bio || profile?.organizer_profile?.bio || '',
+  company: profile?.organizer_profile?.organization_name || profile?.company || '',
+  website: profile?.organizer_profile?.website || profile?.website || '',
+  avatar: profile?.organizer_profile?.logo || profile?.avatar || '',
+});
+
+const normalizeNotifications = (data) => {
+  const source = data?.preferences || data || {};
+  return {
+    emailNewSales: source.email_new_sales ?? source.emailNewSales ?? DEFAULT_NOTIFICATIONS.emailNewSales,
+    emailEventReminders: source.email_event_reminders ?? source.emailEventReminders ?? DEFAULT_NOTIFICATIONS.emailEventReminders,
+    emailMarketing: source.email_marketing ?? source.emailMarketing ?? DEFAULT_NOTIFICATIONS.emailMarketing,
+    pushCheckIns: source.push_check_ins ?? source.pushCheckIns ?? DEFAULT_NOTIFICATIONS.pushCheckIns,
+    pushEventUpdates: source.push_event_updates ?? source.pushEventUpdates ?? DEFAULT_NOTIFICATIONS.pushEventUpdates,
+    smsImportant: source.sms_important ?? source.smsImportant ?? DEFAULT_NOTIFICATIONS.smsImportant,
+  };
+};
+
+const buildNotificationPayload = (prefs) => ({
+  email_new_sales: prefs.emailNewSales,
+  email_event_reminders: prefs.emailEventReminders,
+  email_marketing: prefs.emailMarketing,
+  push_check_ins: prefs.pushCheckIns,
+  push_event_updates: prefs.pushEventUpdates,
+  sms_important: prefs.smsImportant,
+});
+
+const normalizeIntegrations = (data) => {
+  const list = Array.isArray(data) ? data : data?.results || [];
+  if (list.length === 0) return FALLBACK_INTEGRATIONS;
+  return list.map((item) => ({
+    id: item.id || item.key || item.slug || item.name?.toLowerCase().replace(/\s+/g, '-') || '',
+    name: item.name || item.label || 'Integration',
+    description: item.description || item.desc || '',
+    connected: item.connected ?? item.is_connected ?? false,
+  }));
+};
+
+const normalizeTeamMembers = (data) => {
+  const list = Array.isArray(data) ? data : data?.results || [];
+  return list.map((member) => ({
+    id: member.id || member.user_id || member.uuid,
+    name: member.name || [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Team Member',
+    email: member.email || member.user_email || '',
+    role: member.role || member.permission || 'Check-in',
+    assignedEvents: member.assigned_events || member.event_ids || member.event_ids || [],
+  }));
+};
+
+const normalizeSessions = (data) => {
+  const list = Array.isArray(data) ? data : data?.results || [];
+  return list.map((session) => ({
+    id: session.id || session.session_id || session.uuid,
+    device: session.device || session.browser || 'Unknown device',
+    location: session.location || session.ip_location || 'Unknown location',
+    current: session.current ?? session.is_current ?? false,
+  }));
+};
+
+const OrganizerSettings = ({ events = [] }) => {
+  const { user, updateUser } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('profile');
-  const [saving, setSaving] = useState(false);
+  const [profile, setProfile] = useState(() => normalizeProfile(user));
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  const [integrations, setIntegrations] = useState(FALLBACK_INTEGRATIONS);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'checkin', eventId: 'none' });
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
-  const [profile, setProfile] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john@eventhub.com',
-    phone: '+1 (555) 123-4567',
-    bio: 'Event organizer with 5+ years of experience in corporate and social events.',
-    company: 'EventHub Inc.',
-    website: 'www.johndoe.com',
+  const eventOptions = useMemo(
+    () => events.map((event) => ({ id: String(event.id), slug: event.slug, label: event.name })),
+    [events]
+  );
+  const eventLookup = useMemo(() => {
+    const lookup = {};
+    events.forEach((event) => {
+      if (event.id) lookup[String(event.id)] = event.name;
+      if (event.slug) lookup[String(event.slug)] = event.name;
+    });
+    return lookup;
+  }, [events]);
+  const eventIdBySlug = useMemo(() => {
+    const lookup = {};
+    events.forEach((event) => {
+      if (event.slug && event.id) lookup[String(event.slug)] = String(event.id);
+    });
+    return lookup;
+  }, [events]);
+
+  const { data: profileData } = useQuery({
+    queryKey: ['settings_profile'],
+    queryFn: () => api.get('/api/auth/profile/'),
+    enabled: !!user,
   });
 
-  const [notifications, setNotifications] = useState({
-    emailNewSales: true,
-    emailEventReminders: true,
-    emailMarketing: false,
-    pushCheckIns: true,
-    pushEventUpdates: true,
-    smsImportant: false,
+  useEffect(() => {
+    if (profileData) setProfile(normalizeProfile(profileData));
+  }, [profileData]);
+
+  const { data: notificationData } = useQuery({
+    queryKey: ['settings_notifications'],
+    queryFn: fetchNotificationPreferences,
+    enabled: !!user,
   });
 
-  const [payment, setPayment] = useState({
-    stripeConnected: true,
-    paypalConnected: false,
-    payoutSchedule: 'weekly',
-    currency: 'USD',
+  useEffect(() => {
+    if (notificationData) setNotifications(normalizeNotifications(notificationData));
+  }, [notificationData]);
+
+  const { data: integrationsData } = useQuery({
+    queryKey: ['settings_integrations'],
+    queryFn: fetchIntegrations,
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (integrationsData) setIntegrations(normalizeIntegrations(integrationsData));
+  }, [integrationsData]);
+
+  const { data: teamData } = useQuery({
+    queryKey: ['settings_team'],
+    queryFn: fetchTeamMembers,
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (teamData) setTeamMembers(normalizeTeamMembers(teamData));
+  }, [teamData]);
+
+  const { data: securityData } = useQuery({
+    queryKey: ['settings_security'],
+    queryFn: fetchSecuritySettings,
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (securityData) {
+      const enabled = securityData.two_factor_enabled ?? securityData.enabled ?? false;
+      setTwoFactorEnabled(Boolean(enabled));
+    }
+  }, [securityData]);
+
+  const { data: sessionsData } = useQuery({
+    queryKey: ['settings_sessions'],
+    queryFn: fetchSessions,
+    enabled: !!user,
+  });
+
+  const sessions = normalizeSessions(sessionsData);
+
+  const profileMutation = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
+      formData.append('first_name', profile.firstName);
+      formData.append('last_name', profile.lastName);
+      formData.append('email', profile.email);
+      formData.append('phone_number', profile.phone);
+      formData.append('organization_name', profile.company);
+      formData.append('organization_bio', profile.bio);
+      formData.append('website', profile.website);
+      if (avatarFile) {
+        formData.append('avatar', avatarFile);
+      }
+      return api.patchForm('/api/auth/profile/', formData);
+    },
+    onSuccess: (data) => {
+      updateUser(data);
+      queryClient.invalidateQueries({ queryKey: ['settings_profile'] });
+      toast.success('Profile updated successfully.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update profile.');
+    },
+  });
+
+  const notificationsMutation = useMutation({
+    mutationFn: (payload) => updateNotificationPreferences(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings_notifications'] });
+      toast.success('Notification preferences saved.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update notifications.');
+    },
+  });
+
+  const integrationMutation = useMutation({
+    mutationFn: ({ id, action }) =>
+      action === 'connect' ? connectIntegration(id) : disconnectIntegration(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings_integrations'] });
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update integration.');
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: (payload) => inviteTeamMember(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings_team'] });
+      toast.success('Invite sent.');
+      setInviteDialogOpen(false);
+      setInviteForm({ name: '', email: '', role: 'checkin', eventId: 'none' });
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to invite member.');
+    },
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateTeamMember(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings_team'] });
+      toast.success('Assignment updated.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update assignment.');
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id) => removeTeamMember(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings_team'] });
+      toast.success('Member removed.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to remove member.');
+    },
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: (payload) => api.post('/api/auth/change-password/', payload),
+    onSuccess: () => {
+      toast.success('Password updated.');
+      setPasswordForm({ current: '', next: '', confirm: '' });
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update password.');
+    },
+  });
+
+  const twoFactorMutation = useMutation({
+    mutationFn: (enabled) => updateTwoFactor(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings_security'] });
+      toast.success('Two-factor settings updated.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to update two-factor settings.');
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (id) => revokeSession(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings_sessions'] });
+      toast.success('Session revoked.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to revoke session.');
+    },
   });
 
   const handleProfileChange = (field, value) => {
@@ -60,11 +365,28 @@ const OrganizerSettings = () => {
     setNotifications((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    toast.success('Settings saved successfully!');
-    setSaving(false);
+  const handleInvite = () => {
+    if (!inviteForm.email) {
+      toast.error('Email is required.');
+      return;
+    }
+    inviteMutation.mutate({
+      name: inviteForm.name,
+      email: inviteForm.email,
+      role: inviteForm.role,
+      event_id: inviteForm.eventId === 'none' ? null : inviteForm.eventId,
+    });
+  };
+
+  const handleAssign = (memberId, eventId) => {
+    const assigned = eventId && eventId !== 'none' ? [eventId] : [];
+    assignMutation.mutate({
+      id: memberId,
+      payload: {
+        assigned_events: assigned,
+        assigned_event_id: assigned.length ? assigned[0] : null,
+      },
+    });
   };
 
   const sidebarItems = [
@@ -120,13 +442,23 @@ const OrganizerSettings = () => {
                 <div className="flex items-center gap-4 lg:gap-6">
                   <div className="relative">
                     <Avatar className="w-16 h-16 lg:w-20 lg:h-20">
-                      <AvatarFallback className="bg-gradient-to-br from-[#C58B1A] to-[#B91C1C] text-white text-lg lg:text-xl">
-                        JD
-                      </AvatarFallback>
+                      {profile.avatar ? (
+                        <img src={profile.avatar} alt={profile.firstName} className="w-full h-full object-cover" />
+                      ) : (
+                        <AvatarFallback className="bg-gradient-to-br from-[#C58B1A] to-[#B91C1C] text-white text-lg lg:text-xl">
+                          {`${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}` || 'U'}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
-                    <button className="absolute -bottom-1 -right-1 w-6 h-6 lg:w-8 lg:h-8 bg-[#1E4DB7] text-white rounded-full flex items-center justify-center hover:bg-[#163B90] transition-colors">
+                    <label className="absolute -bottom-1 -right-1 w-6 h-6 lg:w-8 lg:h-8 bg-[#1E4DB7] text-white rounded-full flex items-center justify-center hover:bg-[#163B90] transition-colors cursor-pointer">
                       <Camera className="w-3 h-3 lg:w-4 lg:h-4" />
-                    </button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+                      />
+                    </label>
                   </div>
                   <div>
                     <p className="font-medium text-[#0F172A] text-sm lg:text-base">Profile Photo</p>
@@ -212,8 +544,8 @@ const OrganizerSettings = () => {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={handleSave} disabled={saving} className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm">
-                    {saving ? (
+                  <Button onClick={() => profileMutation.mutate()} disabled={profileMutation.isLoading} className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm">
+                    {profileMutation.isLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                         Saving...
@@ -282,8 +614,12 @@ const OrganizerSettings = () => {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={handleSave} disabled={saving} className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm">
-                    {saving ? (
+                  <Button
+                    onClick={() => notificationsMutation.mutate(buildNotificationPayload(notifications))}
+                    disabled={notificationsMutation.isLoading}
+                    className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm"
+                  >
+                    {notificationsMutation.isLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                         Saving...
@@ -299,153 +635,101 @@ const OrganizerSettings = () => {
               </CardContent>
             </Card>
           )}
-
           {activeTab === 'payment' && (
             <Card className="animate-slide-in-right">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Payment Settings</CardTitle>
-                <CardDescription className="text-sm">Manage your payment methods and payout preferences</CardDescription>
+                <CardDescription className="text-sm">Payment setup will be managed in the backend.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 lg:space-y-6">
-                <div>
-                  <h4 className="font-medium text-[#0F172A] mb-3 lg:mb-4 text-sm lg:text-base">Connected Accounts</h4>
-                  <div className="space-y-3 lg:space-y-4">
-                    {[
-                      { name: 'Stripe', connected: true, color: '#635BFF' },
-                      { name: 'PayPal', connected: false, color: '#003087' },
-                    ].map((account) => (
-                      <div key={account.name} className="flex items-center justify-between p-3 lg:p-4 border border-gray-200 rounded-lg">
-                        <div className="flex items-center gap-3 lg:gap-4">
-                          <div
-                            className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center"
-                            style={{ backgroundColor: account.color }}
-                          >
-                            <span className="text-white font-bold text-xs lg:text-sm">{account.name[0]}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-[#0F172A] text-sm lg:text-base">{account.name}</p>
-                            <p className="text-xs text-gray-500">{account.connected ? 'Connected' : 'Not connected'}</p>
-                          </div>
-                        </div>
-                        {account.connected ? (
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full" />
-                            <span className="text-xs lg:text-sm text-green-600">Active</span>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" className="text-xs">Connect</Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h4 className="font-medium text-[#0F172A] mb-3 lg:mb-4 text-sm lg:text-base">Payout Settings</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm">Payout Schedule</Label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C58B1A]/20 focus:border-[#C58B1A] text-sm"
-                        value={payment.payoutSchedule}
-                        onChange={(e) => setPayment((prev) => ({ ...prev, payoutSchedule: e.target.value }))}
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm">Currency</Label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C58B1A]/20 focus:border-[#C58B1A] text-sm"
-                        value={payment.currency}
-                        onChange={(e) => setPayment((prev) => ({ ...prev, currency: e.target.value }))}
-                      >
-                        <option value="USD">USD - US Dollar</option>
-                        <option value="EUR">EUR - Euro</option>
-                        <option value="GBP">GBP - British Pound</option>
-                        <option value="KES">KES - Kenyan Shilling</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button onClick={handleSave} disabled={saving} className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm">
-                    {saving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <div className="text-sm text-gray-500">Payment integrations are currently disabled.</div>
               </CardContent>
             </Card>
           )}
-
           {activeTab === 'team' && (
             <Card className="animate-slide-in-right">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Team Members</CardTitle>
-                <CardDescription className="text-sm">Manage who can access and manage your events</CardDescription>
+                <CardDescription className="text-sm">Assign team members to check-in specific events</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 lg:space-y-6">
                 <div className="flex justify-between items-center">
-                  <p className="text-gray-600 text-sm">3 team members</p>
-                  <Button className="bg-[#C58B1A] text-white hover:bg-[#A56F14] text-sm">Invite Member</Button>
+                  <p className="text-gray-600 text-sm">{teamMembers.length} team members</p>
+                  <Button
+                    className="bg-[#C58B1A] text-white hover:bg-[#A56F14] text-sm"
+                    onClick={() => setInviteDialogOpen(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Invite Member
+                  </Button>
                 </div>
 
                 <div className="space-y-2 lg:space-y-3">
-                  {[
-                    { name: 'John Doe', email: 'john@eventhub.com', role: 'Owner', avatar: 'JD' },
-                    { name: 'Sarah Smith', email: 'sarah@eventhub.com', role: 'Admin', avatar: 'SS' },
-                    { name: 'Mike Johnson', email: 'mike@eventhub.com', role: 'Editor', avatar: 'MJ' },
-                  ].map((member, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 lg:p-4 border border-gray-100 rounded-lg hover:bg-gray-50">
-                      <div className="flex items-center gap-3 lg:gap-4">
-                        <Avatar className="w-8 h-8 lg:w-10 lg:h-10">
-                          <AvatarFallback className="bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] text-white text-xs lg:text-sm">
-                            {member.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-[#0F172A] text-sm lg:text-base">{member.name}</p>
-                          <p className="text-xs text-gray-500">{member.email}</p>
+                  {teamMembers.map((member) => {
+                    const rawAssigned = member.assignedEvents?.[0];
+                    const resolvedAssigned = rawAssigned ? (eventIdBySlug[String(rawAssigned)] || String(rawAssigned)) : 'none';
+                    const assignedId = resolvedAssigned || 'none';
+                    const assignedLabel = assignedId !== 'none' ? eventLookup[String(rawAssigned || assignedId)] : 'None';
+                    return (
+                      <div key={member.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 lg:p-4 border border-gray-100 rounded-lg hover:bg-gray-50">
+                        <div className="flex items-center gap-3 lg:gap-4">
+                          <Avatar className="w-8 h-8 lg:w-10 lg:h-10">
+                            <AvatarFallback className="bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] text-white text-xs lg:text-sm">
+                              {member.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-[#0F172A] text-sm lg:text-base">{member.name}</p>
+                            <p className="text-xs text-gray-500">{member.email}</p>
+                            <p className="text-xs text-gray-400 mt-1">Assigned: {assignedLabel || 'None'}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 lg:gap-4">
+                          <span
+                            className={cn(
+                              'px-2 lg:px-3 py-1 rounded-full text-xs font-medium',
+                              member.role === 'Owner' && 'bg-[#C58B1A]/20 text-[#0F172A]',
+                              member.role === 'Admin' && 'bg-[#1E4DB7] text-white',
+                              member.role !== 'Owner' && member.role !== 'Admin' && 'bg-gray-200 text-gray-700'
+                            )}
+                          >
+                            {member.role}
+                          </span>
+                          <Select value={String(assignedId)} onValueChange={(value) => handleAssign(member.id, value)}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue placeholder="Assign event" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No assignment</SelectItem>
+                              {eventOptions.map((event) => (
+                                <SelectItem key={event.id} value={event.id}>
+                                  {event.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {member.role !== 'Owner' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-600 text-xs lg:text-sm h-7 lg:h-8"
+                              onClick={() => removeMutation.mutate(member.id)}
+                            >
+                              Remove
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 lg:gap-4">
-                        <span
-                          className={cn(
-                            'px-2 lg:px-3 py-1 rounded-full text-xs font-medium',
-                            member.role === 'Owner' && 'bg-[#C58B1A]/20 text-[#0F172A]',
-                            member.role === 'Admin' && 'bg-[#1E4DB7] text-white',
-                            member.role === 'Editor' && 'bg-gray-200 text-gray-700'
-                          )}
-                        >
-                          {member.role}
-                        </span>
-                        {member.role !== 'Owner' && (
-                          <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 text-xs lg:text-sm h-7 lg:h-8">
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+
+                  {teamMembers.length === 0 && (
+                    <div className="text-sm text-gray-500 text-center py-8">No team members yet.</div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           )}
-
           {activeTab === 'integrations' && (
             <Card className="animate-slide-in-right">
               <CardHeader>
@@ -454,19 +738,12 @@ const OrganizerSettings = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
-                  {[
-                    { name: 'Mailchimp', description: 'Email marketing', connected: true, color: '#FFE01B' },
-                    { name: 'Zapier', description: 'Automation', connected: false, color: '#FF4A00' },
-                    { name: 'Slack', description: 'Team messaging', connected: true, color: '#4A154B' },
-                    { name: 'Google Analytics', description: 'Analytics', connected: false, color: '#E37400' },
-                    { name: 'Zoom', description: 'Video conferencing', connected: true, color: '#2D8CFF' },
-                    { name: 'HubSpot', description: 'CRM', connected: false, color: '#FF7A59' },
-                  ].map((integration, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 lg:p-4 border border-gray-200 rounded-lg hover:border-[#C58B1A] transition-colors">
+                  {integrations.map((integration) => (
+                    <div key={integration.id} className="flex items-center justify-between p-3 lg:p-4 border border-gray-200 rounded-lg hover:border-[#C58B1A] transition-colors">
                       <div className="flex items-center gap-3 lg:gap-4">
                         <div
                           className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: integration.color }}
+                          style={{ backgroundColor: INTEGRATION_COLORS[integration.name] || '#94A3B8' }}
                         >
                           <span className="text-white font-bold text-xs">{integration.name[0]}</span>
                         </div>
@@ -479,6 +756,12 @@ const OrganizerSettings = () => {
                         variant={integration.connected ? 'outline' : 'default'}
                         size="sm"
                         className={integration.connected ? 'text-xs' : 'bg-[#1E4DB7] hover:bg-[#163B90] text-xs'}
+                        onClick={() =>
+                          integrationMutation.mutate({
+                            id: integration.id,
+                            action: integration.connected ? 'disconnect' : 'connect',
+                          })
+                        }
                       >
                         {integration.connected ? (
                           <>
@@ -495,7 +778,6 @@ const OrganizerSettings = () => {
               </CardContent>
             </Card>
           )}
-
           {activeTab === 'security' && (
             <Card className="animate-slide-in-right">
               <CardHeader>
@@ -508,17 +790,48 @@ const OrganizerSettings = () => {
                   <div className="space-y-3 lg:space-y-4">
                     <div className="space-y-2">
                       <Label className="text-sm">Current Password</Label>
-                      <Input type="password" placeholder="Enter current password" />
+                      <Input
+                        type="password"
+                        placeholder="Enter current password"
+                        value={passwordForm.current}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, current: e.target.value }))}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm">New Password</Label>
-                      <Input type="password" placeholder="Enter new password" />
+                      <Input
+                        type="password"
+                        placeholder="Enter new password"
+                        value={passwordForm.next}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, next: e.target.value }))}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm">Confirm New Password</Label>
-                      <Input type="password" placeholder="Confirm new password" />
+                      <Input
+                        type="password"
+                        placeholder="Confirm new password"
+                        value={passwordForm.confirm}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirm: e.target.value }))}
+                      />
                     </div>
-                    <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm">Update Password</Button>
+                    <Button
+                      className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm"
+                      onClick={() => {
+                        if (passwordForm.next !== passwordForm.confirm) {
+                          toast.error('Passwords do not match.');
+                          return;
+                        }
+                        passwordMutation.mutate({
+                          old_password: passwordForm.current,
+                          new_password: passwordForm.next,
+                          confirm_password: passwordForm.confirm,
+                        });
+                      }}
+                      disabled={passwordMutation.isLoading}
+                    >
+                      Update Password
+                    </Button>
                   </div>
                 </div>
 
@@ -531,7 +844,13 @@ const OrganizerSettings = () => {
                       <p className="font-medium text-gray-700 text-sm lg:text-base">Enable 2FA</p>
                       <p className="text-xs lg:text-sm text-gray-500">Add an extra layer of security</p>
                     </div>
-                    <Switch />
+                    <Switch
+                      checked={twoFactorEnabled}
+                      onCheckedChange={(checked) => {
+                        setTwoFactorEnabled(checked);
+                        twoFactorMutation.mutate(checked);
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -540,11 +859,8 @@ const OrganizerSettings = () => {
                 <div>
                   <h4 className="font-medium text-[#0F172A] mb-3 lg:mb-4 text-sm lg:text-base">Active Sessions</h4>
                   <div className="space-y-2 lg:space-y-3">
-                    {[
-                      { device: 'Chrome on MacOS', location: 'Nairobi, Kenya', current: true },
-                      { device: 'Safari on iPhone', location: 'Nairobi, Kenya', current: false },
-                    ].map((session, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 lg:p-4 border border-gray-100 rounded-lg">
+                    {sessions.map((session) => (
+                      <div key={session.id} className="flex items-center justify-between p-3 lg:p-4 border border-gray-100 rounded-lg">
                         <div>
                           <p className="font-medium text-[#0F172A] text-sm lg:text-base">{session.device}</p>
                           <p className="text-xs text-gray-500">{session.location}</p>
@@ -554,13 +870,21 @@ const OrganizerSettings = () => {
                             <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">Current</span>
                           )}
                           {!session.current && (
-                            <Button variant="ghost" size="sm" className="text-red-500 text-xs lg:text-sm h-7 lg:h-8">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 text-xs lg:text-sm h-7 lg:h-8"
+                              onClick={() => revokeMutation.mutate(session.id)}
+                            >
                               Revoke
                             </Button>
                           )}
                         </div>
                       </div>
                     ))}
+                    {sessions.length === 0 && (
+                      <div className="text-sm text-gray-500">No active sessions found.</div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -568,9 +892,80 @@ const OrganizerSettings = () => {
           )}
         </div>
       </div>
+
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite Team Member</DialogTitle>
+            <DialogDescription>Assign a team member to handle check-ins for a specific event.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={inviteForm.name}
+                onChange={(e) => setInviteForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                value={inviteForm.email}
+                onChange={(e) => setInviteForm((prev) => ({ ...prev, email: e.target.value }))}
+                placeholder="member@domain.com"
+                type="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select
+                value={inviteForm.role}
+                onValueChange={(value) => setInviteForm((prev) => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="checkin">Check-in Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Assign Event</Label>
+              <Select
+                value={inviteForm.eventId}
+                onValueChange={(value) => setInviteForm((prev) => ({ ...prev, eventId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select event" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No assignment</SelectItem>
+                  {eventOptions.map((event) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#1E4DB7] hover:bg-[#163B90]"
+              onClick={handleInvite}
+              disabled={inviteMutation.isLoading}
+            >
+              {inviteMutation.isLoading ? 'Sending...' : 'Send Invite'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default OrganizerSettings;
-

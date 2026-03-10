@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import csv
+
 from django.db.models import Count, Sum
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.exceptions import PermissionDenied
@@ -94,3 +97,52 @@ class EventAnalyticsSummaryView(APIView):
                 "ticket_breakdown": ticket_breakdown,
             }
         )
+
+
+class EventAnalyticsExportView(APIView):
+    """
+    GET /api/events/{slug}/analytics/export/
+    Download event analytics as CSV.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, slug):
+        event = generics.get_object_or_404(Event, slug=slug)
+        if event.organizer != request.user and not request.user.is_staff:
+            raise PermissionDenied("Only the event organizer can export analytics.")
+
+        response = HttpResponse(content_type="text/csv")
+        filename = f"{event.slug}-analytics.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "order_number",
+            "attendee_name",
+            "attendee_email",
+            "ticket_type",
+            "ticket_status",
+            "checked_in_at",
+            "checked_in_by",
+            "order_total",
+            "order_created_at",
+        ])
+
+        tickets = Ticket.objects.filter(event=event).select_related("order", "ticket_type", "checked_in_by")
+        for ticket in tickets:
+            order = ticket.order
+            checkin = getattr(ticket, "checkin", None)
+            writer.writerow([
+                order.order_number if order else "",
+                ticket.attendee_name,
+                ticket.attendee_email,
+                ticket.ticket_type.name if ticket.ticket_type else "",
+                ticket.status,
+                checkin.created_at.isoformat() if checkin else "",
+                ticket.checked_in_by.get_full_name() if ticket.checked_in_by else "",
+                str(order.total) if order else "",
+                order.created_at.isoformat() if order else "",
+            ])
+
+        return response
