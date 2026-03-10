@@ -499,11 +499,6 @@ const OrganizerDashboardPage = () => {
       navigate('/create-event');
       return;
     }
-    if (page === 'checkin') {
-      setCurrentPage('events');
-      toast.info('Select an event to start check-in.');
-      return;
-    }
     setCurrentPage(page);
   };
 
@@ -621,7 +616,7 @@ const OrganizerDashboardPage = () => {
             </div>
             <OrganizerMyEvents
               events={events}
-              onEventClick={openEventDetail}
+              onEventClick={openCheckinForEvent}
               onCreateEvent={handleCreateEvent}
               onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
               onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}

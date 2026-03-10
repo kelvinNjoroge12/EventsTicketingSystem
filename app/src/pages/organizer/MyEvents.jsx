@@ -72,9 +72,11 @@ const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, o
   }, [events]);
 
   const filteredEvents = events.filter((event) => {
+    const query = searchQuery.toLowerCase();
     const matchesSearch =
-      event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (event.location || '').toLowerCase().includes(searchQuery.toLowerCase());
+      event.name.toLowerCase().includes(query) ||
+      (event.location || '').toLowerCase().includes(query) ||
+      (event.category || '').toLowerCase().includes(query);
     const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
     const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -97,23 +99,13 @@ const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, o
   return (
     <div className="space-y-4 lg:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:gap-4">
-        <div>
-          <h2 className="text-xl lg:text-2xl font-bold text-[#0F172A]">My Events</h2>
-          <p className="text-sm text-gray-500">Manage and track all your events</p>
-        </div>
-        <Button
-          onClick={onCreateEvent}
-          className="bg-[#C58B1A] text-white hover:bg-[#A56F14] font-semibold text-sm lg:text-base"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Event
-        </Button>
+        <h2 className="text-xl lg:text-2xl font-bold text-[#0F172A]">My Events</h2>
       </div>
 
       <Card>
         <CardContent className="p-3 lg:p-4">
-          <div className="flex flex-col md:flex-row gap-3 lg:gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col gap-2 lg:gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="relative flex-1 min-w-[160px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="text"
@@ -123,9 +115,9 @@ const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, o
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2 lg:gap-4">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-32 lg:w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -138,7 +130,7 @@ const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, o
                 </SelectContent>
               </Select>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full md:w-32 lg:w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <Calendar className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
@@ -176,7 +168,7 @@ const OrganizerMyEvents = ({ events, onEventClick, onCreateEvent, onEditEvent, o
                 </div>
               )}
               <div className="absolute top-2 lg:top-3 left-2 lg:left-3">
-                <Badge className={cn('capitalize text-xs', getStatusColor(event.status))}>{event.status}</Badge>
+                <Badge className={cn('capitalize text-xs bg-white text-[#1E4DB7] border border-[#E2E8F0]')}>{event.status}</Badge>
               </div>
               <div className="absolute top-2 lg:top-3 right-2 lg:right-3">
                 <DropdownMenu>

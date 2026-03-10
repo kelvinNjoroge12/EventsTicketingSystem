@@ -264,7 +264,6 @@ const CheckInPage = () => {
 
   const checkedInCount = stats.checked_in ?? guests.filter((guest) => guest.checkedIn).length;
   const totalGuests = stats.total_tickets ?? guests.length;
-  const checkInPercentage = totalGuests > 0 ? Math.round((checkedInCount / totalGuests) * 100) : 0;
 
   const filteredGuests = guests.filter((guest) => {
     const q = searchQuery.toLowerCase();
@@ -444,37 +443,6 @@ const CheckInPage = () => {
 
             {activeTab === 'attendance' && (
               <motion.div key="attendance" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 lg:space-y-6">
-                <Card>
-                  <CardContent className="p-4 lg:p-6">
-                    <div className="flex items-center justify-between mb-3 lg:mb-4">
-                      <div>
-                        <p className="text-xs lg:text-sm text-gray-500">Check-in Progress</p>
-                        <h3 className="text-xl lg:text-2xl font-bold text-[#0F172A]">
-                          {checkedInCount} <span className="text-gray-400">/ {totalGuests}</span>
-                        </h3>
-                      </div>
-                      <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full border-2 lg:border-4 border-[#C58B1A] flex items-center justify-center">
-                        <span className="text-base lg:text-lg font-bold text-[#0F172A]">{checkInPercentage}%</span>
-                      </div>
-                    </div>
-                    <div className="h-2 lg:h-3 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#1E4DB7] to-[#C58B1A] rounded-full transition-all duration-500"
-                        style={{ width: `${checkInPercentage}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mt-2 lg:mt-3 text-xs lg:text-sm">
-                      <span className="text-gray-500 flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                        {Math.max(0, totalGuests - checkedInCount)} remaining
-                      </span>
-                      <span className="text-[#C58B1A] font-medium">
-                        {checkInPercentage}% complete
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
                 <Card>
                   <CardHeader className="pb-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
