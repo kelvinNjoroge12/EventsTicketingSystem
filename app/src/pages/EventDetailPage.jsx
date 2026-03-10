@@ -179,7 +179,7 @@ const EventDetailPage = () => {
     if (!anchor) return;
     const navHeight = getNavHeight();
     const tabHeight = getTabHeight();
-    const offset = navHeight + tabHeight + 12;
+    const offset = navHeight + tabHeight + 24;
     const top = anchor.getBoundingClientRect().top;
     if (force || top < offset) {
       const y = top + window.scrollY - offset;
@@ -222,7 +222,7 @@ const EventDetailPage = () => {
   useEffect(() => {
     if (!baseEvent) return;
     const id = window.setTimeout(() => {
-      ensureTabContentVisible('auto');
+      ensureTabContentVisible('auto', true);
     }, 0);
     return () => window.clearTimeout(id);
   }, [baseEvent?.slug, activeTab]);
