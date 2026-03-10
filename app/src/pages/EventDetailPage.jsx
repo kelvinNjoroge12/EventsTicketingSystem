@@ -162,6 +162,7 @@ const EventDetailPage = () => {
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [navOffset, setNavOffset] = useState(64);
+  const [isTabSticky, setIsTabSticky] = useState(false);
 
   const contentStartRef = useRef(null);
   const tabBarRef = useRef(null);
@@ -199,6 +200,29 @@ const EventDetailPage = () => {
     updateNavOffset();
     window.addEventListener('resize', updateNavOffset);
     return () => window.removeEventListener('resize', updateNavOffset);
+  }, []);
+
+  useEffect(() => {
+    let rafId = null;
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        const bar = tabBarRef.current;
+        if (!bar) return;
+        const navHeight = getNavHeight();
+        const rect = bar.getBoundingClientRect();
+        setIsTabSticky(rect.top <= navHeight + 1);
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, []);
 
   // 1. Main event — served from hover-prefetch cache instantly on revisit
@@ -310,7 +334,7 @@ const EventDetailPage = () => {
     <PageWrapper>
       <ClassicTicketLoader visible={showClassicLoader} />
       {/* ── HERO SECTION ── */}
-      <div className="relative w-full h-[320px] md:h-[480px]" style={{ overflow: 'hidden' }}>
+      <div className="relative w-full h-[36vh] min-h-[240px] max-h-[360px] md:h-[42vh] md:min-h-[300px] md:max-h-[420px]" style={{ overflow: 'hidden' }}>
         {/* Background — proper <img> for LCP priority, falls back to gradient */}
         {event.bannerImage ? (
           <img
@@ -350,7 +374,7 @@ const EventDetailPage = () => {
 
         {/* Content */}
         <div className="absolute inset-0 flex flex-col justify-end">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 w-full">
             {/* Breadcrumb */}
             <nav className="flex flex-wrap items-center gap-1 sm:gap-2 text-white/70 text-[10px] sm:text-xs mb-4">
               <Link to="/" className="hover:text-white transition-colors">Home</Link>
@@ -492,6 +516,9 @@ const EventDetailPage = () => {
                 ))}
               </div>
             </div>
+            {isTabSticky && (
+              <div aria-hidden="true" style={{ height: `${navOffset}px` }} />
+            )}
 
             {/* ── TAB CONTENT ── */}
             <div className="min-h-[50vh] pt-2">
