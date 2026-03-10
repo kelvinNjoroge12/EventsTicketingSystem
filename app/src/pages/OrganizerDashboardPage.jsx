@@ -334,43 +334,43 @@ const OrganizerDashboardPage = () => {
   });
 
   const { data: eventStatsData, isLoading: isLoadingEventStats } = useQuery({
-    queryKey: ['dashboard_stats', selectedEventId],
-    queryFn: () => api.get(`/api/finances/dashboard-stats/?event_id=${selectedEventId}`),
-    enabled: !!hasAccess && !!selectedEventId,
+    queryKey: ['dashboard_stats', selectedEvent?.id],
+    queryFn: () => api.get(`/api/finances/dashboard-stats/?event_id=${selectedEvent?.id}`),
+    enabled: !!hasAccess && !!selectedEvent?.id,
     staleTime: 60 * 1000,
   });
 
   const { data: eventAttendeesData, isLoading: isLoadingEventAttendees } = useQuery({
-    queryKey: ['event_attendees', selectedEventId],
+    queryKey: ['event_attendees', selectedEvent?.id],
     queryFn: async () => {
       const params = new URLSearchParams();
-      params.set('event_id', selectedEventId);
+      params.set('event_id', selectedEvent?.id);
       const data = await api.get(`/api/finances/attendees/?${params.toString()}`);
       const items = apiList(data);
       const count = data?.count ?? data?.total ?? data?.total_count ?? items.length;
       return { items, count };
     },
-    enabled: !!hasAccess && !!selectedEventId,
+    enabled: !!hasAccess && !!selectedEvent?.id,
     staleTime: 60 * 1000,
   });
 
   const { data: eventExpensesData, isLoading: isLoadingEventExpenses } = useQuery({
-    queryKey: ['event_expenses', selectedEventId],
+    queryKey: ['event_expenses', selectedEvent?.id],
     queryFn: async () => {
-      const data = await api.get(`/api/finances/expenses/?event_id=${selectedEventId}`);
+      const data = await api.get(`/api/finances/expenses/?event_id=${selectedEvent?.id}`);
       return apiList(data);
     },
-    enabled: !!hasAccess && !!selectedEventId,
+    enabled: !!hasAccess && !!selectedEvent?.id,
     staleTime: 60 * 1000,
   });
 
   const { data: eventRevenuesData, isLoading: isLoadingEventRevenues } = useQuery({
-    queryKey: ['event_revenues', selectedEventId],
+    queryKey: ['event_revenues', selectedEvent?.id],
     queryFn: async () => {
-      const data = await api.get(`/api/finances/revenues/?event_id=${selectedEventId}`);
+      const data = await api.get(`/api/finances/revenues/?event_id=${selectedEvent?.id}`);
       return apiList(data);
     },
-    enabled: !!hasAccess && !!selectedEventId,
+    enabled: !!hasAccess && !!selectedEvent?.id,
     staleTime: 60 * 1000,
   });
 
