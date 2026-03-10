@@ -894,7 +894,7 @@ const OrganizerSettings = ({ events = [] }) => {
       </div>
 
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white text-[#0F172A]">
           <DialogHeader>
             <DialogTitle>Invite Team Member</DialogTitle>
             <DialogDescription>Assign a team member to handle check-ins for a specific event.</DialogDescription>
@@ -926,7 +926,7 @@ const OrganizerSettings = ({ events = [] }) => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white text-[#0F172A]">
                   <SelectItem value="checkin">Check-in Staff</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
@@ -941,7 +941,7 @@ const OrganizerSettings = ({ events = [] }) => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select event" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white text-[#0F172A]">
                   <SelectItem value="none">No assignment</SelectItem>
                   {eventOptions.map((event) => (
                     <SelectItem key={event.id} value={event.id}>
