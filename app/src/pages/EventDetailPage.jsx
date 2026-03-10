@@ -161,10 +161,32 @@ const EventDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [tabSpacer, setTabSpacer] = useState(0);
 
   const contentStartRef = useRef(null);
   const tabBarRef = useRef(null);
   const tabContentRef = useRef(null);
+
+  const getNavHeight = () => {
+    const header = document.querySelector('header');
+    return header?.getBoundingClientRect().height || 64;
+  };
+
+  const getTabHeight = () =>
+    tabBarRef.current?.getBoundingClientRect().height || 52;
+
+  const ensureTabContentVisible = (behavior = 'smooth') => {
+    const anchor = tabContentRef.current || contentStartRef.current;
+    if (!anchor) return;
+    const navHeight = getNavHeight();
+    const tabHeight = getTabHeight();
+    const offset = navHeight + tabHeight + 16;
+    const top = anchor.getBoundingClientRect().top;
+    if (top < offset) {
+      const y = top + window.scrollY - offset;
+      window.scrollTo({ top: y, behavior });
+    }
+  };
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -173,26 +195,33 @@ const EventDetailPage = () => {
     // If we scroll mid-animation, the document height collapse breaks the smooth scroll
     // and hides the new headings behind the sticky tab bar.
     setTimeout(() => {
-      const anchor = tabContentRef.current || contentStartRef.current;
-      if (anchor) {
-        const navHeight = 64;
-        const tabHeight = tabBarRef.current?.getBoundingClientRect().height || 52;
-        const offset = navHeight + tabHeight + 8;
-        const top = anchor.getBoundingClientRect().top;
-        // If the top of our content is hiding above the sticky nav + tabs, auto-scroll it back.
-        if (top < offset) {
-          const y = top + window.scrollY - offset;
-          window.scrollTo({ top: y, behavior: 'smooth' });
-        }
-      }
+      ensureTabContentVisible('smooth');
     }, 250);
   };
+
+  useEffect(() => {
+    const updateSpacer = () => {
+      const tabHeight = getTabHeight();
+      setTabSpacer(tabHeight + 12);
+    };
+    updateSpacer();
+    window.addEventListener('resize', updateSpacer);
+    return () => window.removeEventListener('resize', updateSpacer);
+  }, []);
 
   // 1. Main event — served from hover-prefetch cache instantly on revisit
   useEffect(() => {
     // Fire analytics outside query so it never delays the data fetch
     if (slug) trackEventView(slug);
   }, [slug]);
+
+  useEffect(() => {
+    if (!baseEvent) return;
+    const id = window.setTimeout(() => {
+      ensureTabContentVisible('auto');
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [baseEvent?.slug, activeTab]);
 
   const detailQueryKey = eventQueryKeys.detail(slug);
   const listCaches = queryClient.getQueriesData({ queryKey: eventQueryKeys.lists() });
@@ -476,7 +505,11 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── TAB CONTENT ── */}
-            <div ref={tabContentRef} className="min-h-[50vh] pt-2">
+            <div
+              ref={tabContentRef}
+              className="min-h-[50vh] pt-2"
+              style={tabSpacer ? { paddingTop: `${tabSpacer}px`, marginTop: `-${tabSpacer}px` } : undefined}
+            >
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
