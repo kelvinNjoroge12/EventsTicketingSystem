@@ -8,6 +8,7 @@ import useScrollTop from './hooks/useScrollTop';
 import useToast from './hooks/useToast';
 import Toast from './components/ui/Toast';
 import ClassicTicketLoader from './components/ui/ClassicTicketLoader';
+import { Toaster } from './components/ui/sonner';
 
 // HomePage is eager-loaded (entry point — no spinner on first visit)
 import HomePage from './pages/HomePage';
@@ -73,6 +74,7 @@ const AppRoutes = () => {
     <>
       <ScrollToTop />
       {!isOrganizerRoute && <Navbar />}
+      <Toaster position="top-right" />
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <Routes>

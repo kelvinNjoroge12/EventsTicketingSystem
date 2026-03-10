@@ -203,6 +203,7 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # ── Email System Configuration ──
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="kelvinnjorogeke@gmail.com")
+ASYNC_TICKET_EMAIL = env.bool("ASYNC_TICKET_EMAIL", default=True)
 
 # SendGrid HTTP API takes priority over SMTP (works on Render free tier, SMTP is blocked).
 # If SENDGRID_API_KEY is set, use it regardless of EMAIL_HOST.

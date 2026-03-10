@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Home, Calendar, QrCode, PlusCircle, Settings, LogOut, Ticket, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,9 +26,12 @@ const navItems = [
 const OrganizerMobileNav = ({ currentPage, onPageChange, onClose }) => {
   const { user, logout } = useAuth();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
+    toast.success('Logged out successfully.');
+    navigate('/', { replace: true });
   };
 
   const initials = user?.name

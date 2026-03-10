@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import uuid
 
 import stripe
@@ -137,6 +138,10 @@ def _notify_and_email(order: Order, title: str):
             action_url=f"/organizer/events/{order.event.slug}",
         )
 
+    if getattr(settings, "ASYNC_TICKET_EMAIL", True):
+        _dispatch_ticket_email_async(order)
+        return
+
     try:
         send_ticket_email(order)
     except Exception as exc:  # pragma: no cover
@@ -146,6 +151,31 @@ def _notify_and_email(order: Order, title: str):
             exc.__class__.__name__,
             exc,
         )
+
+
+def _dispatch_ticket_email_async(order: Order) -> None:
+    order_id = order.pk
+    order_number = order.order_number
+
+    def _send():
+        try:
+            fresh = Order.objects.select_related("event").get(pk=order_id)
+            send_ticket_email(fresh)
+        except Exception as exc:  # pragma: no cover
+            logger.error(
+                "Email failed for order %s: %s - %s",
+                order_number,
+                exc.__class__.__name__,
+                exc,
+            )
+
+    def _schedule():
+        threading.Thread(target=_send, daemon=True).start()
+
+    try:
+        transaction.on_commit(_schedule)
+    except RuntimeError:
+        _schedule()
 
 
 class StripeCreatePaymentIntentView(APIView):
