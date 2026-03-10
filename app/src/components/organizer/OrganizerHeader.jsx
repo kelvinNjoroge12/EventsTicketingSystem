@@ -38,7 +38,12 @@ const formatRelativeTime = (value) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
+const OrganizerHeader = ({
+  title,
+  onMenuClick,
+  showMenu,
+  useSidebarOffset = true,
+}) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -128,7 +133,7 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
     <header
       className={cn(
         'fixed top-0 right-0 h-16 z-40 transition-all duration-300 flex items-center justify-between px-4 lg:px-6',
-        'lg:left-64 left-0',
+        useSidebarOffset ? 'lg:left-64 left-0' : 'left-0',
         scrolled
           ? 'bg-[#1E4DB7]/95 backdrop-blur-xl shadow-md border-b border-[#163B90]'
           : 'bg-[#1E4DB7] border-b border-[#163B90]'

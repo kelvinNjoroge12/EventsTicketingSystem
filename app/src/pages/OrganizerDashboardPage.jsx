@@ -1,5 +1,5 @@
 ﻿
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -253,6 +253,7 @@ const OrganizerDashboardPage = () => {
   const [expenseForm, setExpenseForm] = useState({ event: '', description: '', amount: '', category: 'speakers' });
   const [revenueForm, setRevenueForm] = useState({ event: '', description: '', amount: '', source: 'sponsorship' });
   const [customRevenueSource, setCustomRevenueSource] = useState('');
+  const mainScrollRef = useRef(null);
 
   const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
 
@@ -556,6 +557,14 @@ const OrganizerDashboardPage = () => {
     Boolean(selectedRevenueSource?.auto) ||
     (revenueNeedsCustomLabel && !customRevenueSource.trim());
 
+  useEffect(() => {
+    const container = mainScrollRef.current;
+    if (!container) return;
+    requestAnimationFrame(() => {
+      container.scrollTo({ top: 0, behavior: 'auto' });
+    });
+  }, [currentPage, selectedEventId]);
+
   const submitRevenueEntry = () => {
     if (revenueSubmitDisabled) return;
     const customLabel = customRevenueSource.trim();
@@ -713,7 +722,7 @@ const OrganizerDashboardPage = () => {
             showMenu
           />
 
-          <main className="flex-1 px-4 pb-4 pt-20 lg:px-6 lg:pb-6 lg:pt-20 overflow-auto">
+          <main ref={mainScrollRef} className="flex-1 px-4 pb-4 pt-20 lg:px-6 lg:pb-6 lg:pt-20 overflow-auto">
             <div className="max-w-7xl mx-auto">{renderPage()}</div>
           </main>
         </div>

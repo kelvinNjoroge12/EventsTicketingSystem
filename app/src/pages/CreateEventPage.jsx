@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, MapPin, Clock, Users, Zap, Building2, Mic2 } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import StepNav from '../components/organizer/StepNav';
+import OrganizerHeader from '../components/organizer/OrganizerHeader';
 import FormStep from '../components/organizer/FormStep';
 import CustomButton from '../components/ui/CustomButton';
 import CustomAvatar from '../components/ui/CustomAvatar';
@@ -32,6 +33,7 @@ const CreateEventPage = () => {
   const [scheduledDate, setScheduledDate] = useState('');
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(!!slug);
+  const pageTitle = slug ? 'Edit Event' : 'Create Event';
 
   // Fetch categories and event if editing
   useEffect(() => {
@@ -598,52 +600,56 @@ const CreateEventPage = () => {
   };
 
   return (
-    <PageWrapper>
-      {/* Header */}
-      <div className="bg-white border-b border-[#E2E8F0]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4 mb-6">
-            <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#F1F5F9] text-[#64748B]">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-[#0F172A]">Create Event</h1>
-              <p className="text-sm text-[#64748B]">Step {currentStep + 1} of {steps.length}</p>
+    <PageWrapper className="bg-[#F8FAFC]">
+      <OrganizerHeader title={pageTitle} showMenu={false} useSidebarOffset={false} />
+
+      <div className="pt-20">
+        {/* Header */}
+        <div className="bg-white border-b border-[#E2E8F0]">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center gap-4 mb-6">
+              <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#F1F5F9] text-[#64748B]">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-[#94A3B8]">Step {currentStep + 1} of {steps.length}</p>
+                <p className="text-sm text-[#64748B]">Complete your event details</p>
+              </div>
+              {/* Color preview dots */}
+              <div className="ml-auto flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: formData.themeColor }} />
+                <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: formData.accentColor }} />
+              </div>
             </div>
-            {/* Color preview dots */}
-            <div className="ml-auto flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: formData.themeColor }} />
-              <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: formData.accentColor }} />
-            </div>
+
+            <StepNav steps={steps} currentStep={currentStep} completedSteps={completedSteps} />
           </div>
-
-          <StepNav steps={steps} currentStep={currentStep} completedSteps={completedSteps} />
         </div>
-      </div>
 
-      {/* Form Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AnimatePresence mode="wait" custom={direction}>
-          <FormStep key={currentStep} isActive={true} direction={direction}>
-            {renderStepContent()}
-          </FormStep>
-        </AnimatePresence>
+        {/* Form Content */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <AnimatePresence mode="wait" custom={direction}>
+            <FormStep key={currentStep} isActive={true} direction={direction}>
+              {renderStepContent()}
+            </FormStep>
+          </AnimatePresence>
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8 pt-8 border-t border-[#E2E8F0]">
-          <CustomButton variant="ghost" onClick={handleBack} disabled={currentStep === 0} leftIcon={ChevronLeft}>
-            Back
-          </CustomButton>
-
-          {currentStep < steps.length - 1 ? (
-            <CustomButton variant="primary" onClick={handleNext} rightIcon={ChevronRight}>
-              Next
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8 pt-8 border-t border-[#E2E8F0]">
+            <CustomButton variant="ghost" onClick={handleBack} disabled={currentStep === 0} leftIcon={ChevronLeft}>
+              Back
             </CustomButton>
-          ) : (
-            <CustomButton variant="primary" onClick={handlePublish} isLoading={isPublishing} rightIcon={Check}>
-              Publish Now
-            </CustomButton>
-          )}
+
+            {currentStep < steps.length - 1 ? (
+              <CustomButton variant="primary" onClick={handleNext} rightIcon={ChevronRight}>
+                Next
+              </CustomButton>
+            ) : (
+              <CustomButton variant="primary" onClick={handlePublish} isLoading={isPublishing} rightIcon={Check}>
+                Publish Now
+              </CustomButton>
+            )}
+          </div>
         </div>
       </div>
 
