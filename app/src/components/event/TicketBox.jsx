@@ -2,29 +2,22 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, ChevronDown, ChevronUp, Tag, Check, ShoppingCart } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
-import { api } from '../lib/apiClient';
+import { api } from '../../lib/apiClient';
 
 const TicketBox = ({
   event,
   onGetTickets,
   themeColor,
 }) => {
-  // Guard: don't render if no tickets are available
-  if (!event.tickets || event.tickets.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl shadow-lg p-6" style={{ borderTop: `4px solid ${themeColor}` }}>
-        <p className="text-center text-[#64748B] py-8">No tickets available for this event yet.</p>
-      </div>
-    );
-  }
+  const tickets = Array.isArray(event.tickets) ? event.tickets : [];
 
   // Track quantity per ticket type: { [ticketId]: quantity }
   const [quantities, setQuantities] = useState(() => {
     const initial = {};
-    event.tickets.forEach(t => { initial[t.id] = 0; });
+    tickets.forEach(t => { initial[t.id] = 0; });
     // Default: first ticket gets quantity 1
-    if (event.tickets.length > 0) {
-      initial[event.tickets[0].id] = 1;
+    if (tickets.length > 0) {
+      initial[tickets[0].id] = 1;
     }
     return initial;
   });
@@ -68,7 +61,7 @@ const TicketBox = ({
   };
 
   // Get selected tickets (quantity > 0)
-  const selectedTickets = event.tickets.filter(t => (quantities[t.id] || 0) > 0);
+  const selectedTickets = tickets.filter(t => (quantities[t.id] || 0) > 0);
   const totalQuantity = selectedTickets.reduce((sum, t) => sum + quantities[t.id], 0);
 
   const calculatePrice = () => {
@@ -91,7 +84,7 @@ const TicketBox = ({
   };
 
   const { subtotal, discount, serviceFee, total } = calculatePrice();
-  const allSoldOut = event.tickets.every((ticket) => (ticket.remaining ?? 0) <= 0);
+  const allSoldOut = tickets.length > 0 ? tickets.every((ticket) => (ticket.remaining ?? 0) <= 0) : true;
   const waitlistAllowed = allSoldOut && (event.enableWaitlist ?? event.enable_waitlist) && event.slug;
 
   const handleWaitlistSubmit = async () => {
@@ -148,7 +141,7 @@ const TicketBox = ({
             Select Tickets
           </label>
           <div className="space-y-3">
-            {event.tickets.map((ticket) => {
+            {tickets.length > 0 ? tickets.map((ticket) => {
               const qty = quantities[ticket.id] || 0;
               const isSelected = qty > 0;
               return (
@@ -199,7 +192,11 @@ const TicketBox = ({
                   </div>
                 </div>
               );
-            })}
+            }) : (
+              <div className="rounded-xl border border-dashed border-[#E2E8F0] p-6 text-center text-sm text-[#64748B]">
+                No tickets available for this event yet.
+              </div>
+            )}
           </div>
         </div>
 

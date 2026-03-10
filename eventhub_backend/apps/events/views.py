@@ -70,6 +70,26 @@ def _with_detail_optimizations(queryset):
     )
 
 
+_CACHE_VERSION_KEY = "events:cache_version"
+
+
+def _get_cache_version() -> int:
+    version = cache.get(_CACHE_VERSION_KEY)
+    if not isinstance(version, int) or version < 1:
+        version = 1
+        cache.set(_CACHE_VERSION_KEY, version, None)
+    return version
+
+
+def _bump_cache_version() -> int:
+    try:
+        return cache.incr(_CACHE_VERSION_KEY)
+    except Exception:
+        version = _get_cache_version() + 1
+        cache.set(_CACHE_VERSION_KEY, version, None)
+        return version
+
+
 class EventListView(generics.ListAPIView):
     serializer_class = EventListSerializer
     permission_classes = [permissions.AllowAny]
@@ -79,7 +99,8 @@ class EventListView(generics.ListAPIView):
         return _with_list_optimizations(Event.objects.filter(status="published"))
 
     def list(self, request, *args, **kwargs):
-        cache_key = f"events:list:{request.get_full_path()}"
+        version = _get_cache_version()
+        cache_key = f"events:list:v{version}:{request.get_full_path()}"
         cached = cache.get(cache_key)
         if cached:
             response = Response(cached)
@@ -137,7 +158,7 @@ class EventDetailView(generics.RetrieveAPIView):
         event = get_object_or_404(qs, slug=kwargs.get(self.lookup_field))
         event.status = "cancelled"
         event.save(update_fields=["status"])
-        cache.clear()
+        _bump_cache_version()
         cache.delete(f"events:detail:v2:{event.slug}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -148,9 +169,7 @@ class EventCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save()
-        # Default redis backend doesn't support delete_pattern. 
-        # For a full production fix, either use django-redis or keys-based explicit invalidation.
-        cache.clear()
+        _bump_cache_version()
 
 
 class EventUpdateView(generics.RetrieveUpdateAPIView):
@@ -163,7 +182,7 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         serializer.save()
-        cache.clear()
+        _bump_cache_version()
         cache.delete(f"events:detail:v2:{self.get_object().slug}")
 
 
@@ -177,7 +196,7 @@ class EventDeleteView(generics.DestroyAPIView):
     def perform_destroy(self, instance):
         instance.status = "cancelled"
         instance.save(update_fields=["status"])
-        cache.clear()
+        _bump_cache_version()
         cache.delete(f"events:detail:v2:{instance.slug}")
 
 
@@ -193,7 +212,7 @@ class EventPublishView(generics.UpdateAPIView):
         event = self.get_object()
         event.status = "published"
         event.save(update_fields=["status"])
-        cache.clear()
+        _bump_cache_version()
         cache.delete(f"events:detail:v2:{event.slug}")
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(serializer.data)
@@ -231,7 +250,8 @@ class FeaturedEventsView(generics.ListAPIView):
         )
 
     def list(self, request, *args, **kwargs):
-        cache_key = "events:featured"
+        version = _get_cache_version()
+        cache_key = f"events:featured:v{version}"
         cached = cache.get(cache_key)
         if cached:
             response = Response(cached)
@@ -268,7 +288,8 @@ def related_events(request, slug: str):
     
     event = get_object_or_404(qs_base.distinct(), slug=slug)
     
-    cache_key = f"events:related:{slug}"
+    version = _get_cache_version()
+    cache_key = f"events:related:v{version}:{slug}"
     cached = cache.get(cache_key)
     if cached:
         return Response(cached)

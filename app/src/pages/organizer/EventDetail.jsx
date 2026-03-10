@@ -72,6 +72,7 @@ const OrganizerEventDetail = ({
   eventDetail,
   eventStats,
   attendees,
+  attendeesTotal,
   attendeesLoading,
   onBack,
   onCheckIn,
@@ -456,12 +457,12 @@ const OrganizerEventDetail = ({
     });
   }, [attendees, searchQuery]);
 
-  const checkedInCount = attendees.filter((attendee) => {
+  const checkedInCount = (eventStats?.totalCheckins ?? attendees.filter((attendee) => {
     if (attendee.checked_in_at) return true;
     if (attendee.status === 'used') return true;
     return Array.isArray(attendee.tickets) && attendee.tickets.some((ticket) => ticket.status === 'used');
-  }).length;
-  const totalAttendees = attendees.length;
+  }).length);
+  const totalAttendees = attendeesTotal ?? eventStats?.totalAttendees ?? attendees.length;
   const checkInPercentage = totalAttendees > 0 ? Math.round((checkedInCount / totalAttendees) * 100) : 0;
   const waitlistEnabled = detail?.enable_waitlist ?? detail?.enableWaitlist ?? false;
 

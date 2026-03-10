@@ -339,7 +339,9 @@ const OrganizerDashboardPage = () => {
       const params = new URLSearchParams();
       params.set('event_id', selectedEventId);
       const data = await api.get(`/api/finances/attendees/?${params.toString()}`);
-      return apiList(data);
+      const items = apiList(data);
+      const count = data?.count ?? data?.total ?? data?.total_count ?? items.length;
+      return { items, count };
     },
     enabled: !!hasAccess && !!selectedEventId,
     staleTime: 60 * 1000,
@@ -368,7 +370,8 @@ const OrganizerDashboardPage = () => {
   const overviewStats = normalizeStats(globalStatsData?.kpis || globalStatsData || EMPTY_STATS);
   const statsChanges = buildStatChanges(globalStatsData);
   const selectedStats = normalizeStats(eventStatsData?.kpis || eventStatsData || EMPTY_STATS);
-  const eventAttendees = eventAttendeesData || [];
+  const eventAttendees = eventAttendeesData?.items || [];
+  const eventAttendeesTotal = eventAttendeesData?.count ?? eventAttendees.length;
   const eventExpenses = eventExpensesData || [];
   const eventRevenues = eventRevenuesData || [];
 
@@ -646,6 +649,7 @@ const OrganizerDashboardPage = () => {
             eventDetail={eventDetailData}
             eventStats={selectedStats}
             attendees={eventAttendees}
+            attendeesTotal={eventAttendeesTotal}
             attendeesLoading={isLoadingEventAttendees}
             onBack={handleBackToEvents}
             onCheckIn={() => openCheckinForEvent(selectedEvent)}

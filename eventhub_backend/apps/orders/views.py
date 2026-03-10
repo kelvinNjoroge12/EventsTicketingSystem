@@ -2,17 +2,64 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import F
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status, throttling
 from rest_framework.response import Response
 
 from apps.tickets.models import TicketType
+from apps.waitlist.models import WaitlistEntry
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderDetailSerializer
 from .utils import send_ticket_email
 
 logger = logging.getLogger(__name__)
+
+
+def _notify_waitlist_if_available(event):
+    if not event or not getattr(event, "enable_waitlist", False):
+        return
+
+    has_available = TicketType.objects.filter(
+        event=event,
+        is_active=True,
+        quantity__gt=F("quantity_sold") + F("quantity_reserved"),
+    ).exists()
+    if not has_available:
+        return
+
+    entry = (
+        WaitlistEntry.objects.filter(event=event, status="waiting")
+        .order_by("position", "created_at")
+        .first()
+    )
+    if not entry:
+        return
+
+    entry.status = "notified"
+    entry.notified_at = timezone.now()
+    entry.save(update_fields=["status", "notified_at"])
+
+    try:
+        frontend_url = getattr(settings, "FRONTEND_URL", "https://events-ticketing-system.vercel.app")
+        send_mail(
+            subject=f"Ticket available: {event.title}",
+            message=(
+                f"Hi {entry.name},\n\n"
+                f"Great news! A ticket for '{event.title}' is now available.\n"
+                f"Head over to grab yours before it's gone: {frontend_url}/events/{event.slug}\n\n"
+                f"- EventHub"
+            ),
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@eventhub.com"),
+            recipient_list=[entry.email],
+            fail_silently=True,
+        )
+    except Exception:
+        pass
 
 
 class OrderCreateView(generics.GenericAPIView):
@@ -84,6 +131,9 @@ class OrderCancelView(generics.GenericAPIView):
                     item.ticket_type.save(update_fields=["quantity_reserved"])
             order.status = "cancelled"
             order.save(update_fields=["status"])
+            event = order.event
+            if event:
+                transaction.on_commit(lambda: _notify_waitlist_if_available(event))
         return Response({"message": "Order cancelled."})
 
 
