@@ -215,14 +215,6 @@ const EventDetailPage = () => {
     if (slug) trackEventView(slug);
   }, [slug]);
 
-  useEffect(() => {
-    if (!baseEvent) return;
-    const id = window.setTimeout(() => {
-      ensureTabContentVisible('auto');
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [baseEvent?.slug, activeTab]);
-
   const detailQueryKey = eventQueryKeys.detail(slug);
   const listCaches = queryClient.getQueriesData({ queryKey: eventQueryKeys.lists() });
   const placeholderEventFromList = listCaches
@@ -237,6 +229,14 @@ const EventDetailPage = () => {
     retry: false,
     placeholderData: () => buildEventDetailPlaceholderFromList(placeholderEventFromList),
   });
+
+  useEffect(() => {
+    if (!baseEvent) return;
+    const id = window.setTimeout(() => {
+      ensureTabContentVisible('auto');
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [baseEvent?.slug, activeTab]);
 
   // 2. Related events — low-priority background fetch
   const { data: relatedEvents = [] } = useQuery({
