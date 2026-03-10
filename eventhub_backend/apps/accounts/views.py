@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -39,6 +41,7 @@ from .models import (
     UserSecuritySettings,
 )
 from apps.events.models import Event
+from apps.notifications.models import Notification
 from .tasks import send_password_reset_email, send_verification_email, send_welcome_email
 
 User = get_user_model()
@@ -392,6 +395,7 @@ class OrganizerTeamInviteView(APIView):
         first_name = name.split(" ")[0] if name else "Team"
         last_name = " ".join(name.split(" ")[1:]) if name else "Member"
 
+        assigned_event = None
         with transaction.atomic():
             member, created = User.objects.get_or_create(
                 email=email,
@@ -423,8 +427,57 @@ class OrganizerTeamInviteView(APIView):
             team_member.save(update_fields=["role"])
 
             if event_id:
-                event = generics.get_object_or_404(Event, id=event_id, organizer=request.user)
-                team_member.assigned_events.set([event])
+                assigned_event = generics.get_object_or_404(Event, id=event_id, organizer=request.user)
+                team_member.assigned_events.set([assigned_event])
+
+        # Send email invite/assignment notification (best-effort)
+        try:
+            frontend = getattr(settings, "FRONTEND_URL", "").rstrip("/")
+            login_url = f"{frontend}/login" if frontend else ""
+            reset_url = f"{frontend}/forgot-password" if frontend else ""
+            organizer_name = request.user.get_full_name() or request.user.email
+            event_label = assigned_event.title if assigned_event else "your assigned events"
+            if created and temp_password:
+                subject = "You're invited as EventHub check-in staff"
+                body = (
+                    f"Hi {first_name},\n\n"
+                    f"{organizer_name} invited you to help with event check-ins for {event_label}.\n\n"
+                    f"Login email: {email}\n"
+                    f"Temporary password: {temp_password}\n"
+                    f"Login here: {login_url}\n\n"
+                    f"Please reset your password immediately after logging in: {reset_url}\n\n"
+                    "If you did not expect this invite, you can ignore this email."
+                )
+            else:
+                subject = "You've been assigned to event check-in"
+                body = (
+                    f"Hi {first_name},\n\n"
+                    f"{organizer_name} assigned you as check-in staff for {event_label}.\n\n"
+                    f"Login here: {login_url}\n\n"
+                    "Once logged in, you'll only see the event(s) you're assigned to."
+                )
+            send_mail(
+                subject,
+                body,
+                getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@eventhub.com"),
+                [email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+        # In-app notification for existing users
+        try:
+            Notification.objects.create(
+                recipient=member,
+                notification_type="organizer_message",
+                title="Assigned to check-in",
+                message=f"You've been assigned to check-in for {assigned_event.title if assigned_event else 'an event'}.",
+                event=assigned_event,
+                action_url=f"/organizer/events/{assigned_event.slug}/checkin" if assigned_event else "",
+            )
+        except Exception:
+            pass
 
         serializer = OrganizerTeamMemberSerializer(team_member)
         response = serializer.data

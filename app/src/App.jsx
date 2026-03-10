@@ -34,6 +34,7 @@ const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'));
 const OrganizerDashboardPage = lazy(() => import('./pages/OrganizerDashboardPage'));
 const CheckInPage = lazy(() => import('./pages/CheckInPage'));
 const TicketVerificationPage = lazy(() => import('./pages/TicketVerificationPage'));
+const OrganizerCheckInLanding = lazy(() => import('./pages/OrganizerCheckInLanding'));
 
 // Loading fallback — plain CSS spinner, no framer-motion transforms
 const PageLoader = () => (
@@ -61,10 +62,12 @@ const AppRoutes = () => {
   const isOrganizerRoute =
     /^\/organizer-dashboard\/?$/.test(location.pathname) ||
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
+    /^\/organizer-checkin\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
     /^\/edit-event\/[^/]+\/?$/.test(location.pathname);
   const hideFooter =
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
+    /^\/organizer-checkin\/?$/.test(location.pathname) ||
     /^\/settings\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
     /^\/edit-event\/[^/]+\/?$/.test(location.pathname) ||
@@ -97,6 +100,7 @@ const AppRoutes = () => {
         <Route path="/my-tickets" element={<Suspense fallback={<PageLoader />}><MyTicketsPage /></Suspense>} />
         <Route path="/settings" element={<Suspense fallback={<PageLoader />}><AccountSettingsPage /></Suspense>} />
         <Route path="/organizer-dashboard" element={<Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>} />
+        <Route path="/organizer-checkin" element={<Suspense fallback={<PageLoader />}><OrganizerCheckInLanding /></Suspense>} />
         <Route path="/organizer/events/:slug/checkin" element={<Suspense fallback={<PageLoader />}><CheckInPage /></Suspense>} />
         <Route path="/verify-email" element={<Suspense fallback={<PageLoader />}><EmailVerificationPage /></Suspense>} />
         <Route path="/t/:uuid" element={<Suspense fallback={<PageLoader />}><TicketVerificationPage /></Suspense>} />

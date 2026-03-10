@@ -58,6 +58,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         source="organizer_profile.logo", required=False, allow_null=True
     )
     assigned_events = serializers.SerializerMethodField()
+    assigned_event_details = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -76,6 +77,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "website",
             "logo",
             "assigned_events",
+            "assigned_event_details",
             "created_at",
         ]
         read_only_fields = (
@@ -106,6 +108,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
             for event in membership.assigned_events.all():
                 event_ids.add(str(event.id))
         return list(event_ids)
+
+    def get_assigned_event_details(self, obj):
+        memberships = OrganizerTeamMember.objects.filter(member=obj).prefetch_related("assigned_events")
+        details = []
+        seen = set()
+        for membership in memberships:
+            for event in membership.assigned_events.all():
+                if event.id in seen:
+                    continue
+                seen.add(event.id)
+                details.append({
+                    "id": str(event.id),
+                    "slug": event.slug,
+                    "title": event.title,
+                    "date": event.date.isoformat() if event.date else None,
+                    "time": event.time if event.time else None,
+                })
+        return details
 
     def update(self, instance, validated_data):
         organizer_data = validated_data.pop("organizer_profile", {})

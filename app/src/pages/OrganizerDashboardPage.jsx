@@ -255,7 +255,14 @@ const OrganizerDashboardPage = () => {
   const [customRevenueSource, setCustomRevenueSource] = useState('');
   const mainScrollRef = useRef(null);
 
+  const isStaffUser = user && (user.role === 'checkin' || user.role === 'staff');
   const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
+
+  useEffect(() => {
+    if (isStaffUser) {
+      navigate('/organizer-checkin', { replace: true });
+    }
+  }, [isStaffUser, navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

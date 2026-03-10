@@ -22,6 +22,8 @@ const LoginPage = () => {
       const intendedDestination = location.state?.from?.pathname;
       if (intendedDestination) {
         navigate(intendedDestination, { replace: true });
+      } else if (user?.role === 'checkin' || user?.role === 'staff') {
+        navigate('/organizer-checkin', { replace: true });
       } else if (user?.role === 'organizer' || user?.role === 'admin') {
         navigate('/organizer-dashboard', { replace: true });
       } else {
