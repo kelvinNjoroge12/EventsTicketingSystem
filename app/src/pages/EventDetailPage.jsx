@@ -164,7 +164,6 @@ const EventDetailPage = () => {
 
   const contentStartRef = useRef(null);
   const tabBarRef = useRef(null);
-  const tabContentRef = useRef(null);
 
   const getNavHeight = () => {
     const header = document.querySelector('header');
@@ -174,17 +173,13 @@ const EventDetailPage = () => {
   const getTabHeight = () =>
     tabBarRef.current?.getBoundingClientRect().height || 52;
 
-  const ensureTabContentVisible = (behavior = 'smooth', force = false) => {
-    const anchor = tabContentRef.current || contentStartRef.current;
-    if (!anchor) return;
+  const scrollTabBarIntoView = (behavior = 'smooth') => {
+    const bar = tabBarRef.current;
+    if (!bar) return;
     const navHeight = getNavHeight();
-    const tabHeight = getTabHeight();
-    const offset = navHeight + tabHeight + 24;
-    const top = anchor.getBoundingClientRect().top;
-    if (force || top < offset) {
-      const y = top + window.scrollY - offset;
-      window.scrollTo({ top: y, behavior });
-    }
+    const top = bar.getBoundingClientRect().top;
+    const y = top + window.scrollY - (navHeight + 8);
+    window.scrollTo({ top: y, behavior });
   };
 
   const handleTabChange = (tabId) => {
@@ -194,7 +189,7 @@ const EventDetailPage = () => {
     // If we scroll mid-animation, the document height collapse breaks the smooth scroll
     // and hides the new headings behind the sticky tab bar.
     setTimeout(() => {
-      ensureTabContentVisible('smooth', true);
+      scrollTabBarIntoView('smooth');
     }, 250);
   };
 
@@ -219,13 +214,6 @@ const EventDetailPage = () => {
     placeholderData: () => buildEventDetailPlaceholderFromList(placeholderEventFromList),
   });
 
-  useEffect(() => {
-    if (!baseEvent) return;
-    const id = window.setTimeout(() => {
-      ensureTabContentVisible('auto', true);
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [baseEvent?.slug, activeTab]);
 
   // 2. Related events — low-priority background fetch
   const { data: relatedEvents = [] } = useQuery({
@@ -494,7 +482,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── TAB CONTENT ── */}
-            <div ref={tabContentRef} className="min-h-[50vh] pt-2">
+            <div className="min-h-[50vh] pt-2">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
