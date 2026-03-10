@@ -40,6 +40,43 @@ const ClassicTicketLoader = ({
     ? 'fixed inset-0 z-[120] bg-[#0B1020]/90 backdrop-blur-[2px] flex items-center justify-center px-4'
     : 'w-full flex items-center justify-center py-14';
 
+  const motionConfig = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return {
+        isMobile: false,
+        reduceMotion: false,
+        interval: 180,
+        doubleChance: 0.35,
+        seedCount: 4,
+        distMin: 100,
+        distMax: 260,
+        spinMin: 120,
+        spinMax: 320,
+        durMin: 900,
+        durMax: 1400,
+        ringSpeed: 1.1,
+      };
+    }
+
+    const isMobile = window.matchMedia('(max-width: 640px)').matches;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    return {
+      isMobile,
+      reduceMotion,
+      interval: reduceMotion ? 600 : isMobile ? 320 : 180,
+      doubleChance: reduceMotion ? 0 : isMobile ? 0.15 : 0.35,
+      seedCount: reduceMotion ? 1 : isMobile ? 2 : 4,
+      distMin: isMobile ? 70 : 100,
+      distMax: isMobile ? 150 : 260,
+      spinMin: isMobile ? 80 : 120,
+      spinMax: isMobile ? 180 : 320,
+      durMin: isMobile ? 700 : 900,
+      durMax: isMobile ? 1000 : 1400,
+      ringSpeed: isMobile ? 1.5 : 1.1,
+    };
+  }, []);
+
   const ringStyle = useMemo(
     () => ({
       width: 44,
@@ -49,13 +86,14 @@ const ClassicTicketLoader = ({
       borderTopColor: 'rgba(197,139,26,0.85)',
       borderRightColor: 'rgba(197,139,26,0.45)',
       transform: 'translate(-50%, -50%)',
-      animation: 'ticket-spinner-spin 1.1s linear infinite',
+      animation: `ticket-spinner-spin ${motionConfig.ringSpeed}s linear infinite`,
     }),
-    []
+    [motionConfig.ringSpeed]
   );
 
   useEffect(() => {
     if (!visible) return undefined;
+    if (motionConfig.reduceMotion) return undefined;
     const stage = stageRef.current;
     if (!stage) return undefined;
 
@@ -71,11 +109,12 @@ const ClassicTicketLoader = ({
       if (destroyed || !stage) return;
       const palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
       const angle = Math.random() * Math.PI * 2;
-      const dist = 100 + Math.random() * 160;
+      const dist = motionConfig.distMin + Math.random() * (motionConfig.distMax - motionConfig.distMin);
       const tx = Math.cos(angle) * dist;
       const ty = Math.sin(angle) * dist;
-      const spin = (Math.random() > 0.5 ? 1 : -1) * (120 + Math.random() * 200);
-      const dur = 900 + Math.random() * 500;
+      const spin = (Math.random() > 0.5 ? 1 : -1) *
+        (motionConfig.spinMin + Math.random() * (motionConfig.spinMax - motionConfig.spinMin));
+      const dur = motionConfig.durMin + Math.random() * (motionConfig.durMax - motionConfig.durMin);
       const ticket = document.createElement('div');
       ticket.style.position = 'absolute';
       ticket.style.top = '0';
@@ -117,15 +156,15 @@ const ClassicTicketLoader = ({
     };
 
     const burst = () => {
-      const count = Math.random() < 0.35 ? 2 : 1;
+      const count = Math.random() < motionConfig.doubleChance ? 2 : 1;
       for (let i = 0; i < count; i += 1) {
         const timer = setTimeout(spawnTicket, i * 70);
         timersRef.current.push(timer);
       }
     };
 
-    const intervalId = setInterval(burst, 180);
-    for (let i = 0; i < 4; i += 1) {
+    const intervalId = setInterval(burst, motionConfig.interval);
+    for (let i = 0; i < motionConfig.seedCount; i += 1) {
       const timer = setTimeout(spawnTicket, i * 90);
       timersRef.current.push(timer);
     }
@@ -136,7 +175,7 @@ const ClassicTicketLoader = ({
       clearTimers();
       stage.innerHTML = '';
     };
-  }, [holeColor, visible]);
+  }, [holeColor, motionConfig, visible]);
 
   return (
     <AnimatePresence>
@@ -159,6 +198,8 @@ const ClassicTicketLoader = ({
             <div
               style={{
                 position: 'absolute',
+                left: 0,
+                top: 0,
                 width: 8,
                 height: 8,
                 borderRadius: '999px',
