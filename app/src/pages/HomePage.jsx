@@ -18,6 +18,7 @@ import EventCard from '../components/cards/EventCard';
 import CategoryPill from '../components/cards/CategoryPill';
 import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
+import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
 import { fetchEvent, fetchEvents, preloadRoutes } from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categories } from '../data/categories';
@@ -511,17 +512,8 @@ const HomePage = () => {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="rounded-2xl overflow-hidden bg-[#F1F5F9] animate-pulse">
-                  <div className="h-48 bg-[#E2E8F0]" />
-                  <div className="p-4 space-y-3">
-                    <div className="h-5 bg-[#E2E8F0] rounded w-3/4" />
-                    <div className="h-4 bg-[#E2E8F0] rounded w-1/2" />
-                    <div className="h-4 bg-[#E2E8F0] rounded w-full" />
-                  </div>
-                </div>
-              ))}
+            <div className="min-h-[360px] flex items-center justify-center">
+              <ClassicTicketLoader visible overlay={false} ariaLabel="Loading upcoming events" />
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
