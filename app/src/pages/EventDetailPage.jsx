@@ -460,7 +460,7 @@ const EventDetailPage = () => {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-10 w-full" style={{ overflowX: 'hidden' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-10 w-full" style={{ overflowX: 'hidden' }}>
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
@@ -494,7 +494,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── TAB CONTENT ── */}
-            <div className="min-h-[50vh] pt-6">
+            <div className="min-h-[50vh] pt-2">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
