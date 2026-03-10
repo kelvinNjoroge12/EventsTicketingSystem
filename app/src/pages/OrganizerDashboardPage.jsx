@@ -1,5 +1,5 @@
 ﻿
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -27,7 +27,6 @@ import OrganizerEventDetail from './organizer/EventDetail';
 import OrganizerSettings from './organizer/Settings';
 import { api } from '../lib/apiClient';
 import { fetchEvent } from '../lib/eventsApi';
-import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 
 const EXPENSE_CATEGORIES = [
@@ -261,11 +260,35 @@ const OrganizerDashboardPage = () => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
     if (!tab) return;
-    const allowed = ['dashboard', 'events', 'checkin', 'create', 'settings'];
-    if (allowed.includes(tab)) {
-      setCurrentPage(tab);
+    const allowed = ['dashboard', 'events', 'checkin', 'create', 'settings', 'event'];
+    if (!allowed.includes(tab)) return;
+
+    if (tab === 'event') {
+      const eventParam = params.get('event');
+      if (eventParam) {
+        setSelectedEventId(eventParam);
+        setCurrentPage('event-detail');
+      } else {
+        setCurrentPage('events');
+      }
+      return;
     }
+
+    setCurrentPage(tab);
   }, [location.search]);
+
+  const syncTabToUrl = useCallback((tab, extras = {}) => {
+    const params = new URLSearchParams(location.search);
+    params.set('tab', tab);
+    Object.entries(extras).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+    navigate(`/organizer-dashboard?${params.toString()}`, { replace: true });
+  }, [location.search, navigate]);
 
   const { data: eventsData } = useQuery({
     queryKey: ['organizer_events'],
@@ -281,7 +304,10 @@ const OrganizerDashboardPage = () => {
   const events = useMemo(() => rawEvents.map(normalizeEvent), [rawEvents]);
 
   const selectedEvent = useMemo(
-    () => events.find((eventItem) => String(eventItem.id) === String(selectedEventId)),
+    () => events.find((eventItem) =>
+      String(eventItem.id) === String(selectedEventId) ||
+      String(eventItem.slug) === String(selectedEventId)
+    ),
     [events, selectedEventId]
   );
 
@@ -468,12 +494,15 @@ const OrganizerDashboardPage = () => {
   }));
 
   const openEventDetail = (eventItem) => {
-    setSelectedEventId(String(eventItem.id));
+    const identifier = eventItem.slug || eventItem.id;
+    setSelectedEventId(String(identifier));
     setCurrentPage('event-detail');
+    syncTabToUrl('event', { event: identifier });
   };
 
   const handleBackToEvents = () => {
     setCurrentPage('events');
+    syncTabToUrl('events', { event: null });
   };
 
   const handleEditEvent = () => {
@@ -500,6 +529,22 @@ const OrganizerDashboardPage = () => {
       return;
     }
     setCurrentPage(page);
+    if (page === 'checkin') {
+      syncTabToUrl('checkin', { event: null });
+      return;
+    }
+    if (page === 'settings') {
+      syncTabToUrl('settings', { event: null });
+      return;
+    }
+    if (page === 'events') {
+      syncTabToUrl('events', { event: null });
+      return;
+    }
+    if (page === 'dashboard') {
+      syncTabToUrl('dashboard', { event: null });
+      return;
+    }
   };
 
   const selectedRevenueSource = REVENUE_SOURCES.find((item) => item.id === revenueForm.source) || REVENUE_SOURCES[1];
@@ -531,7 +576,7 @@ const OrganizerDashboardPage = () => {
       case 'events':
         return 'My Events';
       case 'event-detail':
-        return selectedEvent?.name || 'Event Details';
+        return '';
       case 'checkin':
         return 'Check-in';
       case 'create':
@@ -564,7 +609,10 @@ const OrganizerDashboardPage = () => {
             stats={overviewStats}
             statChanges={statsChanges}
             onEventClick={openEventDetail}
-            onViewAll={() => setCurrentPage('events')}
+            onViewAll={() => {
+              setCurrentPage('events');
+              syncTabToUrl('events', { event: null });
+            }}
             isLoadingStats={isLoadingGlobalStats}
             revenueSeries={normalizedRevenueSeries}
             range={revenueRange}
@@ -621,6 +669,8 @@ const OrganizerDashboardPage = () => {
               onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
               onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}
               onCheckInEvent={openCheckinForEvent}
+              showStatusFilter={false}
+              showCategoryFilter={false}
             />
           </div>
         );
@@ -667,7 +717,6 @@ const OrganizerDashboardPage = () => {
             <div className="max-w-7xl mx-auto">{renderPage()}</div>
           </main>
         </div>
-        <Toaster position="top-right" />
       </div>
 
       {showExpenseForm && (
