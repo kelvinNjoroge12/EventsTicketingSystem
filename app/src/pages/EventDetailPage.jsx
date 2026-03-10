@@ -161,7 +161,6 @@ const EventDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [tabSpacer, setTabSpacer] = useState(0);
 
   const contentStartRef = useRef(null);
   const tabBarRef = useRef(null);
@@ -175,14 +174,14 @@ const EventDetailPage = () => {
   const getTabHeight = () =>
     tabBarRef.current?.getBoundingClientRect().height || 52;
 
-  const ensureTabContentVisible = (behavior = 'smooth') => {
+  const ensureTabContentVisible = (behavior = 'smooth', force = false) => {
     const anchor = tabContentRef.current || contentStartRef.current;
     if (!anchor) return;
     const navHeight = getNavHeight();
     const tabHeight = getTabHeight();
-    const offset = navHeight + tabHeight + 16;
+    const offset = navHeight + tabHeight + 12;
     const top = anchor.getBoundingClientRect().top;
-    if (top < offset) {
+    if (force || top < offset) {
       const y = top + window.scrollY - offset;
       window.scrollTo({ top: y, behavior });
     }
@@ -195,19 +194,9 @@ const EventDetailPage = () => {
     // If we scroll mid-animation, the document height collapse breaks the smooth scroll
     // and hides the new headings behind the sticky tab bar.
     setTimeout(() => {
-      ensureTabContentVisible('smooth');
+      ensureTabContentVisible('smooth', true);
     }, 250);
   };
-
-  useEffect(() => {
-    const updateSpacer = () => {
-      const tabHeight = getTabHeight();
-      setTabSpacer(tabHeight + 12);
-    };
-    updateSpacer();
-    window.addEventListener('resize', updateSpacer);
-    return () => window.removeEventListener('resize', updateSpacer);
-  }, []);
 
   // 1. Main event — served from hover-prefetch cache instantly on revisit
   useEffect(() => {
@@ -505,11 +494,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── TAB CONTENT ── */}
-            <div
-              ref={tabContentRef}
-              className="min-h-[50vh] pt-2"
-              style={tabSpacer ? { paddingTop: `${tabSpacer}px`, marginTop: `-${tabSpacer}px` } : undefined}
-            >
+            <div ref={tabContentRef} className="min-h-[50vh] pt-2">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
