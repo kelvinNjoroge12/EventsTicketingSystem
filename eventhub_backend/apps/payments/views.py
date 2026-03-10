@@ -321,6 +321,10 @@ class MpesaInitiateView(APIView):
 
 @csrf_exempt
 def mpesa_callback(request: HttpRequest) -> HttpResponse:
+    expected_token = getattr(settings, "MPESA_CALLBACK_SECRET", None)
+    if expected_token and request.GET.get('token') != expected_token:
+        return HttpResponse(status=403)
+        
     try:
         data = json.loads(request.body.decode("utf-8"))
     except Exception:

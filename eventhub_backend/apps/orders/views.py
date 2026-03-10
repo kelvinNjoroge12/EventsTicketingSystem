@@ -76,7 +76,7 @@ class OrderCreateView(generics.GenericAPIView):
             event = serializer.validated_data["event"]
             items = serializer.validated_data["items"]
             ticket_ids = [i["ticket_type_id"] for i in items]
-            list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
+            TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids).exists()
             order = serializer.save()
 
         if order.status == "confirmed":
@@ -92,6 +92,8 @@ class OrderCreateView(generics.GenericAPIView):
 class OrderDetailView(generics.RetrieveAPIView):
     serializer_class = OrderDetailSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "order_lookup"
     lookup_field = "order_number"
 
     def get_queryset(self):

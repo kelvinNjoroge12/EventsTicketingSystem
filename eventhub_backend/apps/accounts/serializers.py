@@ -176,6 +176,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         role = validated_data.get("role", "attendee")
+        if role in ["admin", "staff"]:
+            role = "attendee"
+            
         user = User.objects.create_user(
             email=validated_data["email"],
             password=validated_data["password"],
@@ -207,9 +210,8 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             raise serializers.ValidationError("This account is inactive.")
         
-        # NOTE: Verification check removed for easier testing/demo
-        # if not user.is_email_verified:
-        #     raise serializers.ValidationError("Email is not verified.")
+        if getattr(settings, "REQUIRE_EMAIL_VERIFICATION", False) and not user.is_email_verified:
+            raise serializers.ValidationError("Email is not verified.")
         
         attrs["user"] = user
         return attrs

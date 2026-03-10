@@ -88,6 +88,13 @@ class OrderCreateSerializer(serializers.Serializer):
 
         attrs["promo_obj"] = promo_obj
         attrs["discount_amount"] = discount_amount
+        
+        # Verify free payment method genuinely applies to free orders
+        if attrs.get("payment_method") == "free" and (subtotal - discount_amount) > 0:
+            raise serializers.ValidationError(
+                {"payment_method": "The 'Free' payment method can only be used for free orders."}
+            )
+            
         return attrs
 
     def create(self, validated_data):
