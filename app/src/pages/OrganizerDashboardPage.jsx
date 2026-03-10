@@ -667,9 +667,8 @@ const OrganizerDashboardPage = () => {
             onMenuClick={() => setSidebarOpen(true)}
             showMenu
           />
-          <div className="h-16 shrink-0" />
 
-          <main className="flex-1 p-4 lg:p-6 overflow-auto">
+          <main className="flex-1 px-4 pb-4 pt-20 lg:px-6 lg:pb-6 lg:pt-20 overflow-auto">
             <div className="max-w-7xl mx-auto">{renderPage()}</div>
           </main>
         </div>

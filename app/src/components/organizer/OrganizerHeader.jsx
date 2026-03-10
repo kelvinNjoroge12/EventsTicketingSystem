@@ -68,13 +68,19 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
 
   const notifications = useMemo(() => {
     const items = apiList(notificationsData);
-    return items.map((item, index) => ({
-      id: item.id ?? item.notification_id ?? item.uuid ?? `${index}`,
-      title: item.title || item.subject || item.type || 'Notification',
-      message: item.message || item.body || item.description || '',
-      time: item.time || formatRelativeTime(item.created_at || item.timestamp || item.date),
-      read: item.read ?? item.is_read ?? false,
-    }));
+    return items
+      .map((item, index) => {
+        const title = item.title || item.subject || item.notification_type || item.type || '';
+        const message = item.message || item.body || item.description || '';
+        return {
+          id: item.id ?? item.notification_id ?? item.uuid ?? `${index}`,
+          title,
+          message,
+          time: item.time || formatRelativeTime(item.created_at || item.timestamp || item.date),
+          read: item.read ?? item.is_read ?? false,
+        };
+      })
+      .filter((item) => item.title || item.message);
   }, [notificationsData]);
 
   const unreadCount = unreadCountData ?? notifications.filter((n) => !n.read).length;
@@ -124,20 +130,20 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
         'fixed top-0 right-0 h-16 z-40 transition-all duration-300 flex items-center justify-between px-4 lg:px-6',
         'lg:left-64 left-0',
         scrolled
-          ? 'bg-white/95 backdrop-blur-xl shadow-sm border-b border-gray-100'
-          : 'bg-white border-b border-gray-100'
+          ? 'bg-[#1E4DB7]/95 backdrop-blur-xl shadow-md border-b border-[#163B90]'
+          : 'bg-[#1E4DB7] border-b border-[#163B90]'
       )}
     >
       <div className="flex items-center gap-3">
         {showMenu && (
-          <button onClick={onMenuClick} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
-            <Menu className="w-5 h-5 text-[#1E4DB7]" />
+          <button onClick={onMenuClick} className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <Menu className="w-5 h-5 text-white" />
           </button>
         )}
         <div>
-          <h1 className="text-lg lg:text-xl font-bold text-[#0F172A]">{title}</h1>
-          <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
-            <Calendar className="w-3 h-3" />
+          <h1 className="text-lg lg:text-xl font-bold text-white">{title}</h1>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-white/70">
+            <Calendar className="w-3 h-3 text-white/70" />
             <span>{currentDate}</span>
           </div>
         </div>
@@ -145,18 +151,18 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
 
       <div className="flex items-center gap-2 lg:gap-4">
         <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
           <Input
             type="text"
             placeholder="Search events, guests..."
-            className="pl-10 pr-4 w-48 lg:w-64 h-9 rounded-full border-gray-200 focus:border-[#C58B1A] focus:ring-[#C58B1A]/20 transition-all duration-200"
+            className="pl-10 pr-4 w-48 lg:w-64 h-9 rounded-full border border-white/20 bg-white/10 text-white placeholder:text-white/60 focus:border-[#FDE68A] focus:ring-[#FDE68A]/30 transition-all duration-200"
           />
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors group">
-              <Bell className="w-5 h-5 text-gray-600 group-hover:text-[#C58B1A] transition-colors" />
+            <button className="relative p-2 rounded-full hover:bg-white/10 transition-colors group">
+              <Bell className="w-5 h-5 text-white/80 group-hover:text-[#FDE68A] transition-colors" />
               {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 bg-[#B91C1C] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                   {unreadCount}
@@ -206,7 +212,7 @@ const OrganizerHeader = ({ title, onMenuClick, showMenu }) => {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors">
+            <button className="flex items-center gap-2 p-1 rounded-full hover:bg-white/10 transition-colors">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C58B1A] to-[#B91C1C] flex items-center justify-center">
                 <span className="text-xs font-bold text-white">{initials}</span>
               </div>
