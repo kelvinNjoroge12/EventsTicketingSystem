@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, ChevronDown, ChevronUp, Tag, Check, ShoppingCart } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
-import { api } from '../../lib/apiClient';
+import { api } from '@/lib/apiClient';
 
 const TicketBox = ({
   event,
