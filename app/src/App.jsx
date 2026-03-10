@@ -57,16 +57,22 @@ const ScrollToTop = () => {
 const AppRoutes = () => {
   const { toasts, removeToast } = useToast();
   const location = useLocation();
+  const isOrganizerRoute =
+    /^\/organizer-dashboard\/?$/.test(location.pathname) ||
+    /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
+    /^\/create-event\/?$/.test(location.pathname) ||
+    /^\/edit-event\/[^/]+\/?$/.test(location.pathname);
   const hideFooter =
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
     /^\/settings\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
-    /^\/edit-event\/[^/]+\/?$/.test(location.pathname);
+    /^\/edit-event\/[^/]+\/?$/.test(location.pathname) ||
+    /^\/organizer-dashboard\/?$/.test(location.pathname);
 
   return (
     <>
       <ScrollToTop />
-      <Navbar />
+      {!isOrganizerRoute && <Navbar />}
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <Routes>
