@@ -166,6 +166,7 @@ const OrganizerHeader = ({
     day: 'numeric',
   });
 
+  const avatarUrl = user?.avatar || user?.photo || user?.image || user?.profile_image || user?.profileImage;
   const initials = user?.name
     ? user.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
     : 'U';
@@ -273,15 +274,18 @@ const OrganizerHeader = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 p-1 rounded-full hover:bg-white/10 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C58B1A] to-[#B91C1C] flex items-center justify-center">
-                <span className="text-xs font-bold text-white">{initials}</span>
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/30 bg-white/10 flex items-center justify-center">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={user?.name || 'Organizer'} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-white">{initials}</span>
+                )}
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/organizer-profile')}>Profile</DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/organizer-dashboard?tab=settings')}>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-[#B91C1C]" onClick={logout}>Logout</DropdownMenuItem>
