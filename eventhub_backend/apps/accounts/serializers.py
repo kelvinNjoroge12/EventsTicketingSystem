@@ -8,6 +8,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from common.validators import validate_upload_image
+from common.tokens import verify_secure_token, email_verification_token_generator
+from django.contrib.auth.tokens import default_token_generator
 from .models import OrganizerProfile, OrganizerTeamMember
 
 User = get_user_model()
@@ -251,19 +253,15 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
 
 class ResetPasswordSerializer(serializers.Serializer):
-    token = serializers.UUIDField()
+    token = serializers.CharField()
     new_password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        token = attrs["token"]
-        try:
-            user = User.objects.get(password_reset_token=token)
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"token": "Invalid token."})
-
-        if not user.password_reset_token_expires or user.password_reset_token_expires < timezone.now():
-            raise serializers.ValidationError({"token": "Token has expired."})
+        combined_token = attrs["token"]
+        user = verify_secure_token(combined_token, default_token_generator)
+        if not user:
+            raise serializers.ValidationError({"token": "Invalid or expired token."})
 
         if attrs["new_password"] != attrs["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
@@ -274,15 +272,23 @@ class ResetPasswordSerializer(serializers.Serializer):
     def save(self, **kwargs):
         user = self.validated_data["user"]
         user.set_password(self.validated_data["new_password"])
-        user.password_reset_token = None
-        user.password_reset_token_expires = None
         user.must_reset_password = False
-        user.save(update_fields=["password", "password_reset_token", "password_reset_token_expires", "must_reset_password"])
+        user.save(update_fields=["password", "must_reset_password"])
         return user
 
 
 class EmailVerificationSerializer(serializers.Serializer):
-    token = serializers.UUIDField()
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        combined_token = attrs["token"]
+        user = verify_secure_token(combined_token, email_verification_token_generator)
+        if not user:
+            raise serializers.ValidationError({"token": "Invalid or expired verification token."})
+        
+        user.is_email_verified = True
+        user.save(update_fields=["is_email_verified"])
+        return attrs
 
 
 class ResendVerificationSerializer(serializers.Serializer):

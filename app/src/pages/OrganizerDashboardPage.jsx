@@ -29,6 +29,19 @@ import { api } from '../lib/apiClient';
 import { fetchEvent } from '../lib/eventsApi';
 import { toast } from 'sonner';
 
+import ExpenseFormModal from './organizer/ExpenseFormModal';
+import RevenueFormModal from './organizer/RevenueFormModal';
+import {
+  EMPTY_STATS,
+  apiList,
+  buildRevenueSeriesFromEntries,
+  normalizeRevenueSeries,
+  buildStatChanges,
+  normalizeStats,
+  normalizeEvent,
+  REVENUE_SOURCES
+} from './organizer/dashboardUtils';
+
 const EXPENSE_CATEGORIES = [
   { id: 'speakers', label: 'Speakers', icon: Mic2, color: '#7C3AED' },
   { id: 'mc', label: 'MC / Host', icon: Mic2, color: '#EC4899' },
@@ -250,9 +263,6 @@ const OrganizerDashboardPage = () => {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showRevenueForm, setShowRevenueForm] = useState(false);
   const [entryView, setEntryView] = useState('all');
-  const [expenseForm, setExpenseForm] = useState({ event: '', description: '', amount: '', category: 'speakers' });
-  const [revenueForm, setRevenueForm] = useState({ event: '', description: '', amount: '', source: 'sponsorship' });
-  const [customRevenueSource, setCustomRevenueSource] = useState('');
   const mainScrollRef = useRef(null);
 
   const isStaffUser = user && (user.role === 'checkin' || user.role === 'staff');
@@ -406,81 +416,6 @@ const OrganizerDashboardPage = () => {
     [revenueSeriesData]
   );
 
-  useEffect(() => {
-    if (!selectedEvent) return;
-    setExpenseForm((prev) => ({ ...prev, event: String(selectedEvent.id) }));
-    setRevenueForm((prev) => ({ ...prev, event: String(selectedEvent.id) }));
-  }, [selectedEvent]);
-
-  const addExpenseMutation = useMutation({
-    mutationFn: async (payload) => api.post('/api/finances/expenses/', payload),
-    onSuccess: () => {
-      toast.success('Expense added.');
-      setShowExpenseForm(false);
-      setExpenseForm((prev) => ({ ...prev, description: '', amount: '' }));
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['event_expenses'] });
-    },
-    onError: (error) => {
-      toast.error(error?.message || 'Failed to add expense.');
-    },
-  });
-
-  const deleteExpenseMutation = useMutation({
-    mutationFn: async (id) => api.delete(`/api/finances/expenses/${id}/`),
-    onSuccess: () => {
-      toast.success('Expense deleted.');
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['event_expenses'] });
-    },
-    onError: () => {
-      toast.error('Failed to delete expense.');
-    },
-  });
-
-  const addRevenueMutation = useMutation({
-    mutationFn: async (payload) => api.post('/api/finances/revenues/', payload),
-    onSuccess: () => {
-      toast.success('Revenue added.');
-      setShowRevenueForm(false);
-      setRevenueForm((prev) => ({ ...prev, description: '', amount: '', source: 'sponsorship' }));
-      setCustomRevenueSource('');
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['event_revenues'] });
-    },
-    onError: (error) => {
-      toast.error(error?.message || 'Failed to add revenue.');
-    },
-  });
-
-  const deleteRevenueMutation = useMutation({
-    mutationFn: async (id) => api.delete(`/api/finances/revenues/${id}/`),
-    onSuccess: () => {
-      toast.success('Revenue deleted.');
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['event_revenues'] });
-    },
-    onError: () => {
-      toast.error('Failed to delete revenue.');
-    },
-  });
-
-  const deleteEventMutation = useMutation({
-    mutationFn: async (eventItem) => {
-      const identifier = eventItem?.slug || eventItem?.id;
-      if (!identifier) throw new Error('Missing event identifier');
-      return api.delete(`/api/events/${identifier}/`);
-    },
-    onSuccess: () => {
-      toast.success('Event deleted.');
-      queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-    },
-    onError: (error) => {
-      toast.error(error?.message || 'Failed to delete event.');
-    },
-  });
-
   const revenueBreakdownTotals = eventRevenues.reduce((acc, item) => {
     const key = item.source || 'other';
     acc[key] = (acc[key] || 0) + Number(item.amount || 0);
@@ -558,15 +493,6 @@ const OrganizerDashboardPage = () => {
     }
   };
 
-  const selectedRevenueSource = REVENUE_SOURCES.find((item) => item.id === revenueForm.source) || REVENUE_SOURCES[1];
-  const revenueNeedsCustomLabel = Boolean(selectedRevenueSource?.custom);
-  const revenueSubmitDisabled =
-    !revenueForm.event ||
-    !revenueForm.description ||
-    !revenueForm.amount ||
-    Boolean(selectedRevenueSource?.auto) ||
-    (revenueNeedsCustomLabel && !customRevenueSource.trim());
-
   useEffect(() => {
     const container = mainScrollRef.current;
     if (!container) return;
@@ -574,19 +500,6 @@ const OrganizerDashboardPage = () => {
       container.scrollTo({ top: 0, behavior: 'auto' });
     });
   }, [currentPage, selectedEventId]);
-
-  const submitRevenueEntry = () => {
-    if (revenueSubmitDisabled) return;
-    const customLabel = customRevenueSource.trim();
-    const description = revenueForm.description.trim();
-    const payload = {
-      event: revenueForm.event,
-      source: selectedRevenueSource.backend,
-      description: revenueNeedsCustomLabel ? `${customLabel}: ${description}` : description,
-      amount: Number(revenueForm.amount),
-    };
-    addRevenueMutation.mutate(payload);
-  };
 
   const getPageTitle = () => {
     switch (currentPage) {
@@ -670,8 +583,18 @@ const OrganizerDashboardPage = () => {
             eventRevenues={eventRevenues}
             isLoadingEventExpenses={isLoadingEventExpenses}
             isLoadingEventRevenues={isLoadingEventRevenues}
-            onDeleteExpense={(id) => deleteExpenseMutation.mutate(id)}
-            onDeleteRevenue={(id) => deleteRevenueMutation.mutate(id)}
+            onDeleteExpense={async (id) => {
+              await api.delete(`/api/finances/expenses/${id}/`);
+              queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+              queryClient.invalidateQueries({ queryKey: ['event_expenses'] });
+              toast.success('Expense deleted.');
+            }}
+            onDeleteRevenue={async (id) => {
+              await api.delete(`/api/finances/revenues/${id}/`);
+              queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+              queryClient.invalidateQueries({ queryKey: ['event_revenues'] });
+              toast.success('Revenue deleted.');
+            }}
             onRefreshEvent={() => queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', selectedEvent?.slug] })}
           />
         ) : null;
@@ -739,207 +662,19 @@ const OrganizerDashboardPage = () => {
         </div>
       </div>
 
-      {showExpenseForm && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setShowExpenseForm(false)}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="bg-[#B91C1C] px-6 py-4 text-white flex items-center justify-between">
-              <h3 className="font-semibold">Add Expense</h3>
-              <button onClick={() => setShowExpenseForm(false)} className="p-1 rounded-full hover:bg-white/20">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Event *</label>
-                <select
-                  value={expenseForm.event}
-                  onChange={(event) => setExpenseForm((prev) => ({ ...prev, event: event.target.value }))}
-                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20"
-                >
-                  <option value="">Select event...</option>
-                  {events.map((eventItem) => (
-                    <option key={eventItem.id} value={eventItem.id}>{eventItem.name}</option>
-                  ))}
-                </select>
-              </div>
+      <ExpenseFormModal
+        isOpen={showExpenseForm}
+        onClose={() => setShowExpenseForm(false)}
+        events={events}
+        defaultEventId={selectedEventId}
+      />
 
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Category *</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {EXPENSE_CATEGORIES.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setExpenseForm((prev) => ({ ...prev, category: item.id }))}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center ${
-                        expenseForm.category === item.id
-                          ? 'border-[#7C3AED] bg-purple-50'
-                          : 'border-[#E2E8F0] hover:border-[#CBD5E1]'
-                      }`}
-                    >
-                      {item.icon && <item.icon className="w-4 h-4" style={{ color: item.color }} />}
-                      <span className="text-[8px] font-medium text-[#64748B] leading-tight">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Description *</label>
-                <input
-                  type="text"
-                  value={expenseForm.description}
-                  onChange={(event) => setExpenseForm((prev) => ({ ...prev, description: event.target.value }))}
-                  placeholder="e.g., DJ equipment rental"
-                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Amount (KES) *</label>
-                <input
-                  type="number"
-                  value={expenseForm.amount}
-                  onChange={(event) => setExpenseForm((prev) => ({ ...prev, amount: event.target.value }))}
-                  placeholder="0"
-                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!expenseForm.event || !expenseForm.description || !expenseForm.amount) return;
-                  addExpenseMutation.mutate({
-                    event: expenseForm.event,
-                    category: expenseForm.category,
-                    description: expenseForm.description,
-                    amount: Number(expenseForm.amount),
-                  });
-                }}
-                disabled={!expenseForm.event || !expenseForm.description || !expenseForm.amount}
-                className="w-full py-3 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Add Expense
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRevenueForm && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setShowRevenueForm(false)}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="bg-[#C58B1A] px-6 py-4 text-white flex items-center justify-between">
-              <h3 className="font-semibold">Add Revenue</h3>
-              <button onClick={() => setShowRevenueForm(false)} className="p-1 rounded-full hover:bg-white/20">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Event *</label>
-                <select
-                  value={revenueForm.event}
-                  onChange={(event) => setRevenueForm((prev) => ({ ...prev, event: event.target.value }))}
-                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
-                >
-                  <option value="">Select event...</option>
-                  {events.map((eventItem) => (
-                    <option key={eventItem.id} value={eventItem.id}>{eventItem.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Source *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {REVENUE_SOURCES.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      disabled={item.auto}
-                      onClick={() => {
-                        if (item.auto) return;
-                        setRevenueForm((prev) => ({ ...prev, source: item.id }));
-                        if (!item.custom) setCustomRevenueSource('');
-                      }}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center ${
-                        revenueForm.source === item.id
-                          ? 'border-[#16A34A] bg-green-50'
-                          : 'border-[#E2E8F0] hover:border-[#CBD5E1]'
-                      } ${item.auto ? 'opacity-70 cursor-not-allowed bg-[#F8FAFC]' : ''}`}
-                    >
-                      {item.icon && <item.icon className="w-4 h-4" style={{ color: item.color }} />}
-                      <span className="text-[9px] font-medium text-[#64748B] leading-tight">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-[#64748B] mt-2">
-                  Ticket Sales revenue is automatic and recorded after successful ticket purchase.
-                </p>
-              </div>
-
-              {revenueNeedsCustomLabel && (
-                <div>
-                  <label className="block text-xs font-medium text-[#64748B] mb-1.5">Custom Source Name *</label>
-                  <input
-                    type="text"
-                    value={customRevenueSource}
-                    onChange={(event) => setCustomRevenueSource(event.target.value)}
-                    placeholder="e.g., Main brand sponsor"
-                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Description *</label>
-                <input
-                  type="text"
-                  value={revenueForm.description}
-                  onChange={(event) => setRevenueForm((prev) => ({ ...prev, description: event.target.value }))}
-                  placeholder="e.g., Gold sponsor package"
-                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-[#64748B] mb-1.5">Amount (KES) *</label>
-                <input
-                  type="number"
-                  value={revenueForm.amount}
-                  onChange={(event) => setRevenueForm((prev) => ({ ...prev, amount: event.target.value }))}
-                  placeholder="0"
-                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={submitRevenueEntry}
-                disabled={revenueSubmitDisabled}
-                className="w-full py-3 bg-[#C58B1A] hover:bg-[#A56F14] text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Add Revenue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RevenueFormModal
+        isOpen={showRevenueForm}
+        onClose={() => setShowRevenueForm(false)}
+        events={events}
+        defaultEventId={selectedEventId}
+      />
     </PageWrapper>
   );
 };

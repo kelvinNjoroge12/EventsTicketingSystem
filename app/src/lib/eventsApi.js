@@ -1,30 +1,72 @@
 import { api } from "./apiClient";
 
+// Telemetry utility for capturing swallowed errors
+export const logError = (context, error) => {
+  console.error(`[Telemetry Error] ${context}:`, error);
+  if (window.Sentry) {
+    window.Sentry.captureException(error, { tags: { context } });
+  }
+};
+
 // ── Mappers ────────────────────────────────────────────────────────────────
 
-// Map backend event list item to the shape used by EventCard, HomePage, EventsPage
-const mapListEvent = (e) => {
+// Unified mapper for list item arrays and dashboard "normalizeEvent" usages.
+export const mapEvent = (e) => {
+  const isFree = e.is_free ?? e.isFree ?? false;
+  const price = e.lowest_ticket_price ?? e.price ?? 0;
+
+  const rawStartDate = e.start_date || e.date;
+
+  // Format date helper
+  let formattedDate = 'Date not set';
+  if (rawStartDate) {
+    const d = new Date(rawStartDate);
+    if (!Number.isNaN(d.getTime())) {
+      formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+
+  // Resolve Status helper
+  let resolvedStatus = e.status || (e.is_published ? 'published' : 'draft');
+  if (resolvedStatus !== 'draft' && resolvedStatus !== 'completed') {
+    const eventDate = new Date(rawStartDate || '');
+    if (!Number.isNaN(eventDate.getTime())) {
+      const today = new Date();
+      if (eventDate < today && eventDate.toDateString() !== today.toDateString()) {
+        resolvedStatus = 'completed';
+      } else if (eventDate.toDateString() === today.toDateString()) {
+        resolvedStatus = 'live';
+      }
+    }
+    if (resolvedStatus === 'published') resolvedStatus = 'upcoming';
+  }
+
+  const categoryName = (e.category && typeof e.category === "object" ? e.category.name : null) || e.category_name || (typeof e.category === "string" ? e.category : null) || "General";
+  const mapLocation = e.city ? `${e.city}${e.country ? ', ' + e.country : ''}` : e.country || e.location || e.venue_name || 'Location TBA';
+
   const base = {
     id: e.id,
     slug: e.slug,
-    title: e.title,
-    category:
-      (e.category && typeof e.category === "object" ? e.category.name : null) ||
-      e.category_name ||
-      (typeof e.category === "string" ? e.category : null) ||
-      "General",
-    date: e.start_date,
+    title: e.title || e.name,
+    name: e.title || e.name, // Support dashboard requirement
+    category: categoryName,
+    categoryName: categoryName,
+    date: rawStartDate, // Keep original standard, add formattedDate for dashboard
+    formattedDate: formattedDate,
+    rawStartDate: rawStartDate,
+    status: resolvedStatus,
     time: e.start_time,
-    location: e.city
-      ? `${e.city}${e.country ? ", " + e.country : ""}`
-      : e.country || "",
+    location: mapLocation,
     themeColor: e.theme_color || "#1E4DB7",
     accentColor: e.accent_color || "#7C3AED",
-    attendeeCount: e.attendee_count || 0,
+    attendeeCount: e.attendee_count || e.ticketsSold || 0,
+    ticketsSold: e.attendee_count || e.ticketsSold || 0,
+    revenue: e.total_revenue || e.revenue || 0,
+    capacity: e.capacity || null,
     isFeatured: e.is_featured || false,
     stickers: e.stickers || [],
-    format: e.format || "",
-    coverImage: e.cover_image || null,
+    format: e.format || "in_person",
+    coverImage: e.cover_image || e.coverImage || null,
     tags: [],
     description: "",
     organizer: {
@@ -41,8 +83,6 @@ const mapListEvent = (e) => {
     },
   };
 
-  const isFree = e.is_free ?? false;
-  const price = e.lowest_ticket_price ?? 0;
   return {
     ...base,
     isFree,
@@ -51,10 +91,9 @@ const mapListEvent = (e) => {
     price: Number(price || 0),
   };
 };
-
 // Map backend detail response to the richer event object used on detail/checkout
-const mapDetailEvent = (e) => {
-  const listMapped = mapListEvent(e);
+export const mapDetailEvent = (e) => {
+  const listMapped = mapEvent(e);
 
   const location =
     e.venue_name && e.city
@@ -185,8 +224,8 @@ export const fetchEvents = async (params = {}) => {
   const rawData = await api.get(`/api/events/${query ? "?" + query : ""}`);
 
   return Array.isArray(rawData?.results)
-    ? rawData.results.map(mapListEvent)
-    : rawData.map(mapListEvent);
+    ? rawData.results.map(mapEvent)
+    : rawData.map(mapEvent);
 };
 
 // ── Fetch Single Event Detail ─────────────────────────────────────────────
@@ -197,13 +236,23 @@ export const fetchEvent = async (slug) => {
 
 // ── Related Events ─────────────────────────────────────────────────────────
 export const fetchRelatedEvents = async (slug) => {
-  const data = await api.get(`/api/events/${slug}/related/`);
-  return data.map(mapListEvent);
+  try {
+    const data = await api.get(`/api/events/${slug}/related/`);
+    return data.map(mapEvent);
+  } catch (err) {
+    logError('fetchRelatedEvents', err);
+    return [];
+  }
 };
 
 export const fetchOrganizerEvents = async (organizerId) => {
-  const data = await api.get(`/api/events/organizers/${organizerId}/`);
-  return data.map(mapListEvent);
+  try {
+    const data = await api.get(`/api/events/organizers/${organizerId}/`);
+    return data.map(mapEvent);
+  } catch (err) {
+    logError('fetchOrganizerEvents', err);
+    return [];
+  }
 };
 
 export const searchEventsApi = async ({ q, location, date }) => {
@@ -222,7 +271,7 @@ export const fetchCategories = async () => {
 
 // ── Analytics ───────────────────────────────────────────────────────────────
 export const trackEventView = (slug) => {
-  api.post(`/api/events/${slug}/analytics/view/`, {}).catch(() => { });
+  api.post(`/api/events/${slug}/analytics/view/`, {}).catch((err) => logError('trackEventView', err));
 };
 
 // ── Event sub-resources ────────────────────────────────────────────────────

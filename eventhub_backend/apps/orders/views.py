@@ -122,20 +122,13 @@ class OrderCancelView(generics.GenericAPIView):
 
     def post(self, request, order_number: str):
         order = get_object_or_404(Order, order_number=order_number, attendee=request.user)
-        if order.status != "pending":
-            return Response({"detail": "Only pending orders can be cancelled."}, status=status.HTTP_400_BAD_REQUEST)
-        with transaction.atomic():
-            for item in order.items.select_related("ticket_type"):
-                if item.ticket_type:
-                    item.ticket_type.quantity_reserved = max(
-                        0, item.ticket_type.quantity_reserved - item.quantity
-                    )
-                    item.ticket_type.save(update_fields=["quantity_reserved"])
-            order.status = "cancelled"
-            order.save(update_fields=["status"])
-            event = order.event
-            if event:
-                transaction.on_commit(lambda: _notify_waitlist_if_available(event))
+        if not order.cancel_order(reason="User cancelled through dashboard"):
+            return Response({"detail": "Only pending or payment processing orders can be cancelled."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        event = order.event
+        if event:
+             transaction.on_commit(lambda: _notify_waitlist_if_available(event))
+             
         return Response({"message": "Order cancelled."})
 
 

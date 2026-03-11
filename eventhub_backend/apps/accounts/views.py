@@ -184,9 +184,8 @@ class ForgotPasswordView(APIView):
             # Always return 200 to avoid user enumeration
             return Response({"message": "If that account exists, you will receive an email shortly."})
 
-        user.password_reset_token = uuid.uuid4()
-        user.password_reset_token_expires = timezone.now() + timezone.timedelta(hours=1)
-        user.save(update_fields=["password_reset_token", "password_reset_token_expires"])
+        # Memory-less token is generated implicitly in the notification service/task. 
+        # We don't save anything to the DB anymore.
         send_password_reset_email.delay(str(user.id))
         return Response({"message": "If that account exists, you will receive an email shortly."})
 
@@ -207,13 +206,7 @@ class EmailVerificationView(APIView):
     def post(self, request: Request):
         serializer = EmailVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        token = serializer.validated_data["token"]
-        try:
-            user = User.objects.get(email_verification_token=token)
-        except User.DoesNotExist:
-            return Response({"detail": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
-        user.is_email_verified = True
-        user.save(update_fields=["is_email_verified"])
+        # Token is already verified inside the serializer's validate() method
         return Response({"message": "Email verified successfully."})
 
 
@@ -233,8 +226,6 @@ class ResendVerificationView(APIView):
         if user.is_email_verified:
             return Response({"message": "Email already verified."})
 
-        user.email_verification_token = uuid.uuid4()
-        user.save(update_fields=["email_verification_token"])
         send_verification_email.delay(str(user.id))
         return Response({"message": "Verification email sent."})
 

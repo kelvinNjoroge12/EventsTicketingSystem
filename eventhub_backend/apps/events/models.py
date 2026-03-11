@@ -116,47 +116,6 @@ class Event(TimeStampedModel):
             base = slugify(self.title)
             self.slug = f"{base}-{str(uuid.uuid4())[:8]}"
             
-        # Automatic Image Compression & Resizing
-        if self.cover_image:
-            try:
-                from PIL import Image
-                from io import BytesIO
-                from django.core.files.base import ContentFile
-                import os
-
-                # 1. Open the image
-                img = Image.open(self.cover_image)
-                
-                # 2. Check if we actually need to process it (avoid infinite loops on re-save)
-                # We only compress if it's a new file or has been changed
-                # However, for simplicity and ensuring high performance, we'll compress once if it's not a memory file
-                
-                # Convert to RGB (handles RGBA and CMYK)
-                if img.mode in ("RGBA", "P"):
-                    img = img.convert("RGB")
-                
-                # 3. Resize if too large (WhatsApp style)
-                # Max width 1200px, keep aspect ratio
-                max_size = (1200, 1200)
-                if img.width > max_size[0] or img.height > max_size[1]:
-                    img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
-                # 4. Save with compression
-                buffer = BytesIO()
-                img.save(buffer, format="JPEG", quality=80, optimize=True)
-                buffer.seek(0)
-                
-                # 5. Replace the file
-                file_name = os.path.basename(self.cover_image.name)
-                # Ensure we change extension to .jpg
-                name, _ = os.path.splitext(file_name)
-                new_file_name = f"{name}.jpg"
-                
-                self.cover_image.save(new_file_name, ContentFile(buffer.read()), save=False)
-                
-            except Exception as e:
-                print(f"Error compressing image: {e}")
-
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:  # pragma: no cover

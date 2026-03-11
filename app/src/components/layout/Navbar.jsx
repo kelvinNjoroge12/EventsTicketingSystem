@@ -87,7 +87,7 @@ const Navbar = () => {
           className={`fixed top-0 left-0 right-0 z-40 bg-[#1E4DB7] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#1E4DB7]/95 backdrop-blur-sm' : ''}`}
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
+            <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2">
               {/* Logo */}
               <Link to="/organizer-dashboard" className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-xl font-bold text-white tracking-tight">EventHub</span>
@@ -256,10 +256,9 @@ const Navbar = () => {
       <a href="#main-content" className="skip-to-main">Skip to main content</a>
       <header
         className={`fixed top-0 left-0 right-0 z-40 bg-[#1E4DB7] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#1E4DB7]/95 backdrop-blur-sm' : ''}`}
-        style={{ overflowX: 'hidden', maxWidth: '100vw' }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
+          <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2 sm:gap-4">
             {/* Logo */}
             <Link to={isOrganizer ? "/organizer-dashboard" : "/"} className="flex-shrink-0">
               <span className="text-xl font-bold text-white tracking-tight">EventHub</span>

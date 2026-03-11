@@ -67,6 +67,24 @@ class Order(TimeStampedModel):
             self.order_number = self.generate_order_number()
         super().save(*args, **kwargs)
 
+    def cancel_order(self, reason=""):
+        if self.status not in ["pending", "payment_processing"]:
+            return False
+            
+        from django.db import transaction
+        with transaction.atomic():
+            for item in self.items.select_related("ticket_type"):
+                if item.ticket_type:
+                    item.ticket_type.quantity_reserved = max(
+                        0, item.ticket_type.quantity_reserved - item.quantity
+                    )
+                    item.ticket_type.save(update_fields=["quantity_reserved"])
+            self.status = "cancelled"
+            if reason:
+                self.notes = f"{self.notes}\nCancellation reason: {reason}".strip()
+            self.save(update_fields=["status", "notes"])
+        return True
+
     @staticmethod
     def generate_order_number() -> str:
         prefix = "EH"
