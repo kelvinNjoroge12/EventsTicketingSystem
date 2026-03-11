@@ -91,10 +91,11 @@ const HomePage = () => {
   const pauseTimeout = useRef(null);
   const touchStartX = useRef(0);
 
-  const { data: allEvents = [], isLoading } = useQuery({
+  const { data: allEventsData, isLoading } = useQuery({
     queryKey: eventQueryKeys.list({ ordering: 'start_date' }),
     queryFn: () => fetchEvents({ ordering: 'start_date' })
   });
+  const allEvents = allEventsData?.results || [];
 
   useEffect(() => {
     if (!allEvents.length) return undefined;

@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django_ratelimit.decorators import ratelimit
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
@@ -23,7 +24,7 @@ class EventTicketTypesView(generics.ListAPIView):
 
     def get_queryset(self):
         slug = self.kwargs["slug"]
-        event = Event.objects.get(slug=slug, status="published")
+        event = get_object_or_404(Event, slug=slug, status="published")
         return event.ticket_types.filter(is_active=True)
 
 
@@ -32,7 +33,7 @@ class TicketTypeCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def perform_create(self, serializer):
-        event = Event.objects.get(slug=self.kwargs["slug"], organizer=self.request.user)
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         serializer.save(event=event)
 
 
@@ -43,7 +44,7 @@ class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "id"
 
     def get_queryset(self):
-        event = Event.objects.get(slug=self.kwargs["slug"], organizer=self.request.user)
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.ticket_types.all()
 
 
@@ -52,11 +53,11 @@ class PromoCodeManageView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
 
     def get_queryset(self):
-        event = Event.objects.get(slug=self.kwargs["slug"], organizer=self.request.user)
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.promo_codes.all()
 
     def perform_create(self, serializer):
-        event = Event.objects.get(slug=self.kwargs["slug"], organizer=self.request.user)
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         serializer.save(event=event)
 
 
@@ -67,7 +68,7 @@ class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "id"
 
     def get_queryset(self):
-        event = Event.objects.get(slug=self.kwargs["slug"], organizer=self.request.user)
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.promo_codes.all()
 
 
@@ -77,7 +78,7 @@ class PromoCodeValidateView(generics.GenericAPIView):
 
     @ratelimit(key="user", rate="10/m", block=True)
     def post(self, request, *args, **kwargs):
-        event = Event.objects.get(slug=self.kwargs["slug"], status="published")
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], status="published")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         promo: PromoCode = serializer.validated_data["promo"]

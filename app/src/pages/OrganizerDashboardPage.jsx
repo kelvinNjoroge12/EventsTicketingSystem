@@ -1,4 +1,4 @@
-﻿
+
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,16 +21,16 @@ import PageWrapper from '../components/layout/PageWrapper';
 import OrganizerSidebar from '../components/organizer/OrganizerSidebar';
 import OrganizerMobileNav from '../components/organizer/OrganizerMobileNav';
 import OrganizerHeader from '../components/organizer/OrganizerHeader';
-import OrganizerDashboardOverview from './organizer/Dashboard';
-import OrganizerMyEvents from './organizer/MyEvents';
-import OrganizerEventDetail from './organizer/EventDetail';
-import OrganizerSettings from './organizer/Settings';
+import OrganizerDashboardOverview from '../components/dashboard/Overview';
+import OrganizerMyEvents from '../components/dashboard/MyEvents';
+import OrganizerEventDetail from '../components/dashboard/EventDetail';
+import OrganizerSettings from '../components/dashboard/Settings';
 import { api } from '../lib/apiClient';
 import { fetchEvent } from '../lib/eventsApi';
 import { toast } from 'sonner';
 
-import ExpenseFormModal from './organizer/ExpenseFormModal';
-import RevenueFormModal from './organizer/RevenueFormModal';
+import ExpenseFormModal from '../components/dashboard/ExpenseFormModal';
+import RevenueFormModal from '../components/dashboard/RevenueFormModal';
 
 const EXPENSE_CATEGORIES = [
   { id: 'speakers', label: 'Speakers', icon: Mic2, color: '#7C3AED' },

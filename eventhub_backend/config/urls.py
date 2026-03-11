@@ -5,6 +5,7 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from django.http import JsonResponse
 from apps.checkin.views import RetrieveTicketView
+import os
 import threading
 import time
 import urllib.request
@@ -24,10 +25,14 @@ def keep_alive_ping():
         except Exception:
             pass
 
-# Start the keep-alive background daemon 
-# (Note: In Gunicorn with N workers, this spawns N threads. It is minimal network IO overhead.)
-ping_thread = threading.Thread(target=keep_alive_ping, daemon=True)
-ping_thread.start()
+# Only start the keep-alive thread in production and only once.
+# Gunicorn forks workers; we use an env flag to ensure only the first
+# worker to claim the lock spawns the ping thread.
+_KEEP_ALIVE_STARTED = False
+if not settings.DEBUG and not _KEEP_ALIVE_STARTED:
+    _KEEP_ALIVE_STARTED = True
+    ping_thread = threading.Thread(target=keep_alive_ping, daemon=True)
+    ping_thread.start()
 
 from drf_spectacular.views import (
     SpectacularAPIView,

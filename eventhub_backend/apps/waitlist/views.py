@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -61,7 +62,7 @@ class WaitlistListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
 
     def get_queryset(self):
-        event = Event.objects.get(slug=self.kwargs["slug"], organizer=self.request.user)
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         status_filter = self.request.query_params.get("status")
         qs = event.waitlist_entries.all()
         if status_filter:
@@ -78,7 +79,7 @@ class WaitlistEntryDetailView(generics.RetrieveDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
 
     def get_queryset(self):
-        event = Event.objects.get(slug=self.kwargs["slug"], organizer=self.request.user)
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.waitlist_entries.all()
 
 

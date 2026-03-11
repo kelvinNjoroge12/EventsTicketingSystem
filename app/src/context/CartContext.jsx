@@ -92,39 +92,21 @@ export const CartProvider = ({ children }) => {
   const applyPromo = useCallback((code, discountValue, discountType) => {
     setCart(prev => {
       if (!prev) return null;
-
-      const subtotalCents = prev.items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
-      const discountCents = discountType === 'percent'
-        ? Math.round(subtotalCents * (discountValue / 100))
-        : toCents(discountValue);
-      const serviceFeeCents = Math.round((subtotalCents - discountCents) * 0.03);
-      const totalCents = subtotalCents - discountCents + serviceFeeCents;
-
-      return {
-        ...prev,
-        promoCode: code,
-        discount: fromCents(discountCents),
-        serviceFee: fromCents(serviceFeeCents),
-        total: fromCents(totalCents),
-      };
+      // Store the promo parameters so buildCart can recalculate on quantity changes
+      return buildCart(
+        prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+        prev.items, code, discountValue, discountType
+      );
     });
   }, []);
 
   const removePromo = useCallback(() => {
     setCart(prev => {
       if (!prev) return null;
-
-      const subtotalCents = prev.items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
-      const serviceFeeCents = Math.round(subtotalCents * 0.03);
-      const totalCents = subtotalCents + serviceFeeCents;
-
-      return {
-        ...prev,
-        promoCode: null,
-        discount: 0,
-        serviceFee: fromCents(serviceFeeCents),
-        total: fromCents(totalCents),
-      };
+      return buildCart(
+        prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+        prev.items, null, 0, null
+      );
     });
   }, []);
 
@@ -133,7 +115,10 @@ export const CartProvider = ({ children }) => {
       if (!prev) return null;
       const newItems = prev.items.filter(i => i.ticketTypeId !== ticketTypeId);
       if (newItems.length === 0) return null;
-      return buildCart(prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor, newItems);
+      return buildCart(
+        prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null
+      );
     });
   }, []);
 
@@ -143,7 +128,10 @@ export const CartProvider = ({ children }) => {
       const newItems = prev.items.map(i =>
         i.ticketTypeId === ticketTypeId ? { ...i, quantity } : i
       );
-      return buildCart(prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor, newItems, prev.promoCode, prev.discount);
+      return buildCart(
+        prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null
+      );
     });
   }, []);
 
@@ -182,9 +170,17 @@ export const CartProvider = ({ children }) => {
 /**
  * Build a normalized cart object from items array.
  */
-function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoCode = null, discount = 0) {
+function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoCode = null, promoDiscountValue = 0, promoDiscountType = null) {
   const subtotalCents = items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
-  const discountCents = toCents(discount);
+
+  // Recalculate discount from original promo parameters (not a stale flat amount)
+  let discountCents = 0;
+  if (promoCode && promoDiscountValue) {
+    discountCents = promoDiscountType === 'percent'
+      ? Math.round(subtotalCents * (promoDiscountValue / 100))
+      : toCents(promoDiscountValue);
+  }
+
   const serviceFeeCents = Math.round((subtotalCents - discountCents) * 0.03);
   const totalCents = subtotalCents - discountCents + serviceFeeCents;
 
@@ -195,6 +191,8 @@ function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoC
     accentColor,
     items, // Array of { ticketTypeId, ticketType, quantity, unitPrice }
     promoCode,
+    promoDiscountValue,   // Store original value so recalculation works on quantity change
+    promoDiscountType,    // 'percent' | 'fixed' | null
     discount: fromCents(discountCents),
     serviceFee: fromCents(serviceFeeCents),
     total: fromCents(totalCents),

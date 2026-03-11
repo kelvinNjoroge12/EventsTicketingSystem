@@ -23,7 +23,7 @@ const SearchResultsPage = () => {
       try {
         const searchResults = await searchEventsApi({ q: query, location, date });
         if (isMounted) {
-          setResults(searchResults);
+          setResults(searchResults?.results || []);
         }
       } catch (e) {
         console.error('Search failed', e);

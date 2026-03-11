@@ -6,11 +6,10 @@ import PageWrapper from '../components/layout/PageWrapper';
 import CustomInput from '../components/ui/CustomInput';
 import CustomButton from '../components/ui/CustomButton';
 import { api } from '../lib/apiClient';
-import useToast from '../hooks/useToast';
+import { toast } from 'sonner';
 
 const AccountSettingsPage = () => {
     const { user, updateUser, logout } = useAuth();
-    const { toast } = useToast();
 
     const [activeTab, setActiveTab] = useState('profile');
 

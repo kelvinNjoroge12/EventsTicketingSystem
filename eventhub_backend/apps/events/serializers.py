@@ -292,8 +292,6 @@ class EventDetailSerializer(serializers.ModelSerializer):
 
 
 class EventCreateSerializer(serializers.ModelSerializer):
-    tags = serializers.ListField(child=serializers.CharField(), required=False)
-    status = serializers.CharField(required=False)
 
     class Meta:
         model = Event

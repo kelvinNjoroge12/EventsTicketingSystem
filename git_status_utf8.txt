@@ -1,0 +1,57 @@
+﻿On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app/build_error.txt
+	modified:   app/package.json
+	modified:   app/src/App.jsx
+	modified:   app/src/components/layout/ErrorBoundary.jsx
+	modified:   app/src/components/layout/Navbar.jsx
+	deleted:    app/src/components/ui/Toast.jsx
+	modified:   app/src/context/CartContext.jsx
+	deleted:    app/src/data/events.js
+	deleted:    app/src/data/organizers.js
+	modified:   app/src/hooks/useCountUp.js
+	modified:   app/src/hooks/useSavedEvents.js
+	modified:   app/src/hooks/useScrollTop.js
+	deleted:    app/src/hooks/useToast.js
+	modified:   app/src/lib/eventsApi.js
+	modified:   app/src/main.jsx
+	modified:   app/src/pages/AccountSettingsPage.jsx
+	modified:   app/src/pages/EventsPage.jsx
+	modified:   app/src/pages/HomePage.jsx
+	modified:   app/src/pages/OrganizerDashboardPage.jsx
+	modified:   app/src/pages/SearchResultsPage.jsx
+	modified:   app/src/pages/TicketVerificationPage.jsx
+	deleted:    app/src/pages/organizer/Dashboard.jsx
+	deleted:    app/src/pages/organizer/EventDetail.jsx
+	deleted:    app/src/pages/organizer/ExpenseFormModal.jsx
+	deleted:    app/src/pages/organizer/MyEvents.jsx
+	deleted:    app/src/pages/organizer/RevenueFormModal.jsx
+	deleted:    app/src/pages/organizer/Settings.jsx
+	deleted:    app/src/pages/organizer/dashboardUtils.js
+	deleted:    app/tsc_errors.txt
+	deleted:    app/tsc_errors2.txt
+	deleted:    app/tsc_errors3.txt
+	deleted:    app/tsc_errors4.txt
+	deleted:    app/tsc_errors_ascii.txt
+	deleted:    app/vercel.json
+	modified:   eventhub_backend/apps/events/serializers.py
+	modified:   eventhub_backend/apps/events/views.py
+	modified:   eventhub_backend/apps/payments/views.py
+	modified:   eventhub_backend/apps/tickets/views.py
+	modified:   eventhub_backend/apps/waitlist/views.py
+	modified:   eventhub_backend/config/settings/base.py
+	modified:   eventhub_backend/config/urls.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.gitattributes
+	app/src/components/dashboard/
+	app/src/components/layout/nav/
+	git_status.txt
+	git_status_utf8.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")

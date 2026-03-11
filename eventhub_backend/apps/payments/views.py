@@ -352,7 +352,14 @@ class MpesaQueryView(APIView):
             attendee = request.user if request.user.is_authenticated else None
         except Exception:
             attendee = None
-        if payment.order.attendee != attendee:
-            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+        if payment.order.attendee:
+            # Registered event order: only the buyer can check status
+            if payment.order.attendee != attendee:
+                return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        else:
+            # Guest order: do not allow authenticated users to sniff checkout requests
+            if attendee is not None:
+                return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({"status": payment.status}, status=status.HTTP_200_OK)

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/AuthContext';
@@ -6,10 +6,8 @@ import { CartProvider } from './context/CartContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import useScrollTop from './hooks/useScrollTop';
-import useToast from './hooks/useToast';
-import Toast from './components/ui/Toast';
-import ClassicTicketLoader from './components/ui/ClassicTicketLoader';
 import { Toaster } from './components/ui/sonner';
+import ClassicTicketLoader from './components/ui/ClassicTicketLoader';
 
 // HomePage is eager-loaded (entry point — no spinner on first visit)
 import HomePage from './pages/HomePage';
@@ -56,6 +54,17 @@ const ScrollToTop = () => {
   useScrollTop();
   return null;
 };
+
+// Passes the current route key up to the ErrorBoundary so it can reset on navigation.
+// onLocationKey is a setter from the App parent.
+const LocationBridge = ({ onLocationKey }) => {
+  const location = useLocation();
+  useEffect(() => {
+    onLocationKey(location.key);
+  }, [location.key, onLocationKey]);
+  return null;
+};
+
 
 // All routes — NO motion wrappers around pages (motion transforms break fixed positioning on iOS)
 const PasswordResetGate = () => {
@@ -112,8 +121,7 @@ const RequireAuth = ({ children, roles }) => {
   return children;
 };
 
-const AppRoutes = () => {
-  const { toasts, removeToast } = useToast();
+const AppRoutes = ({ onLocationKey }) => {
   const location = useLocation();
   const organizerRoles = ['organizer', 'admin'];
   const staffRoles = ['organizer', 'admin', 'checkin', 'staff'];
@@ -136,11 +144,11 @@ const AppRoutes = () => {
   return (
     <>
       <ScrollToTop />
+      <LocationBridge onLocationKey={onLocationKey} />
       <PasswordResetGate />
       <CheckInStaffGate />
       {!isOrganizerRoute && <Navbar />}
       <Toaster position="top-right" />
-      <Toast toasts={toasts} removeToast={removeToast} />
 
       <Routes>
         <Route path="/" element={<HomePage />} />
@@ -204,11 +212,14 @@ const AppRoutes = () => {
 };
 
 function App() {
+  const [locationKey, setLocationKey] = useState('');
   return (
     <AuthProvider>
       <CartProvider>
         <Router>
-          <AppRoutes />
+          <ErrorBoundary locationKey={locationKey}>
+            <AppRoutes onLocationKey={setLocationKey} />
+          </ErrorBoundary>
         </Router>
       </CartProvider>
     </AuthProvider>

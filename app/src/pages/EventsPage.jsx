@@ -59,10 +59,11 @@ const EventsPage = () => {
   });
 
   // Fetch all events via React Query (cached with staleTime configuration in main.jsx)
-  const { data: allEvents = [], isLoading } = useQuery({
+  const { data: allEventsData, isLoading } = useQuery({
     queryKey: eventQueryKeys.list({ ordering: 'start_date' }),
     queryFn: () => fetchEvents({ ordering: 'start_date' })
   });
+  const allEvents = allEventsData?.results || [];
 
   useEffect(() => {
     if (!allEvents.length) return undefined;

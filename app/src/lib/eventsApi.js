@@ -87,7 +87,8 @@ export const mapEvent = (e) => {
     ...base,
     isFree,
     isAlmostSoldOut: false,
-    currency: "KES",
+    // Use currency from API; fall back to KES for backward compat with older API versions
+    currency: e.currency || "KES",
     price: Number(price || 0),
   };
 };
@@ -223,9 +224,22 @@ export const fetchEvents = async (params = {}) => {
   const query = searchParams.toString();
   const rawData = await api.get(`/api/events/${query ? "?" + query : ""}`);
 
-  return Array.isArray(rawData?.results)
-    ? rawData.results.map(mapEvent)
-    : rawData.map(mapEvent);
+  if (rawData && typeof rawData === 'object' && !Array.isArray(rawData) && 'results' in rawData) {
+    return {
+      results: rawData.results ? rawData.results.map(mapEvent) : [],
+      count: rawData.count || 0,
+      next: rawData.next || null,
+      previous: rawData.previous || null,
+    };
+  }
+
+  const events = Array.isArray(rawData) ? rawData.map(mapEvent) : [];
+  return {
+    results: events,
+    count: events.length,
+    next: null,
+    previous: null,
+  };
 };
 
 // ── Fetch Single Event Detail ─────────────────────────────────────────────
@@ -317,11 +331,11 @@ export const preloadRoutes = () => {
   // Use requestIdleCallback or setTimeout to avoid blocking main thread
   const preload = () => {
     // Preload EventsPage chunk
-    import(/* webpackPrefetch: true */ '../pages/EventsPage');
+    import('../pages/EventsPage');
     // Preload EventDetailPage chunk
-    import(/* webpackPrefetch: true */ '../pages/EventDetailPage');
+    import('../pages/EventDetailPage');
     // Preload CheckoutPage chunk
-    import(/* webpackPrefetch: true */ '../pages/CheckoutPage');
+    import('../pages/CheckoutPage');
   };
 
   if ('requestIdleCallback' in window) {

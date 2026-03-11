@@ -127,18 +127,26 @@ class EventDetailView(generics.RetrieveAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         slug = kwargs.get(self.lookup_field)
+        is_anon = not request.user.is_authenticated
+
+        # Only serve cached responses to anonymous users.
+        # Authenticated users bypass cache so draft/pending events
+        # owned by the organizer are never leaked into the public cache.
         cache_key = f"events:detail:v2:{slug}"
-        cached = cache.get(cache_key)
-        if cached:
-            response = Response(cached)
-            response["Cache-Control"] = "public, max-age=600"
-            return response
+        if is_anon:
+            cached = cache.get(cache_key)
+            if cached:
+                response = Response(cached)
+                response["Cache-Control"] = "public, max-age=600"
+                return response
 
         event = self.get_object()
         serializer = self.get_serializer(event)
         response = Response(serializer.data)
         if event.status in ("published", "completed"):
-            cache.set(cache_key, response.data, 600)  # 10 minutes
+            # Only populate cache from public (published/completed) events
+            if is_anon:
+                cache.set(cache_key, response.data, 600)  # 10 minutes
             response["Cache-Control"] = "public, max-age=600"
         else:
             response["Cache-Control"] = "no-store, no-cache, private"
@@ -183,7 +191,8 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         serializer.save()
         _bump_cache_version()
-        cache.delete(f"events:detail:v2:{self.get_object().slug}")
+        # Use serializer.instance.slug — avoids a redundant SELECT after save()
+        cache.delete(f"events:detail:v2:{serializer.instance.slug}")
 
 
 class EventDeleteView(generics.DestroyAPIView):

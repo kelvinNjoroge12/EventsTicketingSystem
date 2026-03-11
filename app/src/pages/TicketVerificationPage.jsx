@@ -5,12 +5,11 @@ import { ShieldCheck, XCircle, Clock, Calendar, MapPin, Search, AlertCircle, Arr
 import PageWrapper from '../components/layout/PageWrapper';
 import { api } from '../lib/apiClient';
 import { useAuth } from '../context/AuthContext';
-import useToast from '../hooks/useToast';
+import { toast } from 'sonner';
 
 const TicketVerificationPage = () => {
     const { uuid } = useParams();
     const { user } = useAuth();
-    const { showToast } = useToast();
 
     const [ticketData, setTicketData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +44,7 @@ const TicketVerificationPage = () => {
 
         // Safety check - button should only appear for organizers/admins anyway
         if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
-            showToast('Only event organizers and admins can check-in tickets.', 'error');
+            toast.error('Only event organizers and admins can check-in tickets.');
             return;
         }
 
@@ -54,7 +53,7 @@ const TicketVerificationPage = () => {
             await api.post(`/api/events/${ticketData.event.slug}/checkin/scan/`, {
                 qr_code_data: uuid
             });
-            showToast('Ticket successfully checked in!', 'success');
+            toast.success('Ticket successfully checked in!');
             // Refresh the ticket data to show updated status
             setTicketData(prev => ({
                 ...prev,
@@ -62,7 +61,7 @@ const TicketVerificationPage = () => {
                 checked_in_at: new Date().toISOString()
             }));
         } catch (err) {
-            showToast(err?.response?.error?.message || 'Check-in failed.', 'error');
+            toast.error(err?.response?.error?.message || 'Check-in failed.');
         } finally {
             setIsCheckingIn(false);
         }

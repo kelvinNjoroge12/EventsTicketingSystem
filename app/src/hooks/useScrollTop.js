@@ -7,7 +7,7 @@ const useScrollTop = () => {
   useEffect(() => {
     window.scrollTo({
       top: 0,
-      behavior: 'smooth'
+      behavior: 'instant'  // instant for route changes; smooth is only for in-page anchors
     });
   }, [pathname]);
 
