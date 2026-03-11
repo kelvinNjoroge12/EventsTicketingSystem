@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '../../../lib/apiClient';
+import { api } from '../../lib/apiClient';
 import { EXPENSE_CATEGORIES } from './dashboardUtils';
 
 const ExpenseFormModal = ({ isOpen, onClose, events, defaultEventId }) => {
