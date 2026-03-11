@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -97,9 +97,26 @@ const CheckInStaffGate = () => {
   return null;
 };
 
+const RequireAuth = ({ children, roles }) => {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (roles?.length && !roles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 const AppRoutes = () => {
   const { toasts, removeToast } = useToast();
   const location = useLocation();
+  const organizerRoles = ['organizer', 'admin'];
+  const staffRoles = ['organizer', 'admin', 'checkin', 'staff'];
   const isOrganizerRoute =
     /^\/organizer-dashboard\/?$/.test(location.pathname) ||
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
@@ -133,8 +150,16 @@ const AppRoutes = () => {
         <Route path="/confirmation/:orderId" element={<Suspense fallback={<PageLoader />}><ConfirmationPage /></Suspense>} />
         <Route path="/search" element={<Suspense fallback={<PageLoader />}><SearchResultsPage /></Suspense>} />
         <Route path="/organizers/:id" element={<Suspense fallback={<PageLoader />}><OrganizerProfilePage /></Suspense>} />
-        <Route path="/edit-event/:slug" element={<Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>} />
-        <Route path="/create-event" element={<Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>} />
+        <Route path="/edit-event/:slug" element={
+          <RequireAuth roles={organizerRoles}>
+            <Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>
+          </RequireAuth>
+        } />
+        <Route path="/create-event" element={
+          <RequireAuth roles={organizerRoles}>
+            <Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>
+          </RequireAuth>
+        } />
         <Route path="/login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
         <Route path="/signup" element={<Suspense fallback={<PageLoader />}><SignUpPage /></Suspense>} />
         <Route path="/forgot-password" element={<Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense>} />
@@ -142,11 +167,31 @@ const AppRoutes = () => {
         <Route path="/organizer-profile" element={<Suspense fallback={<PageLoader />}><OrganizerProfilePage /></Suspense>} />
         <Route path="/find-ticket" element={<Suspense fallback={<PageLoader />}><FindTicketPage /></Suspense>} />
         <Route path="/sell-tickets" element={<Suspense fallback={<PageLoader />}><HostEventLandingPage /></Suspense>} />
-        <Route path="/my-tickets" element={<Suspense fallback={<PageLoader />}><MyTicketsPage /></Suspense>} />
-        <Route path="/settings" element={<Suspense fallback={<PageLoader />}><AccountSettingsPage /></Suspense>} />
-        <Route path="/organizer-dashboard" element={<Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>} />
-        <Route path="/organizer-checkin" element={<Suspense fallback={<PageLoader />}><OrganizerCheckInLanding /></Suspense>} />
-        <Route path="/organizer/events/:slug/checkin" element={<Suspense fallback={<PageLoader />}><CheckInPage /></Suspense>} />
+        <Route path="/my-tickets" element={
+          <RequireAuth>
+            <Suspense fallback={<PageLoader />}><MyTicketsPage /></Suspense>
+          </RequireAuth>
+        } />
+        <Route path="/settings" element={
+          <RequireAuth>
+            <Suspense fallback={<PageLoader />}><AccountSettingsPage /></Suspense>
+          </RequireAuth>
+        } />
+        <Route path="/organizer-dashboard" element={
+          <RequireAuth roles={organizerRoles}>
+            <Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>
+          </RequireAuth>
+        } />
+        <Route path="/organizer-checkin" element={
+          <RequireAuth roles={staffRoles}>
+            <Suspense fallback={<PageLoader />}><OrganizerCheckInLanding /></Suspense>
+          </RequireAuth>
+        } />
+        <Route path="/organizer/events/:slug/checkin" element={
+          <RequireAuth roles={staffRoles}>
+            <Suspense fallback={<PageLoader />}><CheckInPage /></Suspense>
+          </RequireAuth>
+        } />
         <Route path="/force-password-reset" element={<Suspense fallback={<PageLoader />}><ForcePasswordResetPage /></Suspense>} />
         <Route path="/verify-email" element={<Suspense fallback={<PageLoader />}><EmailVerificationPage /></Suspense>} />
         <Route path="/t/:uuid" element={<Suspense fallback={<PageLoader />}><TicketVerificationPage /></Suspense>} />

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, get_user_model
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -105,8 +106,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("A user with this email already exists.")
         return value
 
+    def _get_memberships(self, obj):
+        prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("team_memberships")
+        if prefetched is not None:
+            return prefetched
+        return OrganizerTeamMember.objects.filter(member=obj).prefetch_related("assigned_events")
+
     def get_assigned_events(self, obj):
-        memberships = OrganizerTeamMember.objects.filter(member=obj).prefetch_related("assigned_events")
+        memberships = self._get_memberships(obj)
         event_ids = set()
         for membership in memberships:
             for event in membership.assigned_events.all():
@@ -114,7 +121,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return list(event_ids)
 
     def get_assigned_event_details(self, obj):
-        memberships = OrganizerTeamMember.objects.filter(member=obj).prefetch_related("assigned_events")
+        memberships = self._get_memberships(obj)
         details = []
         seen = set()
         for membership in memberships:
@@ -161,6 +168,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             "password",
             "confirm_password",
         ]
+        extra_kwargs = {
+            "role": {"read_only": True},
+        }
 
     def validate_email(self, value):
         value = value.lower()
@@ -177,10 +187,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        role = validated_data.get("role", "attendee")
-        if role in ["admin", "staff"]:
-            role = "attendee"
-            
+        # Force all public registrations to attendee.
+        # Organizer access must be granted through a separate approval flow.
+        validated_data.pop("role", None)
+        role = "attendee"
+
         user = User.objects.create_user(
             email=validated_data["email"],
             password=validated_data["password"],

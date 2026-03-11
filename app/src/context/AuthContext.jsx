@@ -73,7 +73,6 @@ export const AuthProvider = ({ children }) => {
         first_name: form.firstName,
         last_name: form.lastName,
         phone_number: '',
-        role: form.role || 'attendee',
         password: form.password,
         confirm_password: form.confirmPassword,
       };

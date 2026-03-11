@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
@@ -150,7 +151,12 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        return self.request.user
+        return User.objects.prefetch_related(
+            Prefetch(
+                "team_memberships",
+                queryset=OrganizerTeamMember.objects.select_related("organizer").prefetch_related("assigned_events"),
+            )
+        ).get(pk=self.request.user.pk)
 
 
 class ChangePasswordView(APIView):

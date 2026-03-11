@@ -68,6 +68,7 @@ const CheckoutPage = () => {
     try {
       // 1. Create pending order once and reuse it while user retries payment.
       let currentOrderContext = orderContext;
+      let orderTotal = currentOrderContext?.total ?? null;
       if (!currentOrderContext?.orderNumber) {
         const payload = {
           event_slug: slug,
@@ -78,7 +79,7 @@ const CheckoutPage = () => {
             attendee_email: attendeeData.email,
           })),
           promo_code: cart.promoCode || null,
-          payment_method: cart.total === 0 ? 'free' : paymentData.paymentMethod,
+          payment_method: paymentData.paymentMethod || 'card',
           attendee_first_name: attendeeData.firstName,
           attendee_last_name: attendeeData.lastName,
           attendee_email: attendeeData.email,
@@ -89,6 +90,7 @@ const CheckoutPage = () => {
         const createdOrderNumber = order?.order_number;
         const simulationToken = order?.simulation_token;
         const orderStatus = order?.status;
+        orderTotal = Number(order?.total ?? 0);
         if (!createdOrderNumber) {
           throw new Error('Order creation failed. Please try again.');
         }
@@ -97,6 +99,7 @@ const CheckoutPage = () => {
           orderNumber: createdOrderNumber,
           simulationToken: simulationToken || '',
           status: orderStatus || 'pending',
+          total: orderTotal,
         };
         setOrderContext(currentOrderContext);
       }
@@ -108,10 +111,9 @@ const CheckoutPage = () => {
       };
 
       // 2. Handle payment and only navigate after backend confirms order.
-      if (cart.total === 0) {
-        if (currentOrderContext.status !== 'confirmed') {
-          await api.post('/api/payments/free/confirm/', confirmationPayload);
-        }
+      const normalizedTotal = Number(orderTotal ?? 0);
+      const isBackendFree = currentOrderContext.status === 'confirmed' || normalizedTotal === 0;
+      if (isBackendFree) {
         setIsProcessing(false);
         navigate(`/confirmation/${currentOrderContext.orderNumber}`, {
           state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },

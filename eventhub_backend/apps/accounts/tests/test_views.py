@@ -35,6 +35,8 @@ def test_register_organizer_creates_profile(db):
     }
     resp = client.post(url, payload, format="json")
     assert resp.status_code == status.HTTP_201_CREATED
+    # Public registration should always resolve to attendee.
+    assert resp.data["user"]["role"] == "attendee"
 
 
 def test_register_duplicate_email_fails(db):
@@ -103,19 +105,16 @@ def test_forgot_password_always_returns_200(db):
 
 def test_reset_password_valid_token(db, django_user_model):
     user = UserFactory()
-    from django.utils import timezone
-    import uuid
-
-    user.password_reset_token = uuid.uuid4()
-    user.password_reset_token_expires = timezone.now() + timezone.timedelta(hours=1)
-    user.save()
+    from django.contrib.auth.tokens import default_token_generator
+    from common.tokens import generate_secure_token
 
     client = APIClient()
     url = reverse("reset_password")
+    token = generate_secure_token(user, default_token_generator)
     resp = client.post(
         url,
         {
-            "token": str(user.password_reset_token),
+            "token": token,
             "new_password": "NewStrong1",
             "confirm_password": "NewStrong1",
         },
@@ -125,24 +124,18 @@ def test_reset_password_valid_token(db, django_user_model):
 
 
 def test_reset_password_expired_token_fails(db):
-    from django.utils import timezone
-    import uuid
-
     user = UserFactory()
-    user.password_reset_token = uuid.uuid4()
-    user.password_reset_token_expires = timezone.now() - timezone.timedelta(hours=1)
-    user.save()
+    invalid_token = "invalid.token"
 
     client = APIClient()
     url = reverse("reset_password")
     resp = client.post(
         url,
         {
-            "token": str(user.password_reset_token),
+            "token": invalid_token,
             "new_password": "NewStrong1",
             "confirm_password": "NewStrong1",
         },
         format="json",
     )
     assert resp.status_code == status.HTTP_400_BAD_REQUEST
-

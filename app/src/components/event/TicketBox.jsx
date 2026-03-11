@@ -31,6 +31,9 @@ const TicketBox = ({
   const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '', notes: '' });
   const [waitlistStatus, setWaitlistStatus] = useState({ loading: false, error: '', success: '' });
 
+  const toCents = (value) => Math.round(Number(value || 0) * 100);
+  const fromCents = (value) => Number((value / 100).toFixed(2));
+
   const handleQuantityChange = (ticketId, delta) => {
     setQuantities(prev => {
       const ticket = event.tickets.find(t => t.id === ticketId);
@@ -65,22 +68,27 @@ const TicketBox = ({
   const totalQuantity = selectedTickets.reduce((sum, t) => sum + quantities[t.id], 0);
 
   const calculatePrice = () => {
-    let subtotal = 0;
+    let subtotalCents = 0;
     selectedTickets.forEach(t => {
-      subtotal += t.price * quantities[t.id];
+      subtotalCents += toCents(t.price) * quantities[t.id];
     });
 
-    let discount = 0;
+    let discountCents = 0;
     if (appliedPromo) {
-      discount = appliedPromo.discountType === 'percent'
-        ? Math.round(subtotal * (appliedPromo.discountValue / 100))
-        : appliedPromo.discountValue;
+      discountCents = appliedPromo.discountType === 'percent'
+        ? Math.round(subtotalCents * (appliedPromo.discountValue / 100))
+        : toCents(appliedPromo.discountValue);
     }
 
-    const serviceFee = Math.round((subtotal - discount) * 0.03);
-    const total = subtotal - discount + serviceFee;
+    const serviceFeeCents = Math.round((subtotalCents - discountCents) * 0.03);
+    const totalCents = subtotalCents - discountCents + serviceFeeCents;
 
-    return { subtotal, discount, serviceFee, total };
+    return {
+      subtotal: fromCents(subtotalCents),
+      discount: fromCents(discountCents),
+      serviceFee: fromCents(serviceFeeCents),
+      total: fromCents(totalCents),
+    };
   };
 
   const { subtotal, discount, serviceFee, total } = calculatePrice();

@@ -4,6 +4,9 @@ const CartContext = createContext(null);
 
 const STORAGE_KEY = 'eventhub_cart';
 
+const toCents = (value) => Math.round(Number(value || 0) * 100);
+const fromCents = (value) => Number((value / 100).toFixed(2));
+
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -90,19 +93,19 @@ export const CartProvider = ({ children }) => {
     setCart(prev => {
       if (!prev) return null;
 
-      const subtotal = prev.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-      const discount = discountType === 'percent'
-        ? Math.round(subtotal * (discountValue / 100))
-        : discountValue;
-      const serviceFee = Math.round((subtotal - discount) * 0.03);
-      const total = subtotal - discount + serviceFee;
+      const subtotalCents = prev.items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
+      const discountCents = discountType === 'percent'
+        ? Math.round(subtotalCents * (discountValue / 100))
+        : toCents(discountValue);
+      const serviceFeeCents = Math.round((subtotalCents - discountCents) * 0.03);
+      const totalCents = subtotalCents - discountCents + serviceFeeCents;
 
       return {
         ...prev,
         promoCode: code,
-        discount,
-        serviceFee,
-        total,
+        discount: fromCents(discountCents),
+        serviceFee: fromCents(serviceFeeCents),
+        total: fromCents(totalCents),
       };
     });
   }, []);
@@ -111,16 +114,16 @@ export const CartProvider = ({ children }) => {
     setCart(prev => {
       if (!prev) return null;
 
-      const subtotal = prev.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-      const serviceFee = Math.round(subtotal * 0.03);
-      const total = subtotal + serviceFee;
+      const subtotalCents = prev.items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
+      const serviceFeeCents = Math.round(subtotalCents * 0.03);
+      const totalCents = subtotalCents + serviceFeeCents;
 
       return {
         ...prev,
         promoCode: null,
         discount: 0,
-        serviceFee,
-        total,
+        serviceFee: fromCents(serviceFeeCents),
+        total: fromCents(totalCents),
       };
     });
   }, []);
@@ -180,9 +183,10 @@ export const CartProvider = ({ children }) => {
  * Build a normalized cart object from items array.
  */
 function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoCode = null, discount = 0) {
-  const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-  const serviceFee = Math.round((subtotal - discount) * 0.03);
-  const total = subtotal - discount + serviceFee;
+  const subtotalCents = items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
+  const discountCents = toCents(discount);
+  const serviceFeeCents = Math.round((subtotalCents - discountCents) * 0.03);
+  const totalCents = subtotalCents - discountCents + serviceFeeCents;
 
   return {
     eventSlug,
@@ -191,9 +195,9 @@ function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoC
     accentColor,
     items, // Array of { ticketTypeId, ticketType, quantity, unitPrice }
     promoCode,
-    discount,
-    serviceFee,
-    total,
+    discount: fromCents(discountCents),
+    serviceFee: fromCents(serviceFeeCents),
+    total: fromCents(totalCents),
   };
 }
 

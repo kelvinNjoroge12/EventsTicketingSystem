@@ -55,17 +55,57 @@ const refreshAccessToken = async () => {
   return newTokens.tokens.access;
 };
 
+const decodeJwtPayload = (token) => {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + (4 - (normalized.length % 4)) % 4, "=");
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};
+
+const getTokenExpiryMs = (token) => {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return null;
+  return payload.exp * 1000;
+};
+
+const shouldRefreshSoon = (token, skewMs = 60000) => {
+  const expMs = getTokenExpiryMs(token);
+  if (!expMs) return false;
+  return expMs - Date.now() <= skewMs;
+};
+
 async function request(path, options = {}, retry = true) {
   const url = `${API_BASE_URL}${path}`;
   const tokens = getAuthTokens();
+  let accessToken = tokens?.tokens?.access;
 
   const headers = {
     ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(options.headers || {}),
   };
 
-  if (tokens?.tokens?.access && !headers.Authorization) {
-    headers.Authorization = `Bearer ${tokens.tokens.access}`;
+  if (accessToken && tokens?.tokens?.refresh && shouldRefreshSoon(accessToken)) {
+    try {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        refreshPromise = refreshAccessToken().finally(() => {
+          isRefreshing = false;
+        });
+      }
+      accessToken = await refreshPromise;
+    } catch {
+      // Fall back to existing token; 401 handler will clear if needed
+    }
+  }
+
+  if (accessToken && !headers.Authorization) {
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
   const res = await fetch(url, {
