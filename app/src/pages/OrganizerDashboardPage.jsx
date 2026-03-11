@@ -31,16 +31,6 @@ import { toast } from 'sonner';
 
 import ExpenseFormModal from './organizer/ExpenseFormModal';
 import RevenueFormModal from './organizer/RevenueFormModal';
-import {
-  EMPTY_STATS,
-  apiList,
-  buildRevenueSeriesFromEntries,
-  normalizeRevenueSeries,
-  buildStatChanges,
-  normalizeStats,
-  normalizeEvent,
-  REVENUE_SOURCES
-} from './organizer/dashboardUtils';
 
 const EXPENSE_CATEGORIES = [
   { id: 'speakers', label: 'Speakers', icon: Mic2, color: '#7C3AED' },
@@ -680,4 +670,3 @@ const OrganizerDashboardPage = () => {
 };
 
 export default OrganizerDashboardPage;
-
