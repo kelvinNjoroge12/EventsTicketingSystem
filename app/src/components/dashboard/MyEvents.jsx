@@ -69,6 +69,7 @@ const OrganizerMyEvents = ({
   showSearch = true,
   showStatusFilter = true,
   showCategoryFilter = true,
+  isLoading = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -105,6 +106,26 @@ const OrganizerMyEvents = ({
     setDeleteDialogOpen(false);
     setEventToDelete(null);
   };
+
+  const renderSkeletons = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+      {Array.from({ length: 6 }).map((_, idx) => (
+        <Card key={idx} className="overflow-hidden animate-pulse">
+          <div className="h-40 lg:h-48 bg-gray-200" />
+          <CardContent className="p-4 lg:p-5 space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-3/4" />
+            <div className="h-3 bg-gray-200 rounded w-1/2" />
+            <div className="h-3 bg-gray-200 rounded w-2/3" />
+            <div className="h-2 bg-gray-200 rounded w-full" />
+            <div className="flex items-center justify-between pt-2">
+              <div className="h-4 bg-gray-200 rounded w-1/3" />
+              <div className="h-4 bg-gray-200 rounded w-1/4" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -160,6 +181,7 @@ const OrganizerMyEvents = ({
         </Card>
       )}
 
+      {isLoading ? renderSkeletons() : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         {filteredEvents.map((event) => (
           <Card
@@ -285,8 +307,9 @@ const OrganizerMyEvents = ({
           </Card>
         ))}
       </div>
+      )}
 
-      {filteredEvents.length === 0 && (
+      {!isLoading && filteredEvents.length === 0 && (
         <div className="text-center py-12 lg:py-16">
           <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
             <Calendar className="w-8 h-8 lg:w-10 lg:h-10 text-gray-400" />

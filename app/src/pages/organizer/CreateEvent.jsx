@@ -33,6 +33,21 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { api } from '@/lib/apiClient';
 import { fetchCategories } from '@/lib/eventsApi';
+import eventQueryKeys from '@/lib/eventQueryKeys';
+import { useQuery } from '@tanstack/react-query';
+
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+const validateImageFile = (file) => {
+  if (!file) return { ok: false, error: 'No file selected.' };
+  if (!file.type?.startsWith('image/')) {
+    return { ok: false, error: 'Only image files are allowed.' };
+  }
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    return { ok: false, error: 'Image must be smaller than 10MB.' };
+  }
+  return { ok: true, error: '' };
+};
 
 const steps = [
   { id: 1, label: 'Event Details', icon: Info },
@@ -78,17 +93,15 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
   const updateSponsor = (id, field, value) => setSponsors((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
   const removeSponsor = (id) => setSponsors((prev) => prev.filter((s) => s.id !== id));
 
+  const { data: categoriesData = [] } = useQuery({
+    queryKey: eventQueryKeys.categories(),
+    queryFn: fetchCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const data = await fetchCategories();
-        setCategories(Array.isArray(data) ? data : []);
-      } catch {
-        setCategories([]);
-      }
-    };
-    loadCategories();
-  }, []);
+    setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+  }, [categoriesData]);
 
   const updateEventData = (field, value) => {
     setEventData((prev) => ({ ...prev, [field]: value }));
@@ -135,7 +148,11 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
   };
 
   const handleCoverImage = (file) => {
-    if (!file) return;
+    const validation = validateImageFile(file);
+    if (!validation.ok) {
+      toast.error(validation.error);
+      return;
+    }
     setCoverImageFile(file);
     setCoverPreview(URL.createObjectURL(file));
   };
@@ -765,5 +782,3 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
 };
 
 export default OrganizerCreateEvent;
-
-

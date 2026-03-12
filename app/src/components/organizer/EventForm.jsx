@@ -4,13 +4,57 @@ import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Pa
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
 
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+const validateImageFile = (file) => {
+  if (!file) return { ok: false, error: 'No file selected.' };
+  if (!file.type?.startsWith('image/')) {
+    return { ok: false, error: 'Only image files are allowed.' };
+  }
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    return { ok: false, error: 'Image must be smaller than 10MB.' };
+  }
+  return { ok: true, error: '' };
+};
+
+const validateImageDimensions = (file, { minWidth, minHeight } = {}) =>
+  new Promise((resolve) => {
+    if (!minWidth && !minHeight) {
+      resolve({ ok: true, error: '' });
+      return;
+    }
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const widthOk = minWidth ? img.width >= minWidth : true;
+      const heightOk = minHeight ? img.height >= minHeight : true;
+      if (widthOk && heightOk) {
+        resolve({ ok: true, error: '' });
+      } else {
+        resolve({ ok: false, error: `Image should be at least ${minWidth}x${minHeight}px.` });
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve({ ok: false, error: 'Unable to read image dimensions.' });
+    };
+    img.src = objectUrl;
+  });
+
 // ── Shared Image Upload Helper ──────────────────────────────────────────────
 const ImageUploader = ({ label, preview, onFile, size = 'md', hint }) => {
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState('');
 
   const handleFile = (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
+    const validation = validateImageFile(file);
+    if (!validation.ok) {
+      setError(validation.error);
+      return;
+    }
+    setError('');
     const reader = new FileReader();
     reader.onloadend = () => onFile(file, reader.result);
     reader.readAsDataURL(file);
@@ -47,6 +91,7 @@ const ImageUploader = ({ label, preview, onFile, size = 'md', hint }) => {
         )}
         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
       </div>
+      {error && <p className="mt-2 text-xs text-[#DC2626]">{error}</p>}
     </div>
   );
 };
@@ -242,9 +287,20 @@ export const DateLocationStep = ({ data, onChange, errors }) => (
 export const DescriptionStep = ({ data, onChange }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+  const [coverError, setCoverError] = useState('');
 
-  const handleFile = (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
+  const handleFile = async (file) => {
+    const validation = validateImageFile(file);
+    if (!validation.ok) {
+      setCoverError(validation.error);
+      return;
+    }
+    const dimensionCheck = await validateImageDimensions(file, { minWidth: 1200, minHeight: 630 });
+    if (!dimensionCheck.ok) {
+      setCoverError(dimensionCheck.error);
+      return;
+    }
+    setCoverError('');
     const reader = new FileReader();
     reader.onloadend = () => onChange('coverImagePreview', reader.result);
     reader.readAsDataURL(file);
@@ -297,6 +353,7 @@ export const DescriptionStep = ({ data, onChange }) => {
           )}
           <input type="file" ref={fileInputRef} onChange={(e) => handleFile(e.target.files?.[0])} accept="image/*" className="hidden" />
         </div>
+        {coverError && <p className="mt-2 text-xs text-[#DC2626]">{coverError}</p>}
       </div>
     </div>
   );
@@ -625,6 +682,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
           />
         </div>
       </div>
+      {error && <p className="mt-2 text-xs text-[#DC2626]">{error}</p>}
     </div>
   );
 };

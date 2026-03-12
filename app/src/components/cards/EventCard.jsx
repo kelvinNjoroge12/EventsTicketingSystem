@@ -35,7 +35,7 @@ const EventCard = ({
   onBookmarkToggle,
 }) => {
   const { isSaved, toggleSave } = useSavedEvents();
-  const saved = isSaved(event.slug);
+  const saved = isSaved({ id: event.id, slug: event.slug });
 
   // Use event's own theme colors for consistency with detail page
   const themeColor = event.themeColor || '#1E4DB7';
@@ -44,7 +44,7 @@ const EventCard = ({
   const handleBookmark = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleSave(event.slug);
+    toggleSave({ id: event.id, slug: event.slug });
     if (onBookmarkToggle) {
       onBookmarkToggle(event.slug, !saved);
     }

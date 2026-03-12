@@ -5,34 +5,10 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from django.http import JsonResponse
 from apps.checkin.views import RetrieveTicketView
-import os
-import threading
-import time
-import urllib.request
-import urllib.error
 
 def health_check(request):
     """Simple endpoint to confirm the server is running."""
     return JsonResponse({"status": "ok", "message": "Render instance is awake."})
-
-def keep_alive_ping():
-    """Background daemon to ping this server externally preventing Render sleep spin-down."""
-    while True:
-        try:
-            time.sleep(840)  # Ping every 14 minutes (Render sleeps after 15 mins of inactivity)
-            req = urllib.request.Request("https://eventsticketingsystem.onrender.com/api/health/")
-            urllib.request.urlopen(req, timeout=10)
-        except Exception:
-            pass
-
-# Only start the keep-alive thread in production and only once.
-# Gunicorn forks workers; we use an env flag to ensure only the first
-# worker to claim the lock spawns the ping thread.
-_KEEP_ALIVE_STARTED = False
-if not settings.DEBUG and not _KEEP_ALIVE_STARTED:
-    _KEEP_ALIVE_STARTED = True
-    ping_thread = threading.Thread(target=keep_alive_ping, daemon=True)
-    ping_thread.start()
 
 from drf_spectacular.views import (
     SpectacularAPIView,

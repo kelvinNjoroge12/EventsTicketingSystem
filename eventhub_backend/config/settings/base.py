@@ -33,7 +33,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.postgres",
     # Third party
     "corsheaders",
     "rest_framework",
@@ -101,6 +100,11 @@ DATABASES = {
 
 CONN_MAX_AGE = env.int("CONN_MAX_AGE", default=0)
 DATABASES["default"]["CONN_MAX_AGE"] = CONN_MAX_AGE
+
+if "postgres" in DATABASES["default"]["ENGINE"]:
+    INSTALLED_APPS.append("django.contrib.postgres")
+
+ENABLE_KEEP_ALIVE_PING = env.bool("ENABLE_KEEP_ALIVE_PING", default=False)
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

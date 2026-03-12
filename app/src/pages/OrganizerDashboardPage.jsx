@@ -298,7 +298,7 @@ const OrganizerDashboardPage = () => {
     navigate(`/organizer-dashboard?${params.toString()}`, { replace: true });
   }, [location.search, navigate]);
 
-  const { data: eventsData } = useQuery({
+  const { data: eventsData, isLoading: isLoadingEvents } = useQuery({
     queryKey: ['organizer_events'],
     queryFn: async () => {
       const data = await api.get('/api/events/organizer/');
@@ -550,6 +550,7 @@ const OrganizerDashboardPage = () => {
             onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
             onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}
             onCheckInEvent={openCheckinForEvent}
+            isLoading={isLoadingEvents}
           />
         );
       case 'event-detail':
@@ -604,6 +605,7 @@ const OrganizerDashboardPage = () => {
               onCheckInEvent={openCheckinForEvent}
               showStatusFilter={false}
               showCategoryFilter={false}
+              isLoading={isLoadingEvents}
             />
           </div>
         );

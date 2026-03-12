@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -79,5 +80,4 @@ export {
   ButtonGroup,
   ButtonGroupSeparator,
   ButtonGroupText,
-  buttonGroupVariants,
 }

@@ -17,6 +17,7 @@ export const eventQueryKeys = {
   list: (params = {}) => ['events', 'list', normalizeParams(params)],
   detail: (slug) => ['events', 'detail', slug],
   related: (slug) => ['events', 'related', slug],
+  categories: () => ['events', 'categories'],
 };
 
 export default eventQueryKeys;

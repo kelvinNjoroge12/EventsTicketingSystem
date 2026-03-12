@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, MapPin, Clock, Users, Zap, Building2, Mic2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import PageWrapper from '../components/layout/PageWrapper';
 import StepNav from '../components/organizer/StepNav';
 import OrganizerHeader from '../components/organizer/OrganizerHeader';
@@ -11,6 +12,7 @@ import CustomAvatar from '../components/ui/CustomAvatar';
 import Modal from '../components/ui/Modal';
 import { api } from '../lib/apiClient';
 import { fetchCategories, fetchEvent } from '../lib/eventsApi';
+import eventQueryKeys from '../lib/eventQueryKeys';
 import {
   BasicInfoStep,
   DateLocationStep,
@@ -42,99 +44,111 @@ const CreateEventPage = () => {
   });
   const pageTitle = slug ? 'Edit Event' : 'Create Event';
 
-  // Fetch categories and event if editing
+  const { data: categoriesData = [] } = useQuery({
+    queryKey: eventQueryKeys.categories(),
+    queryFn: fetchCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
+    setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+  }, [categoriesData]);
+
+  // Fetch event if editing
+  useEffect(() => {
+    let mounted = true;
+    if (!slug) {
+      setIsLoading(false);
+      return () => { mounted = false; };
+    }
     (async () => {
       try {
-        const [cats, eventData] = await Promise.all([
-          fetchCategories(),
-          slug ? fetchEvent(slug) : Promise.resolve(null)
-        ]);
+        const eventData = await fetchEvent(slug);
+        if (!mounted) return;
 
-        setCategories(cats);
-
-          if (eventData) {
-            const unmapRefundPolicy = (val) => ({ 'no_refund': 'No Refund', '48_hours': '48 Hours', '7_days': '7 Days', 'custom': 'Custom' }[val] || 'No Refund');
+        if (eventData) {
+          const unmapRefundPolicy = (val) => ({ 'no_refund': 'No Refund', '48_hours': '48 Hours', '7_days': '7 Days', 'custom': 'Custom' }[val] || 'No Refund');
 
           // Map fetched event data to form data
-            setFormData({
-              title: eventData.title || '',
-              category: eventData.rawCategory || '',
-              tags: eventData.tags || [],
-              eventType: 'public',
-              format: eventData.format === 'in_person' ? 'In-Person' : eventData.format === 'online' ? 'Online' : 'Hybrid',
-              themeColor: eventData.themeColor || '#1E4DB7',
-              accentColor: eventData.accentColor || '#7C3AED',
-              startDate: eventData.startDate || '',
-              startTime: eventData.startTime || '',
-              endDate: eventData.endDate || '',
-              endTime: eventData.endTime || '',
-              timezone: eventData.timezone || 'EAT',
-              venueName: eventData.venueName || '',
-              address: eventData.address || '',
-              city: eventData.city || '',
-              country: eventData.country || 'Kenya',
-              streamingLink: eventData.streamingLink || '',
-              description: eventData.description || '',
-              coverImage: null,
-              coverImagePreview: eventData.bannerImage || '',
-              speakers: (eventData.speakers || []).map(s => ({
-                id: s.id,
-                name: s.name || '',
-                title: s.title || '',
-                organization: s.organization || '',
-                bio: s.bio || '',
-                photo: null,
-                photoPreview: s.avatar || ''
-              })),
-              hasMC: !!eventData.mc,
-              mcName: eventData.mc?.name || '',
-              mcBio: eventData.mc?.bio || '',
-              mcPhoto: null,
-              mcPhotoPreview: eventData.mc?.avatar || '',
-              schedule: (eventData.schedule || []).map(item => ({
-                id: item.id,
-                title: item.title || '',
-                time: item.time || '',
-                description: item.description || ''
-              })),
-              sponsors: (eventData.sponsors || []).map(s => ({
-                id: s.id,
-                name: s.name || '',
-                website: s.website || '',
-                tier: s.tier || '',
-                logo: null,
-                logoPreview: s.logo || ''
-              })),
-              tickets: eventData.tickets.length > 0
-                ? eventData.tickets.map(t => ({
-                  id: t.id,
-                  type: t.type,
-                  price: t.price,
-                  quantity: t.quantity || 100,
-                  description: t.description || ''
-                }))
-                : [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
-              refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
-              customRefundPolicy: eventData.customRefundPolicy || '',
-              enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
-              sendReminders: eventData.sendReminders ?? eventData.send_reminders ?? true,
-            });
-            setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
-            setInitialSubresources({
-              tickets: (eventData.tickets || []).map(t => t.id).filter(Boolean),
-              speakers: (eventData.speakers || []).map(s => s.id).filter(Boolean),
-              sponsors: (eventData.sponsors || []).map(s => s.id).filter(Boolean),
-              schedule: (eventData.schedule || []).map(item => item.id).filter(Boolean),
-              mcId: eventData.mc?.id || null,
-            });
-          }
+          setFormData({
+            title: eventData.title || '',
+            category: eventData.rawCategory || '',
+            tags: eventData.tags || [],
+            eventType: 'public',
+            format: eventData.format === 'in_person' ? 'In-Person' : eventData.format === 'online' ? 'Online' : 'Hybrid',
+            themeColor: eventData.themeColor || '#1E4DB7',
+            accentColor: eventData.accentColor || '#7C3AED',
+            startDate: eventData.startDate || '',
+            startTime: eventData.startTime || '',
+            endDate: eventData.endDate || '',
+            endTime: eventData.endTime || '',
+            timezone: eventData.timezone || 'EAT',
+            venueName: eventData.venueName || '',
+            address: eventData.address || '',
+            city: eventData.city || '',
+            country: eventData.country || 'Kenya',
+            streamingLink: eventData.streamingLink || '',
+            description: eventData.description || '',
+            coverImage: null,
+            coverImagePreview: eventData.bannerImage || '',
+            speakers: (eventData.speakers || []).map(s => ({
+              id: s.id,
+              name: s.name || '',
+              title: s.title || '',
+              organization: s.organization || '',
+              bio: s.bio || '',
+              photo: null,
+              photoPreview: s.avatar || ''
+            })),
+            hasMC: !!eventData.mc,
+            mcName: eventData.mc?.name || '',
+            mcBio: eventData.mc?.bio || '',
+            mcPhoto: null,
+            mcPhotoPreview: eventData.mc?.avatar || '',
+            schedule: (eventData.schedule || []).map(item => ({
+              id: item.id,
+              title: item.title || '',
+              time: item.time || '',
+              description: item.description || ''
+            })),
+            sponsors: (eventData.sponsors || []).map(s => ({
+              id: s.id,
+              name: s.name || '',
+              website: s.website || '',
+              tier: s.tier || '',
+              logo: null,
+              logoPreview: s.logo || ''
+            })),
+            tickets: eventData.tickets.length > 0
+              ? eventData.tickets.map(t => ({
+                id: t.id,
+                type: t.type,
+                price: t.price,
+                quantity: t.quantity || 100,
+                description: t.description || ''
+              }))
+              : [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
+            refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
+            customRefundPolicy: eventData.customRefundPolicy || '',
+            enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
+            sendReminders: eventData.sendReminders ?? eventData.send_reminders ?? true,
+          });
+          setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
+          setInitialSubresources({
+            tickets: (eventData.tickets || []).map(t => t.id).filter(Boolean),
+            speakers: (eventData.speakers || []).map(s => s.id).filter(Boolean),
+            sponsors: (eventData.sponsors || []).map(s => s.id).filter(Boolean),
+            schedule: (eventData.schedule || []).map(item => item.id).filter(Boolean),
+            mcId: eventData.mc?.id || null,
+          });
+        }
       } catch (err) {
         console.error('Failed to load data', err);
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     })();
+    return () => { mounted = false; };
   }, [slug]);
 
   const [formData, setFormData] = useState({

@@ -201,6 +201,8 @@ class StripeCreatePaymentIntentView(APIView):
 
 class FreeOrderConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "checkout"
+    throttle_scope = "checkout"
 
     def post(self, request):
         order_number = (request.data.get("order_number") or "").strip()
@@ -231,6 +233,8 @@ class FreeOrderConfirmView(APIView):
 
 class SimulatePaymentConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "checkout"
+    throttle_scope = "checkout"
 
     def post(self, request):
         if not getattr(settings, "ENABLE_SIMULATED_PAYMENTS", False):

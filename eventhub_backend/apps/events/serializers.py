@@ -331,11 +331,14 @@ class EventCreateSerializer(serializers.ModelSerializer):
             "enable_waitlist",
         ]
         read_only_fields = ["id"]
+        extra_kwargs = {
+            "slug": {"read_only": True},
+            "status": {"required": False},
+        }
 
-    slug = serializers.SlugField(read_only=True)
+    # Accept a list of tag names for create/update instead of tag IDs.
     tags = serializers.ListField(child=serializers.CharField(), required=False, write_only=True)
     stickers = serializers.JSONField(required=False)
-    status = serializers.ChoiceField(choices=["draft", "pending"], default="pending", required=False)
 
     def validate_stickers(self, value):
         if isinstance(value, str):
@@ -347,6 +350,10 @@ class EventCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        allowed_statuses = {"draft", "pending"}
+        if "status" in attrs and attrs["status"] not in allowed_statuses:
+            raise serializers.ValidationError({"status": "Status can only be draft or pending."})
+
         start_date = attrs.get("start_date") or getattr(self.instance, "start_date", None)
         end_date = attrs.get("end_date") or getattr(self.instance, "end_date", None)
         start_time = attrs.get("start_time") or getattr(self.instance, "start_time", None)
@@ -413,6 +420,8 @@ class EventCreateSerializer(serializers.ModelSerializer):
         from .models import Tag
         tags_data = validated_data.pop("tags", None)
         status = validated_data.pop("status", None)
+        if status and status not in {"draft", "pending"}:
+            raise serializers.ValidationError({"status": "Status can only be draft or pending."})
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

@@ -9,5 +9,21 @@ dist/
 build/
 .zip
 
+# Tooling artifacts
+app/build_err*.txt
+app/build_error.txt
+app/eslint_output.txt
+app/eslint.json
+app/tsc_output*.txt
+app/tsc_errors*.txt
+
 drf_exception.log
 media/
+
+# Frontend build/lint artifacts
+app/build_err*.txt
+app/build_error.txt
+app/eslint*.txt
+app/eslint.json
+app/tsc_output*.txt
+app/tsc_errors*.txt

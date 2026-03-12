@@ -272,7 +272,7 @@ const EventDetailPage = () => {
     );
   }
 
-  const saved = isSaved(event.slug);
+  const saved = isSaved({ id: event.id, slug: event.slug });
   const themeColor = event.themeColor || '#1E4DB7';
   const accentColor = event.accentColor || '#7C3AED';
   const hasSpeakers = event.speakers?.length > 0;
@@ -433,7 +433,7 @@ const EventDetailPage = () => {
           </div>
 
           {/* Bookmark */}
-          <button onClick={() => toggleSave(event.slug)}
+          <button onClick={() => toggleSave({ id: event.id, slug: event.slug })}
             className={`p-2.5 rounded-full backdrop-blur-sm border transition-all ${saved ? 'bg-[#1E4DB7] border-[#1E4DB7] text-white' : 'bg-white/20 border-white/20 text-white hover:bg-white/35'}`}
             aria-label={saved ? 'Remove from saved' : 'Save event'}>
             {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
