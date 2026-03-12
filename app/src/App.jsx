@@ -5,6 +5,7 @@ import { useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
+import ErrorBoundary from './components/layout/ErrorBoundary';
 import useScrollTop from './hooks/useScrollTop';
 import { Toaster } from './components/ui/sonner';
 import ClassicTicketLoader from './components/ui/ClassicTicketLoader';
