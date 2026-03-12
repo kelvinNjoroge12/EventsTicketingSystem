@@ -1,13 +1,35 @@
 import io
 import os
 import logging
+import urllib.request
+import urllib.error
 from PIL import Image
 from celery import shared_task
 from django.apps import apps
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
+
+@shared_task
+def keep_alive_ping_task():
+    """
+    Periodically ping the health endpoint to keep the instance awake.
+    """
+    if not getattr(settings, "ENABLE_KEEP_ALIVE_PING", False):
+        return
+
+    url = getattr(settings, "KEEP_ALIVE_URL", "")
+    if not url:
+        return
+
+    try:
+        req = urllib.request.Request(url)
+        urllib.request.urlopen(req, timeout=10)
+    except urllib.error.URLError:
+        # Best-effort only
+        return
 
 @shared_task
 def optimize_image_task(app_label, model_name, instance_id, field_name, max_width=1200, quality=80):

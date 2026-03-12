@@ -105,6 +105,8 @@ if "postgres" in DATABASES["default"]["ENGINE"]:
     INSTALLED_APPS.append("django.contrib.postgres")
 
 ENABLE_KEEP_ALIVE_PING = env.bool("ENABLE_KEEP_ALIVE_PING", default=False)
+KEEP_ALIVE_URL = env("KEEP_ALIVE_URL", default="https://eventsticketingsystem.onrender.com/api/health/")
+KEEP_ALIVE_INTERVAL_SECONDS = env.int("KEEP_ALIVE_INTERVAL_SECONDS", default=840)
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -271,3 +273,9 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute=0, hour='*'),  # Runs every hour
     },
 }
+
+if ENABLE_KEEP_ALIVE_PING:
+    CELERY_BEAT_SCHEDULE["keep_alive_ping"] = {
+        "task": "common.tasks.keep_alive_ping_task",
+        "schedule": timedelta(seconds=KEEP_ALIVE_INTERVAL_SECONDS),
+    }
