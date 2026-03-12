@@ -4,7 +4,7 @@ import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from django.db.models import F
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
@@ -72,12 +72,18 @@ class OrderCreateView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            event = serializer.validated_data["event"]
-            items = serializer.validated_data["items"]
-            ticket_ids = [i["ticket_type_id"] for i in items]
-            TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids).exists()
-            order = serializer.save()
+        try:
+            with transaction.atomic():
+                event = serializer.validated_data["event"]
+                items = serializer.validated_data["items"]
+                ticket_ids = [i["ticket_type_id"] for i in items]
+                TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids).exists()
+                order = serializer.save()
+        except DatabaseError:
+            return Response(
+                {"detail": "Tickets are being reserved. Please retry in a moment."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         if order.status == "confirmed":
             try:
@@ -163,6 +169,41 @@ class TicketVerificationDetailView(generics.GenericAPIView):
     def get(self, request, qr_code_data, *args, **kwargs):
         from apps.orders.models import Ticket
         ticket = get_object_or_404(Ticket.objects.select_related("event", "ticket_type", "order"), qr_code_data=qr_code_data)
+        order = ticket.order
+        event = ticket.event
+        viewer = request.user if request.user and request.user.is_authenticated else None
+
+        def mask_name(name):
+            if not name:
+                return "Private"
+            parts = [part for part in name.strip().split() if part]
+            if not parts:
+                return "Private"
+            if len(parts) == 1:
+                return f"{parts[0][:1]}***"
+            return f"{parts[0][:1]}*** {parts[-1][:1]}***"
+
+        def mask_order_number(value):
+            if not value:
+                return "Hidden"
+            tail = str(value)[-4:]
+            return f"****{tail}"
+
+        can_view_pii = False
+        if viewer:
+            if viewer.is_staff or getattr(viewer, "role", None) == "admin":
+                can_view_pii = True
+            elif str(viewer.id) == str(event.organizer_id):
+                can_view_pii = True
+            elif order and str(order.attendee_id) == str(viewer.id):
+                can_view_pii = True
+            else:
+                try:
+                    from apps.accounts.models import OrganizerTeamMember
+                    if OrganizerTeamMember.objects.filter(member=viewer, assigned_events=event).exists():
+                        can_view_pii = True
+                except Exception:
+                    pass
         
         # Build masked email for privacy since this is a public endpoint
         email = ticket.attendee_email
@@ -176,18 +217,19 @@ class TicketVerificationDetailView(generics.GenericAPIView):
             "id": str(ticket.id),
             "qr_code_data": str(ticket.qr_code_data),
             "status": ticket.status,
-            "attendee_name": ticket.attendee_name,
+            "attendee_name": ticket.attendee_name if can_view_pii else mask_name(ticket.attendee_name),
             "attendee_email_masked": masked_email,
+            "attendee_email": ticket.attendee_email if can_view_pii else None,
             "ticket_type_name": ticket.ticket_type.name if ticket.ticket_type else "General Admission",
-            "order_number": ticket.order.order_number,
+            "order_number": order.order_number if (order and can_view_pii) else mask_order_number(order.order_number if order else ""),
             "checked_in_at": ticket.checked_in_at,
             "event": {
-                "id": str(ticket.event.id),
-                "slug": ticket.event.slug,
-                "title": ticket.event.title,
-                "start_date": ticket.event.start_date,
-                "start_time": ticket.event.start_time,
-                "venue_name": ticket.event.venue_name,
-                "organizer_id": str(ticket.event.organizer_id),
+                "id": str(event.id),
+                "slug": event.slug,
+                "title": event.title,
+                "start_date": event.start_date,
+                "start_time": event.start_time,
+                "venue_name": event.venue_name,
+                "organizer_id": str(event.organizer_id),
             }
         })

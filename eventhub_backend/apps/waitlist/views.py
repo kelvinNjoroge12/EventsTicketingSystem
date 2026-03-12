@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from django.db import transaction
+from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
@@ -20,33 +22,39 @@ class WaitlistJoinView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, slug):
-        try:
-            event = Event.objects.get(slug=slug, status="published")
-        except Event.DoesNotExist:
-            return Response({"detail": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        if not event.enable_waitlist:
-            return Response({"detail": "Waitlist is not enabled for this event."}, status=status.HTTP_400_BAD_REQUEST)
-
         serializer = WaitlistJoinSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
         email = data["email"]
-        if WaitlistEntry.objects.filter(event=event, email=email).exists():
-            return Response({"detail": "You are already on the waitlist."}, status=status.HTTP_409_CONFLICT)
 
-        # Assign next position
-        last_pos = WaitlistEntry.objects.filter(event=event).count()
-        entry = WaitlistEntry.objects.create(
-            event=event,
-            user=request.user if request.user.is_authenticated else None,
-            name=data["name"],
-            email=email,
-            phone=data.get("phone", ""),
-            notes=data.get("notes", ""),
-            position=last_pos + 1,
-        )
+        try:
+            with transaction.atomic():
+                event = Event.objects.select_for_update().get(slug=slug, status="published")
+                if not event.enable_waitlist:
+                    return Response({"detail": "Waitlist is not enabled for this event."}, status=status.HTTP_400_BAD_REQUEST)
+
+                if WaitlistEntry.objects.filter(event=event, email=email).exists():
+                    return Response({"detail": "You are already on the waitlist."}, status=status.HTTP_409_CONFLICT)
+
+                last_pos = (
+                    WaitlistEntry.objects.filter(event=event)
+                    .aggregate(max_pos=Max("position"))
+                    .get("max_pos")
+                    or 0
+                )
+                entry = WaitlistEntry.objects.create(
+                    event=event,
+                    user=request.user if request.user.is_authenticated else None,
+                    name=data["name"],
+                    email=email,
+                    phone=data.get("phone", ""),
+                    notes=data.get("notes", ""),
+                    position=last_pos + 1,
+                )
+        except Event.DoesNotExist:
+            return Response({"detail": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+
         return Response(
             {"detail": "You've been added to the waitlist!", "position": entry.position},
             status=status.HTTP_201_CREATED,

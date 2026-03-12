@@ -25,11 +25,11 @@ const TicketVerificationPage = () => {
                 // We're adding a new public GET endpoint for ticket viewing
                 const response = await api.get(`/api/orders/qr/${uuid}/verify/`);
                 if (mounted) {
-                    setTicketData(response.data);
+                    setTicketData(response);
                 }
             } catch (err) {
                 if (mounted) {
-                    setError(err?.response?.error?.message || 'Invalid or expired ticket URL.');
+                    setError(err?.response?.error?.message || err?.message || 'Invalid or expired ticket URL.');
                 }
             } finally {
                 if (mounted) setIsLoading(false);
@@ -104,7 +104,7 @@ const TicketVerificationPage = () => {
     }
 
     const isUsed = ticketData.status === 'used';
-    const isOwner = user && user.id === ticketData.event.organizer_id;
+    const isOwner = user && String(user.id) === String(ticketData.event.organizer_id);
     const isStaff = user && user.is_staff;
     const canCheckIn = !isUsed && (isOwner || isStaff);
 

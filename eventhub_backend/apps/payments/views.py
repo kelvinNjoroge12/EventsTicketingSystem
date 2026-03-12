@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import F
 from django.http import HttpRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import permissions, status
+from rest_framework import permissions, status, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -201,7 +201,7 @@ class StripeCreatePaymentIntentView(APIView):
 
 class FreeOrderConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "checkout"
+    throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = "checkout"
 
     def post(self, request):
@@ -233,7 +233,7 @@ class FreeOrderConfirmView(APIView):
 
 class SimulatePaymentConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "checkout"
+    throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = "checkout"
 
     def post(self, request):

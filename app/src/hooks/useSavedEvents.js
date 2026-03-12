@@ -19,16 +19,39 @@ const normalizeEntry = (entry) => {
 const normalizeList = (list) => {
   if (!Array.isArray(list)) return [];
   const map = new Map();
+  const slugToKey = new Map();
+
   list.forEach((item) => {
     const entry = normalizeEntry(item);
     if (!entry) return;
-    const key = entry.id != null ? `id:${entry.id}` : `slug:${entry.slug}`;
-    // Prefer entries that include both id and slug when possible
+
+    const idKey = entry.id != null ? `id:${entry.id}` : null;
+    const slugKey = entry.slug ? `slug:${entry.slug}` : null;
+    let key = idKey || slugKey;
+    if (!key) return;
+
+    if (slugKey && slugToKey.has(slugKey)) {
+      key = slugToKey.get(slugKey);
+    }
+
     const existing = map.get(key);
-    if (!existing || (!existing.slug && entry.slug)) {
-      map.set(key, entry);
+    const merged = {
+      id: entry.id ?? existing?.id ?? null,
+      slug: entry.slug ?? existing?.slug ?? null,
+    };
+
+    if (entry.id != null && key !== idKey) {
+      map.delete(key);
+      key = idKey;
+    }
+
+    map.set(key, merged);
+
+    if (merged.slug) {
+      slugToKey.set(`slug:${merged.slug}`, key);
     }
   });
+
   return Array.from(map.values());
 };
 

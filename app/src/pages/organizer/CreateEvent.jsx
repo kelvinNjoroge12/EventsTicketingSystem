@@ -147,6 +147,18 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
     }
   };
 
+  const revokePreview = (url) => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      revokePreview(coverPreview);
+    };
+  }, [coverPreview]);
+
   const handleCoverImage = (file) => {
     const validation = validateImageFile(file);
     if (!validation.ok) {
@@ -154,6 +166,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
       return;
     }
     setCoverImageFile(file);
+    revokePreview(coverPreview);
     setCoverPreview(URL.createObjectURL(file));
   };
 
