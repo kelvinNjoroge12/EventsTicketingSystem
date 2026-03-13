@@ -127,7 +127,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
               <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
                 {sponsor.website ? (
                   <a href={sponsor.website} target="_blank" rel="noopener noreferrer"
-                    className="bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-100 transition-all group min-h-[100px] min-w-0 w-full overflow-hidden">
+                    className="pressable-card bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 flex flex-col items-center justify-center gap-2 group min-h-[100px] min-w-0 w-full overflow-hidden">
                     {sponsor.logo ? (
                       <img src={logoImage(sponsor.logo)} alt={sponsor.name} loading="lazy" decoding="async" className="h-10 max-w-full object-contain" />
                     ) : (

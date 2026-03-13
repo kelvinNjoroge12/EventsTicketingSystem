@@ -139,6 +139,53 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
 }
 
+/* Pressable card effect (non-blue accent) */
+.pressable-card {
+  --pressable-edge: #c58b1a;
+  --pressable-depth: 6px;
+  --pressable-press: 4px;
+  --pressable-shadow: rgba(58, 41, 7, 0.35);
+  border-radius: 22px;
+  transform: translateY(0);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 var(--pressable-depth) 0 var(--pressable-edge),
+    0 calc(var(--pressable-depth) + 6px) 16px var(--pressable-shadow),
+    0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.pressable-card:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 var(--pressable-depth) 0 var(--pressable-edge),
+    0 calc(var(--pressable-depth) + 8px) 18px var(--pressable-shadow),
+    0 3px 8px rgba(0, 0, 0, 0.22);
+}
+
+.pressable-card:active {
+  transform: translateY(var(--pressable-press));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 calc(var(--pressable-depth) - var(--pressable-press)) 0 var(--pressable-edge),
+    0 calc(var(--pressable-depth) + 2px) 12px var(--pressable-shadow),
+    0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.pressable-card--lite {
+  --pressable-depth: 3px;
+  --pressable-press: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressable-card {
+    transition: none;
+  }
+}
+
 /* Button styles */
 .btn-primary {
   @apply bg-[#1E4DB7] text-white px-6 py-3 rounded-lg font-medium transition-all duration-200;

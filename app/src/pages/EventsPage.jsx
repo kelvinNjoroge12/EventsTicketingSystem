@@ -33,7 +33,7 @@ const filterCards = [
 
 const FilterCardWrapper = ({ title, icon: Icon, hoverClass, children }) => (
   <div
-    className="group rounded-xl border border-[#E2E8F0] bg-white p-2.5 shadow-xs flex flex-col justify-between gap-1.5 transition-colors hover:border-[#CBD5E1]"
+    className="pressable-card pressable-card--lite group rounded-xl border border-[#E2E8F0] bg-white p-2.5 flex flex-col justify-between gap-1.5 transition-colors hover:border-[#CBD5E1]"
   >
     <div className="flex items-center gap-1.5">
       <Icon className={`w-3.5 h-3.5 text-[#94A3B8] transition-colors ${hoverClass}`} />

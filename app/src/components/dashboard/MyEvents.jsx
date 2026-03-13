@@ -186,7 +186,7 @@ const OrganizerMyEvents = ({
         {filteredEvents.map((event) => (
           <Card
             key={event.id}
-            className="overflow-hidden group hover:-translate-y-1 hover:shadow-xl transition-all duration-300 cursor-pointer"
+            className="pressable-card overflow-hidden group cursor-pointer"
             onClick={() => onEventClick(event)}
           >
             <div className="relative h-40 lg:h-48 overflow-hidden">

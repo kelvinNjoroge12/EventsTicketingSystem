@@ -48,7 +48,7 @@ const OrganizerCheckInLanding = () => {
                 <button
                   key={event.id}
                   onClick={() => navigate(`/organizer/events/${event.slug}/checkin`)}
-                  className="text-left bg-white rounded-2xl border border-[#E2E8F0] p-5 hover:shadow-md transition-all"
+                  className="pressable-card text-left bg-white rounded-2xl border border-[#E2E8F0] p-5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
