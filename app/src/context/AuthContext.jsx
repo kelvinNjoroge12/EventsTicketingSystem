@@ -8,16 +8,6 @@ import React, {
 import { api, setSessionHint } from '../lib/apiClient';
 
 const AuthContext = createContext(null);
-const SESSION_HINT_KEY = 'eventhub_has_session';
-
-const hasSessionHint = () => {
-  try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem(SESSION_HINT_KEY) === '1';
-  } catch {
-    return false;
-  }
-};
-
 /**
  * Normalizes a raw backend user object so UI components can safely
  * access `user.name` instead of having to join first_name + last_name
@@ -43,12 +33,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
-      if (!hasSessionHint()) {
-        if (isMounted) {
-          setIsInitializing(false);
-        }
-        return;
-      }
       if (!setSessionHint) {
         // no-op safety
       }
@@ -61,6 +45,7 @@ export const AuthProvider = ({ children }) => {
       } catch (err) {
         if (isMounted) {
           setUserRaw(null);
+          setSessionHint(false);
         }
       } finally {
         if (isMounted) {
