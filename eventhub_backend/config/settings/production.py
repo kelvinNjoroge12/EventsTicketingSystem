@@ -32,6 +32,10 @@ CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# Cross-site cookies for Vercel frontend
+JWT_COOKIE_SECURE = True
+JWT_COOKIE_SAMESITE = "None"
+
 # CONN_MAX_AGE=0 is critical on Render because persistent connections
 # survive Gunicorn SIGKILL events (e.g. worker timeouts) and carry over
 # aborted/uncommitted transactions to the next request, causing row-lock

@@ -23,41 +23,42 @@ const normalizeUser = (raw) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  // Eagerly load user from local storage so there's zero UI blinking or "Access Denied" flashes 
-  // on hard reloads or back/forward navigation
-  const [user, setUserRaw] = useState(() => {
-    const raw = api.getAuthTokens()?.user;
-    return raw ? normalizeUser(raw) : null;
-  });
+  const [user, setUserRaw] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // Always normalize before setting so every consumer gets `user.name`
   const setUser = useCallback((raw) => setUserRaw(normalizeUser(raw)), []);
 
-  // Hydrate from stored tokens and verify profile on mount
+  // Verify session cookies on mount
   useEffect(() => {
+    let isMounted = true;
     const init = async () => {
-      const stored = api.getAuthTokens();
-      if (!stored?.tokens?.access) return;
-
       try {
         const profile = await api.get('/api/auth/profile/');
-        setUser(profile);
+        if (isMounted) {
+          setUser(profile);
+        }
       } catch (err) {
-        if (err?.status === 401) {
-          api.clearAuthTokens();
+        if (isMounted) {
           setUserRaw(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsInitializing(false);
         }
       }
     };
     init();
+    return () => {
+      isMounted = false;
+    };
   }, [setUser]);
 
   const login = useCallback(async (email, password) => {
     setIsLoading(true);
     try {
       const data = await api.post('/api/auth/login/', { email, password });
-      api.saveAuthTokens(data);
       setUser(data.user);
       return normalizeUser(data.user);
     } finally {
@@ -77,7 +78,6 @@ export const AuthProvider = ({ children }) => {
         confirm_password: form.confirmPassword,
       };
       const data = await api.post('/api/auth/register/', payload);
-      api.saveAuthTokens(data);
       setUser(data.user);
       return normalizeUser(data.user);
     } finally {
@@ -86,16 +86,11 @@ export const AuthProvider = ({ children }) => {
   }, [setUser]);
 
   const logout = useCallback(async () => {
-    const stored = api.getAuthTokens();
-    const refresh = stored?.tokens?.refresh;
-    api.clearAuthTokens();
     setUserRaw(null);
-    if (refresh) {
-      try {
-        await api.post('/api/auth/logout/', { refresh });
-      } catch {
-        // ignore
-      }
+    try {
+      await api.post('/api/auth/logout/', {});
+    } catch {
+      // ignore
     }
   }, []);
 
@@ -107,6 +102,7 @@ export const AuthProvider = ({ children }) => {
     user,
     isAuthenticated: !!user,
     isLoading,
+    isInitializing,
     role: user?.role || null,
     login,
     signup,

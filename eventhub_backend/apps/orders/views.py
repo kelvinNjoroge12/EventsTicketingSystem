@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from apps.tickets.models import TicketType
 from apps.waitlist.models import WaitlistEntry
 from .models import Order
-from .serializers import OrderCreateSerializer, OrderDetailSerializer
+from .serializers import OrderCreateSerializer, OrderDetailSerializer, OrderPublicDetailSerializer
 from .utils import send_ticket_email
 
 logger = logging.getLogger(__name__)
@@ -96,11 +96,16 @@ class OrderCreateView(generics.GenericAPIView):
 
 
 class OrderDetailView(generics.RetrieveAPIView):
-    serializer_class = OrderDetailSerializer
     permission_classes = [permissions.AllowAny]
     throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = "order_lookup"
     lookup_field = "order_number"
+
+    def get_serializer_class(self):
+        user = self.request.user
+        if user and user.is_authenticated:
+            return OrderDetailSerializer
+        return OrderPublicDetailSerializer
 
     def get_queryset(self):
         user = self.request.user

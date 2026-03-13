@@ -115,8 +115,12 @@ const CheckInStaffGate = () => {
 };
 
 const RequireAuth = ({ children, roles }) => {
-  const { user } = useAuth();
+  const { user, isInitializing } = useAuth();
   const location = useLocation();
+
+  if (isInitializing) {
+    return <PageLoader />;
+  }
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;

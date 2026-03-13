@@ -73,6 +73,54 @@ def _device_from_user_agent(user_agent: str) -> str:
     return "Browser"
 
 
+def _jwt_cookie_settings():
+    secure = getattr(settings, "JWT_COOKIE_SECURE", not settings.DEBUG)
+    samesite = getattr(settings, "JWT_COOKIE_SAMESITE", "Lax")
+    domain = getattr(settings, "JWT_COOKIE_DOMAIN", "") or None
+    return secure, samesite, domain
+
+
+def _set_auth_cookies(response: Response, access_token: str | None, refresh_token: str | None) -> None:
+    if not access_token and not refresh_token:
+        return
+
+    secure, samesite, domain = _jwt_cookie_settings()
+    access_cookie = getattr(settings, "JWT_AUTH_COOKIE", "eventhub_access")
+    refresh_cookie = getattr(settings, "JWT_REFRESH_COOKIE", "eventhub_refresh")
+    access_ttl = int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds())
+    refresh_ttl = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+
+    if access_token:
+        response.set_cookie(
+            access_cookie,
+            access_token,
+            max_age=access_ttl,
+            httponly=True,
+            secure=secure,
+            samesite=samesite,
+            domain=domain,
+        )
+
+    if refresh_token:
+        response.set_cookie(
+            refresh_cookie,
+            refresh_token,
+            max_age=refresh_ttl,
+            httponly=True,
+            secure=secure,
+            samesite=samesite,
+            domain=domain,
+        )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    secure, samesite, domain = _jwt_cookie_settings()
+    access_cookie = getattr(settings, "JWT_AUTH_COOKIE", "eventhub_access")
+    refresh_cookie = getattr(settings, "JWT_REFRESH_COOKIE", "eventhub_refresh")
+    response.delete_cookie(access_cookie, domain=domain, samesite=samesite)
+    response.delete_cookie(refresh_cookie, domain=domain, samesite=samesite)
+
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
@@ -81,8 +129,16 @@ class RegisterView(generics.CreateAPIView):
 
     @method_decorator(ratelimit(key="ip", rate="10/h", block=True))
     def post(self, request: Request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        user = User.objects.get(id=response.data["user"]["id"])
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        data = serializer.data
+        response = Response(data, status=status.HTTP_201_CREATED, headers=self.get_success_headers(data))
+
+        tokens = data.get("tokens", {}) if isinstance(data, dict) else {}
+        _set_auth_cookies(response, tokens.get("access"), tokens.get("refresh"))
+
+        user = User.objects.get(id=data["user"]["id"])
         send_verification_email.delay(str(user.id))
         if user.role == "organizer":
             send_welcome_email.delay(str(user.id))
@@ -116,14 +172,19 @@ class LoginView(APIView):
                 last_seen=timezone.now(),
             )
 
-        return Response(data, status=status.HTTP_200_OK)
+        response = Response(data, status=status.HTTP_200_OK)
+        tokens = data.get("tokens", {}) if isinstance(data, dict) else {}
+        _set_auth_cookies(response, tokens.get("access"), tokens.get("refresh"))
+        return response
 
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request: Request):
-        refresh_token = request.data.get("refresh")
+        refresh_token = request.data.get("refresh") or request.COOKIES.get(
+            getattr(settings, "JWT_REFRESH_COOKIE", "eventhub_refresh")
+        )
         if refresh_token:
             try:
                 token = RefreshToken(refresh_token)
@@ -137,13 +198,31 @@ class LogoutView(APIView):
                     ).update(revoked_at=timezone.now())
             except Exception:
                 pass
-        return Response({"success": True, "data": None, "message": "Logged out."})
+        response = Response({"success": True, "data": None, "message": "Logged out."})
+        _clear_auth_cookies(response)
+        return response
 
 
 class TokenRefreshView(SimpleJWTTokenRefreshView):
     """
     Uses SimpleJWT's refresh logic; our renderer wraps the response.
     """
+
+    def post(self, request: Request, *args, **kwargs):
+        data = request.data.copy()
+        if not data.get("refresh"):
+            data["refresh"] = request.COOKIES.get(
+                getattr(settings, "JWT_REFRESH_COOKIE", "eventhub_refresh")
+            )
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+        _set_auth_cookies(
+            response,
+            serializer.validated_data.get("access"),
+            serializer.validated_data.get("refresh"),
+        )
+        return response
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

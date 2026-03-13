@@ -129,7 +129,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "common.authentication.CookieJWTAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "common.pagination.EventHubPagination",
     "PAGE_SIZE": 20,
@@ -155,6 +158,7 @@ REST_FRAMEWORK = {
         "checkout": "5/minute",      # Specific throttle for checkout
         "auth": "10/minute",         # Specific throttle for auth
         "order_lookup": "30/minute", # Throttle for order detail lookups (anti brute-force)
+        "frontend_error": "60/minute", # Client error telemetry
     },
 }
 
@@ -174,6 +178,13 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+# JWT cookie settings (for HttpOnly cookie auth)
+JWT_AUTH_COOKIE = env("JWT_AUTH_COOKIE", default="eventhub_access")
+JWT_REFRESH_COOKIE = env("JWT_REFRESH_COOKIE", default="eventhub_refresh")
+JWT_COOKIE_SECURE = env.bool("JWT_COOKIE_SECURE", default=not DEBUG)
+JWT_COOKIE_SAMESITE = env("JWT_COOKIE_SAMESITE", default="Lax")
+JWT_COOKIE_DOMAIN = env("JWT_COOKIE_DOMAIN", default="")
 
 # CORS
 FRONTEND_URL = env("FRONTEND_URL", default="https://events-ticketing-system.vercel.app")

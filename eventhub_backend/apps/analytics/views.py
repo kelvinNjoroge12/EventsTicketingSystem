@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import csv
+import logging
 
 from django.db.models import Count, Sum
 from django.http import HttpResponse
 from django.utils import timezone
-from rest_framework import permissions, status
+from rest_framework import permissions, status, throttling
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,6 +16,56 @@ from apps.events.models import Event
 from apps.orders.models import Order, Ticket
 from apps.checkin.models import CheckIn
 from .models import EventView, DailyEventStats
+
+logger = logging.getLogger(__name__)
+
+
+def _trim_value(value, max_len: int = 1000):
+    if value is None:
+        return None
+    text = str(value)
+    if len(text) <= max_len:
+        return text
+    return text[:max_len] + "...(truncated)"
+
+
+class FrontendErrorReportView(APIView):
+    """
+    POST /api/analytics/frontend-error/
+    Lightweight endpoint for client-side error reporting.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "frontend_error"
+
+    def post(self, request):
+        payload = request.data if isinstance(request.data, dict) else {}
+        data = {
+            "message": _trim_value(payload.get("message"), 400),
+            "name": _trim_value(payload.get("name"), 200),
+            "stack": _trim_value(payload.get("stack"), 4000),
+            "componentStack": _trim_value(payload.get("componentStack"), 2000),
+            "url": _trim_value(payload.get("url"), 1000),
+            "userAgent": _trim_value(payload.get("userAgent"), 500),
+            "timestamp": _trim_value(payload.get("timestamp"), 80),
+            "severity": _trim_value(payload.get("severity"), 40),
+        }
+
+        user_id = None
+        try:
+            if request.user and request.user.is_authenticated:
+                user_id = str(request.user.id)
+        except Exception:
+            user_id = None
+
+        logger.error(
+            "FrontendError user=%s ip=%s data=%s",
+            user_id,
+            request.META.get("REMOTE_ADDR"),
+            data,
+        )
+        return Response({"received": True}, status=status.HTTP_201_CREATED)
 
 
 class RecordEventViewView(APIView):

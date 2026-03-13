@@ -236,3 +236,50 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         if obj.status != "pending":
             return None
         return issue_simulation_token(obj.order_number)
+
+
+class OrderPublicDetailSerializer(serializers.ModelSerializer):
+    items = serializers.SerializerMethodField()
+    simulation_token = serializers.SerializerMethodField()
+    attendee_email_masked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            "order_number",
+            "status",
+            "subtotal",
+            "service_fee",
+            "discount_amount",
+            "total",
+            "currency",
+            "created_at",
+            "items",
+            "simulation_token",
+            "attendee_email_masked",
+        ]
+
+    def get_items(self, obj: Order):
+        return [
+            {
+                "ticket_type_name": i.ticket_type_name,
+                "ticket_class": i.ticket_class,
+                "unit_price": i.unit_price,
+                "quantity": i.quantity,
+                "subtotal": i.subtotal,
+            }
+            for i in obj.items.all()
+        ]
+
+    def get_simulation_token(self, obj: Order):
+        if obj.status != "pending":
+            return None
+        return issue_simulation_token(obj.order_number)
+
+    def get_attendee_email_masked(self, obj: Order):
+        email = (obj.attendee_email or "").strip()
+        if "@" not in email:
+            return None
+        name_part, domain_part = email.split("@", 1)
+        prefix = name_part[:2]
+        return f"{prefix}***@{domain_part}"

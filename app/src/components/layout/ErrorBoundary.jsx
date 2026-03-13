@@ -1,4 +1,44 @@
 import React from 'react';
+import { API_BASE_URL } from '../../lib/apiClient';
+
+const ERROR_REPORT_ENABLED =
+    import.meta.env.PROD && import.meta.env.VITE_ERROR_REPORT_ENABLED !== 'false';
+const ERROR_REPORT_URL =
+    import.meta.env.VITE_ERROR_REPORT_URL ||
+    (API_BASE_URL ? `${API_BASE_URL}/api/analytics/frontend-error/` : null);
+
+const reportClientError = (error, errorInfo) => {
+    if (!ERROR_REPORT_ENABLED || !ERROR_REPORT_URL) return;
+
+    const payload = {
+        message: error?.message || 'Unknown error',
+        name: error?.name || 'Error',
+        stack: error?.stack || '',
+        componentStack: errorInfo?.componentStack || '',
+        url: typeof window !== 'undefined' ? window.location.href : '',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+        timestamp: new Date().toISOString(),
+        severity: 'error',
+    };
+
+    try {
+        const body = JSON.stringify(payload);
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+            const blob = new Blob([body], { type: 'application/json' });
+            navigator.sendBeacon(ERROR_REPORT_URL, blob);
+            return;
+        }
+        fetch(ERROR_REPORT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+            keepalive: true,
+            credentials: 'include',
+        }).catch(() => {});
+    } catch {
+        // Swallow telemetry failures
+    }
+};
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -21,7 +61,7 @@ class ErrorBoundary extends React.Component {
 
     componentDidCatch(error, errorInfo) {
         console.error("Global Error Caught:", error, errorInfo);
-        // TODO: send to Sentry or another telemetry service
+        reportClientError(error, errorInfo);
     }
 
     render() {

@@ -5,6 +5,7 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from django.http import JsonResponse
 from apps.checkin.views import RetrieveTicketView
+from apps.analytics.views import FrontendErrorReportView
 
 def health_check(request):
     """Simple endpoint to confirm the server is running."""
@@ -25,6 +26,7 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # Health Check
     path("api/health/", health_check, name="health-check"),
+    path("api/analytics/frontend-error/", FrontendErrorReportView.as_view(), name="frontend-error"),
     # Ticket self-service retrieval (public, no auth)
     path("api/tickets/retrieve/", RetrieveTicketView.as_view(), name="ticket-retrieve"),
     # Core apps
