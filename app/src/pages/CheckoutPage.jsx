@@ -15,7 +15,7 @@ import { useCart } from '../context/CartContext';
 const SIMULATED_PAYMENTS_ENABLED =
   import.meta.env.VITE_ENABLE_SIMULATED_PAYMENTS === 'true' || import.meta.env.DEV;
 const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
-const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

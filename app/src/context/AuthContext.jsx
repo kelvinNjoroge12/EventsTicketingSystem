@@ -5,9 +5,18 @@ import React, {
   useCallback,
   useEffect,
 } from 'react';
-import { api } from '../lib/apiClient';
+import { api, setSessionHint } from '../lib/apiClient';
 
 const AuthContext = createContext(null);
+const SESSION_HINT_KEY = 'eventhub_has_session';
+
+const hasSessionHint = () => {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(SESSION_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Normalizes a raw backend user object so UI components can safely
@@ -34,10 +43,20 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
+      if (!hasSessionHint()) {
+        if (isMounted) {
+          setIsInitializing(false);
+        }
+        return;
+      }
+      if (!setSessionHint) {
+        // no-op safety
+      }
       try {
         const profile = await api.get('/api/auth/profile/');
         if (isMounted) {
           setUser(profile);
+          setSessionHint(true);
         }
       } catch (err) {
         if (isMounted) {
@@ -60,6 +79,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await api.post('/api/auth/login/', { email, password });
       setUser(data.user);
+      setSessionHint(true);
       return normalizeUser(data.user);
     } finally {
       setIsLoading(false);
@@ -79,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       };
       const data = await api.post('/api/auth/register/', payload);
       setUser(data.user);
+      setSessionHint(true);
       return normalizeUser(data.user);
     } finally {
       setIsLoading(false);
@@ -87,6 +108,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     setUserRaw(null);
+    setSessionHint(false);
     try {
       await api.post('/api/auth/logout/', {});
     } catch {

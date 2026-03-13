@@ -450,6 +450,13 @@ const OrganizerDashboardPage = () => {
     navigate('/create-event');
   };
 
+  const openPublicEvent = (eventItem) => {
+    if (!eventItem?.slug) {
+      toast.error('Select a valid event to view.');
+      return;
+    }
+    navigate(`/events/${eventItem.slug}`);
+  };
 
   const openCheckinForEvent = (eventItem) => {
     if (!eventItem?.slug) {
@@ -546,6 +553,7 @@ const OrganizerDashboardPage = () => {
           <OrganizerMyEvents
             events={events}
             onEventClick={openEventDetail}
+            onViewEvent={openPublicEvent}
             onCreateEvent={handleCreateEvent}
             onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
             onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}
@@ -599,6 +607,7 @@ const OrganizerDashboardPage = () => {
             <OrganizerMyEvents
               events={events}
               onEventClick={openCheckinForEvent}
+              onViewEvent={openPublicEvent}
               onCreateEvent={handleCreateEvent}
               onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
               onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}

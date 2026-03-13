@@ -1,6 +1,29 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+const HAS_SESSION_KEY = "eventhub_has_session";
+
+const getSessionHint = () => {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(HAS_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+export const setSessionHint = (enabled) => {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (enabled) {
+      localStorage.setItem(HAS_SESSION_KEY, "1");
+    } else {
+      localStorage.removeItem(HAS_SESSION_KEY);
+    }
+  } catch {
+    // ignore storage failures
+  }
+};
+
 const API_ORIGIN = (() => {
   try {
     return new URL(API_BASE_URL).origin;
@@ -31,6 +54,9 @@ let isRefreshing = false;
 let refreshPromise = null;
 
 const refreshAccessToken = async () => {
+  if (!getSessionHint()) {
+    throw new Error("No active session.");
+  }
   const res = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -39,6 +65,7 @@ const refreshAccessToken = async () => {
   });
 
   if (!res.ok) {
+    setSessionHint(false);
     throw new Error("Session expired. Please log in again.");
   }
 };
@@ -59,6 +86,11 @@ async function request(path, options = {}, retry = true) {
   // Auto-refresh on 401 and retry once
   if (res.status === 401 && retry) {
     try {
+      if (!getSessionHint()) {
+        const error = new Error("Session expired. Please log in again.");
+        error.status = 401;
+        throw error;
+      }
       if (!isRefreshing) {
         isRefreshing = true;
         refreshPromise = refreshAccessToken().finally(() => {

@@ -51,8 +51,8 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     category: '',
     location: '',
-    dateFrom: null,
-    dateTo: null,
+    dateFrom: undefined,
+    dateTo: undefined,
     price: 'all', // all, free, paid
     format: 'all', // all, in-person, online
     sort: 'popular', // popular, upcoming, newest, price-low, price-high
@@ -82,10 +82,10 @@ const EventsPage = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const allEvents = useMemo(
-    () => (eventsData?.pages || []).flatMap((page) => page.results || []),
-    [eventsData]
-  );
+  const allEvents = useMemo(() => {
+    const pages = Array.isArray(eventsData?.pages) ? eventsData.pages : [];
+    return pages.flatMap((page) => (Array.isArray(page?.results) ? page.results : []));
+  }, [eventsData]);
 
   useEffect(() => {
     if (!allEvents.length) return undefined;
@@ -141,10 +141,10 @@ const EventsPage = () => {
     }
 
     // Date filters via date formatting
-    if (filters.dateFrom) {
+    if (filters.dateFrom instanceof Date) {
       result = result.filter(event => new Date(event.date) >= filters.dateFrom);
     }
-    if (filters.dateTo) {
+    if (filters.dateTo instanceof Date) {
       result = result.filter(event => new Date(event.date) <= filters.dateTo);
     }
 
@@ -189,14 +189,14 @@ const EventsPage = () => {
   }, [filters, allEvents]);
 
   const clearFilters = () => {
-    setFilters({
-      category: '',
-      location: '',
-      dateFrom: null,
-      dateTo: null,
-      price: 'all',
-      format: 'all',
-      sort: 'popular',
+            setFilters({
+              category: '',
+              location: '',
+              dateFrom: undefined,
+              dateTo: undefined,
+              price: 'all',
+              format: 'all',
+              sort: 'popular',
     });
   };
 
@@ -239,7 +239,7 @@ const EventsPage = () => {
                 className="w-full bg-transparent outline-none focus:text-[#1E4DB7] cursor-pointer text-[#334155] truncate"
               >
                 <option value="">All Categories</option>
-                {categories.map(cat => (
+                {(Array.isArray(categories) ? categories : []).map(cat => (
                   <option key={cat.id} value={cat.name}>{cat.name}</option>
                 ))}
               </select>
@@ -262,13 +262,13 @@ const EventsPage = () => {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className="flex-1 outline-none text-left whitespace-nowrap overflow-hidden text-ellipsis hover:text-[#22C55E] text-[#334155]">
-                      {filters.dateFrom ? format(filters.dateFrom, "MM/dd/yy") : "Start"}
+                      {filters.dateFrom instanceof Date ? format(filters.dateFrom, "MM/dd/yy") : "Start"}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={filters.dateFrom}
+                      selected={filters.dateFrom || undefined}
                       onSelect={(date) => setFilters(prev => ({ ...prev, dateFrom: date }))}
                       initialFocus
                     />
@@ -278,13 +278,13 @@ const EventsPage = () => {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className="flex-1 outline-none text-left whitespace-nowrap overflow-hidden text-ellipsis hover:text-[#22C55E] text-[#334155]">
-                      {filters.dateTo ? format(filters.dateTo, "MM/dd/yy") : "End"}
+                      {filters.dateTo instanceof Date ? format(filters.dateTo, "MM/dd/yy") : "End"}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={filters.dateTo}
+                      selected={filters.dateTo || undefined}
                       onSelect={(date) => setFilters(prev => ({ ...prev, dateTo: date }))}
                       initialFocus
                       disabled={(date) => filters.dateFrom ? date < filters.dateFrom : false}

@@ -27,6 +27,7 @@ urlpatterns = [
     # Health Check
     path("api/health/", health_check, name="health-check"),
     path("api/analytics/frontend-error/", FrontendErrorReportView.as_view(), name="frontend-error"),
+    path("api/analytics/frontend-error", FrontendErrorReportView.as_view(), name="frontend-error-no-slash"),
     # Ticket self-service retrieval (public, no auth)
     path("api/tickets/retrieve/", RetrieveTicketView.as_view(), name="ticket-retrieve"),
     # Core apps

@@ -62,6 +62,7 @@ const getStatusColor = (status) => {
 const OrganizerMyEvents = ({
   events,
   onEventClick,
+  onViewEvent,
   onCreateEvent,
   onEditEvent,
   onDeleteEvent,
@@ -187,7 +188,7 @@ const OrganizerMyEvents = ({
           <Card
             key={event.id}
             className="pressable-card overflow-hidden group cursor-pointer"
-            onClick={() => onEventClick(event)}
+            onClick={() => (onEventClick || onViewEvent)?.(event)}
           >
             <div className="relative h-40 lg:h-48 overflow-hidden">
               {event.image ? (
@@ -217,7 +218,7 @@ const OrganizerMyEvents = ({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
                       e.stopPropagation();
-                      onEventClick(event);
+                      (onViewEvent || onEventClick)?.(event);
                     }}>
                       <Eye className="w-4 h-4 mr-2" />
                       View
