@@ -3,11 +3,13 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 function Card({ className, ...props }: React.ComponentProps<"div">) {
+  const hasRounded = Boolean(className && /\brounded-/.test(className))
   return (
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        "pressable-card bg-card text-card-foreground flex flex-col gap-6 border py-6",
+        hasRounded ? "" : "rounded-2xl",
         className
       )}
       {...props}

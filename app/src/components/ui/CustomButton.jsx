@@ -17,7 +17,8 @@ const Button = ({
   ariaLabel,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4DB7] focus-visible:ring-offset-2';
+  const baseStyles = 'pressable-btn inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4DB7] focus-visible:ring-offset-2';
+  const hasRounded = className.includes('rounded-');
 
   const variants = {
     primary: 'bg-[#1E4DB7] text-white hover:bg-[#1a44a0] active:bg-[#163a8f]',
@@ -47,6 +48,7 @@ const Button = ({
         ${baseStyles}
         ${variants[variant]}
         ${sizes[size]}
+        ${hasRounded ? '' : 'rounded-2xl'}
         ${fullWidth ? 'w-full' : ''}
         ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${className}

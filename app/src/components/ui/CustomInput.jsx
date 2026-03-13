@@ -18,6 +18,7 @@ const Input = forwardRef(({
   const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
   const errorId = `${inputId}-error`;
   const helperId = `${inputId}-helper`;
+  const hasRounded = inputClassName.includes('rounded-');
 
   return (
     <div className={`${fullWidth ? 'w-full' : ''} ${className}`}>
@@ -40,12 +41,13 @@ const Input = forwardRef(({
           ref={ref}
           id={inputId}
           className={`
-            w-full px-4 py-2.5 bg-white border rounded-lg
+            soft-field w-full px-4 py-2.5 bg-white border
             text-[#0F172A] placeholder-[#94A3B8]
             transition-all duration-200
             focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] focus:border-transparent
             disabled:bg-[#F1F5F9] disabled:text-[#94A3B8] disabled:cursor-not-allowed
             ${error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E8F0]'}
+            ${hasRounded ? '' : 'rounded-2xl'}
             ${LeftIcon ? 'pl-11' : ''}
             ${RightIcon ? 'pr-11' : ''}
             ${inputClassName}
