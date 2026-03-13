@@ -9,6 +9,7 @@ import ErrorBoundary from './components/layout/ErrorBoundary';
 import useScrollTop from './hooks/useScrollTop';
 import { Toaster } from './components/ui/sonner';
 import ClassicTicketLoader from './components/ui/ClassicTicketLoader';
+import { API_BASE_URL } from './lib/apiClient';
 
 // HomePage is eager-loaded (entry point — no spinner on first visit)
 import HomePage from './pages/HomePage';
@@ -49,6 +50,12 @@ const EventDetailChunkLoader = () => (
     <ClassicTicketLoader visible />
   </div>
 );
+
+const KEEP_ALIVE_INTERVAL_MS = Number(
+  import.meta.env.VITE_KEEP_ALIVE_INTERVAL_MS ?? 13 * 60 * 1000
+);
+const KEEP_ALIVE_ENABLED =
+  import.meta.env.PROD && import.meta.env.VITE_KEEP_ALIVE_ENABLED !== 'false';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -214,6 +221,29 @@ const AppRoutes = ({ onLocationKey }) => {
 
 function App() {
   const [locationKey, setLocationKey] = useState('');
+
+  useEffect(() => {
+    if (!KEEP_ALIVE_ENABLED || !API_BASE_URL) return;
+
+    let isCancelled = false;
+    const ping = () => {
+      if (isCancelled) return;
+      fetch(`${API_BASE_URL}/api/health/`, {
+        method: 'GET',
+        cache: 'no-store',
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    ping();
+    const intervalId = setInterval(ping, KEEP_ALIVE_INTERVAL_MS);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <CartProvider>

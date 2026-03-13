@@ -176,6 +176,16 @@ class EventDetailSerializer(serializers.ModelSerializer):
     speakers = serializers.SerializerMethodField()
     schedule = serializers.SerializerMethodField()
     sponsors = serializers.SerializerMethodField()
+    speakers_count = serializers.IntegerField(read_only=True)
+    schedule_count = serializers.IntegerField(read_only=True)
+    sponsors_count = serializers.IntegerField(read_only=True)
+
+    def __init__(self, *args, **kwargs):
+        exclude_fields = kwargs.pop("exclude_fields", None)
+        super().__init__(*args, **kwargs)
+        if exclude_fields:
+            for field in exclude_fields:
+                self.fields.pop(field, None)
 
     class Meta:
         model = Event
@@ -221,6 +231,9 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "speakers",
             "schedule",
             "sponsors",
+            "speakers_count",
+            "schedule_count",
+            "sponsors_count",
             "send_reminders",
             "enable_waitlist",
         ]

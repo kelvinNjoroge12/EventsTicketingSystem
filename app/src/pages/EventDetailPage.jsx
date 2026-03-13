@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,7 +13,15 @@ import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
 import ProgressiveImage from '../components/ui/ProgressiveImage';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
-import { buildEventDetailPlaceholderFromList, fetchEvent, fetchRelatedEvents, trackEventView } from '../lib/eventsApi';
+import {
+  buildEventDetailPlaceholderFromList,
+  fetchEventLite,
+  fetchEventSpeakers,
+  fetchEventSchedule,
+  fetchEventSponsors,
+  fetchRelatedEvents,
+  trackEventView
+} from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import useSavedEvents from '../hooks/useSavedEvents';
@@ -190,16 +198,32 @@ const EventDetailPage = () => {
     if (slug) trackEventView(slug);
   }, [slug]);
 
-  const detailQueryKey = eventQueryKeys.detail(slug);
+  const detailQueryKey = eventQueryKeys.detailLite(slug);
   const listCaches = queryClient.getQueriesData({ queryKey: eventQueryKeys.lists() });
   const placeholderEventFromList = listCaches
-    .map(([, cached]) => (Array.isArray(cached) ? cached.find((item) => item?.slug === slug) : null))
+    .map(([, cached]) => {
+      if (Array.isArray(cached)) {
+        return cached.find((item) => item?.slug === slug);
+      }
+      if (cached?.results && Array.isArray(cached.results)) {
+        return cached.results.find((item) => item?.slug === slug);
+      }
+      if (cached?.pages && Array.isArray(cached.pages)) {
+        for (const page of cached.pages) {
+          if (page?.results && Array.isArray(page.results)) {
+            const hit = page.results.find((item) => item?.slug === slug);
+            if (hit) return hit;
+          }
+        }
+      }
+      return null;
+    })
     .find(Boolean);
   const detailAlreadyCached = Boolean(queryClient.getQueryData(detailQueryKey));
 
   const { data: baseEvent, isLoading, isFetching, isPlaceholderData } = useQuery({
     queryKey: detailQueryKey,
-    queryFn: () => fetchEvent(slug),
+    queryFn: () => fetchEventLite(slug),
     staleTime: 5 * 60 * 1000, // 5 min — serve from cache on tab switch / back-navigation
     retry: false,
     placeholderData: () => buildEventDetailPlaceholderFromList(placeholderEventFromList),
@@ -216,6 +240,81 @@ const EventDetailPage = () => {
   // Speakers + schedule are now embedded in the main event response.
   // No secondary API calls needed — just use baseEvent directly.
   const event = baseEvent ?? null;
+
+  const speakersCount = event?.speakersCount ?? event?.speakers_count;
+  const scheduleCount = event?.scheduleCount ?? event?.schedule_count;
+  const sponsorsCount = event?.sponsorsCount ?? event?.sponsors_count;
+
+  const hasSpeakers =
+    typeof speakersCount === 'number'
+      ? speakersCount > 0
+      : Array.isArray(event?.speakers) && event.speakers.length > 0;
+  const hasSchedule =
+    typeof scheduleCount === 'number'
+      ? scheduleCount > 0
+      : Array.isArray(event?.schedule) && event.schedule.length > 0;
+  const hasSponsors =
+    typeof sponsorsCount === 'number'
+      ? sponsorsCount > 0
+      : Array.isArray(event?.sponsors) && event.sponsors.length > 0;
+
+  const shouldFetchSpeakers = !!slug && hasSpeakers && activeTab === 'speakers' && !Array.isArray(event?.speakers);
+  const shouldFetchSchedule = !!slug && hasSchedule && activeTab === 'schedule' && !Array.isArray(event?.schedule);
+  const shouldFetchSponsors = !!slug && hasSponsors && activeTab === 'sponsors' && !Array.isArray(event?.sponsors);
+
+  const { data: speakersData = [], isLoading: isLoadingSpeakers } = useQuery({
+    queryKey: eventQueryKeys.speakers(slug),
+    queryFn: () => fetchEventSpeakers(slug),
+    enabled: shouldFetchSpeakers,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: scheduleData = [], isLoading: isLoadingSchedule } = useQuery({
+    queryKey: eventQueryKeys.schedule(slug),
+    queryFn: () => fetchEventSchedule(slug),
+    enabled: shouldFetchSchedule,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: sponsorsData = [], isLoading: isLoadingSponsors } = useQuery({
+    queryKey: eventQueryKeys.sponsors(slug),
+    queryFn: () => fetchEventSponsors(slug),
+    enabled: shouldFetchSponsors,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const speakers = useMemo(() => {
+    if (Array.isArray(event?.speakers)) return event.speakers;
+    if (!Array.isArray(speakersData)) return [];
+    return speakersData.map((s) => ({
+      ...s,
+      avatar: s.avatar_url || s.avatar,
+    }));
+  }, [event?.speakers, speakersData]);
+
+  const schedule = useMemo(() => {
+    if (Array.isArray(event?.schedule)) return event.schedule;
+    if (!Array.isArray(scheduleData)) return [];
+    return scheduleData.map((item) => ({
+      ...item,
+      time: item.start_time
+        ? item.end_time
+          ? `${item.start_time} – ${item.end_time}`
+          : item.start_time
+        : item.time || '',
+      speaker: item.speaker_name || item.speaker || '',
+    }));
+  }, [event?.schedule, scheduleData]);
+
+  const sponsors = useMemo(() => {
+    if (Array.isArray(event?.sponsors)) return event.sponsors;
+    if (!Array.isArray(sponsorsData)) return [];
+    return sponsorsData.map((s) => ({
+      ...s,
+      logo: s.logo_url || s.logo,
+      tier: s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Partner',
+    }));
+  }, [event?.sponsors, sponsorsData]);
 
   // Handle Tickets
 
@@ -275,9 +374,6 @@ const EventDetailPage = () => {
   const saved = isSaved({ id: event.id, slug: event.slug });
   const themeColor = event.themeColor || '#1E4DB7';
   const accentColor = event.accentColor || '#7C3AED';
-  const hasSpeakers = event.speakers?.length > 0;
-  const hasSchedule = event.schedule?.length > 0;
-  const hasSponsors = event.sponsors?.length > 0;
   const hasMC = event.mc?.name;
   const showClassicLoader = !detailAlreadyCached && (isPlaceholderData || (isFetching && isLoading));
 
@@ -625,7 +721,13 @@ const EventDetailPage = () => {
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         Featured Speakers
                       </h2>
-                      <SpeakersGrid speakers={event.speakers} themeColor={themeColor} />
+                      {isLoadingSpeakers ? (
+                        <div className="py-6 text-sm text-[#64748B]">Loading speakers…</div>
+                      ) : speakers.length > 0 ? (
+                        <SpeakersGrid speakers={speakers} themeColor={themeColor} />
+                      ) : (
+                        <p className="text-sm text-[#64748B]">No speakers listed yet.</p>
+                      )}
                     </section>
                   )}
 
@@ -636,7 +738,13 @@ const EventDetailPage = () => {
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         Event Schedule
                       </h2>
-                      <ScheduleTimeline schedule={event.schedule} themeColor={themeColor} />
+                      {isLoadingSchedule ? (
+                        <div className="py-6 text-sm text-[#64748B]">Loading schedule…</div>
+                      ) : schedule.length > 0 ? (
+                        <ScheduleTimeline schedule={schedule} themeColor={themeColor} />
+                      ) : (
+                        <p className="text-sm text-[#64748B]">No schedule published yet.</p>
+                      )}
                     </section>
                   )}
 
@@ -647,7 +755,13 @@ const EventDetailPage = () => {
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         Our Sponsors
                       </h2>
-                      <SponsorsGrid sponsors={event.sponsors} themeColor={themeColor} />
+                      {isLoadingSponsors ? (
+                        <div className="py-6 text-sm text-[#64748B]">Loading sponsors…</div>
+                      ) : sponsors.length > 0 ? (
+                        <SponsorsGrid sponsors={sponsors} themeColor={themeColor} />
+                      ) : (
+                        <p className="text-sm text-[#64748B]">No sponsors listed yet.</p>
+                      )}
                     </section>
                   )}
                 </motion.div>

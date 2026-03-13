@@ -14,8 +14,8 @@ import PageWrapper from '../components/layout/PageWrapper';
 import EventCard from '../components/cards/EventCard';
 import CustomButton from '../components/ui/CustomButton';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
-import { fetchEvent, fetchEvents } from '../lib/eventsApi';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchEventLite, fetchEvents } from '../lib/eventsApi';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
@@ -58,12 +58,34 @@ const EventsPage = () => {
     sort: 'popular', // popular, upcoming, newest, price-low, price-high
   });
 
-  // Fetch all events via React Query (cached with staleTime configuration in main.jsx)
-  const { data: allEventsData, isLoading } = useQuery({
-    queryKey: eventQueryKeys.list({ ordering: 'start_date' }),
-    queryFn: () => fetchEvents({ ordering: 'start_date' })
+  const PAGE_SIZE = 12;
+
+  const {
+    data: eventsData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: eventQueryKeys.list({ ordering: 'start_date', page_size: PAGE_SIZE }),
+    queryFn: ({ pageParam = 1 }) => fetchEvents({ ordering: 'start_date', page: pageParam, page_size: PAGE_SIZE }),
+    getNextPageParam: (lastPage, pages) => {
+      if (!lastPage?.next) return undefined;
+      try {
+        const nextUrl = new URL(lastPage.next);
+        const nextPage = Number(nextUrl.searchParams.get('page'));
+        return Number.isNaN(nextPage) ? pages.length + 1 : nextPage;
+      } catch {
+        return pages.length + 1;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
   });
-  const allEvents = allEventsData?.results || [];
+
+  const allEvents = useMemo(
+    () => (eventsData?.pages || []).flatMap((page) => page.results || []),
+    [eventsData]
+  );
 
   useEffect(() => {
     if (!allEvents.length) return undefined;
@@ -75,12 +97,12 @@ const EventsPage = () => {
       allEvents.slice(0, 8).forEach((event, index) => {
         setTimeout(() => {
           if (cancelled || !event?.slug) return;
-          const detailKey = eventQueryKeys.detail(event.slug);
+          const detailKey = eventQueryKeys.detailLite(event.slug);
           const state = queryClient.getQueryState(detailKey);
           if (state?.dataUpdatedAt && Date.now() - state.dataUpdatedAt < 5 * 60 * 1000) return;
           queryClient.prefetchQuery({
             queryKey: detailKey,
-            queryFn: () => fetchEvent(event.slug),
+            queryFn: () => fetchEventLite(event.slug),
             staleTime: 5 * 60 * 1000,
           });
         }, index * 140);
@@ -374,6 +396,17 @@ const EventsPage = () => {
               </p>
               <CustomButton variant="outline" onClick={clearFilters}>
                 Clear All Filters
+              </CustomButton>
+            </div>
+          )}
+          {hasNextPage && (
+            <div className="mt-8 flex justify-center">
+              <CustomButton
+                variant="outline"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? 'Loading more…' : 'Load more events'}
               </CustomButton>
             </div>
           )}

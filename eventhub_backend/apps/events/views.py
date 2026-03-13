@@ -37,10 +37,9 @@ def _with_list_optimizations(queryset):
     )
 
 
-def _with_detail_optimizations(queryset):
-    return queryset.select_related(
-        "category", "organizer", "organizer__organizer_profile"
-    ).prefetch_related(
+def _with_detail_optimizations(queryset, exclude_fields: set[str] | None = None):
+    exclude_fields = exclude_fields or set()
+    prefetches = [
         "tags",
         Prefetch(
             "ticket_types",
@@ -52,21 +51,41 @@ def _with_detail_optimizations(queryset):
             queryset=PromoCode.objects.filter(is_active=True),
             to_attr="prefetched_promo_codes_active",
         ),
-        Prefetch(
-            "speakers",
-            queryset=Speaker.objects.order_by("sort_order", "name"),
-            to_attr="prefetched_speakers_ordered",
-        ),
-        Prefetch(
-            "schedule_items",
-            queryset=ScheduleItem.objects.select_related("speaker").order_by("day", "sort_order", "start_time"),
-            to_attr="prefetched_schedule_items",
-        ),
-        Prefetch(
-            "event_sponsors",
-            queryset=Sponsor.objects.order_by("tier", "sort_order", "name"),
-            to_attr="prefetched_sponsors",
-        ),
+    ]
+
+    if "speakers" not in exclude_fields:
+        prefetches.append(
+            Prefetch(
+                "speakers",
+                queryset=Speaker.objects.order_by("sort_order", "name"),
+                to_attr="prefetched_speakers_ordered",
+            )
+        )
+    if "schedule" not in exclude_fields:
+        prefetches.append(
+            Prefetch(
+                "schedule_items",
+                queryset=ScheduleItem.objects.select_related("speaker").order_by("day", "sort_order", "start_time"),
+                to_attr="prefetched_schedule_items",
+            )
+        )
+    if "sponsors" not in exclude_fields:
+        prefetches.append(
+            Prefetch(
+                "event_sponsors",
+                queryset=Sponsor.objects.order_by("tier", "sort_order", "name"),
+                to_attr="prefetched_sponsors",
+            )
+        )
+
+    return (
+        queryset.select_related("category", "organizer", "organizer__organizer_profile")
+        .prefetch_related(*prefetches)
+        .annotate(
+            speakers_count=models.Count("speakers", filter=Q(speakers__is_mc=False), distinct=True),
+            schedule_count=models.Count("schedule_items", distinct=True),
+            sponsors_count=models.Count("event_sponsors", distinct=True),
+        )
     )
 
 
@@ -123,16 +142,26 @@ class EventDetailView(generics.RetrieveAPIView):
         status_filter = Q(status__in=["published", "completed"])
         if user.is_authenticated:
             status_filter |= Q(organizer=user, status__in=["draft", "pending"])
-        return _with_detail_optimizations(Event.objects.filter(status_filter).distinct())
+        exclude_fields = self._get_exclude_fields()
+        return _with_detail_optimizations(Event.objects.filter(status_filter).distinct(), exclude_fields=exclude_fields)
+
+    def _get_exclude_fields(self) -> set[str]:
+        raw = self.request.query_params.get("exclude", "")
+        if not raw:
+            return set()
+        return {part.strip().lower() for part in raw.split(",") if part.strip()}
 
     def retrieve(self, request, *args, **kwargs):
         slug = kwargs.get(self.lookup_field)
         is_anon = not request.user.is_authenticated
+        exclude_fields = self._get_exclude_fields()
+        exclude_key = "full" if not exclude_fields else f"exclude:{','.join(sorted(exclude_fields))}"
+        version = _get_cache_version()
 
         # Only serve cached responses to anonymous users.
         # Authenticated users bypass cache so draft/pending events
         # owned by the organizer are never leaked into the public cache.
-        cache_key = f"events:detail:v2:{slug}"
+        cache_key = f"events:detail:v3:{version}:{slug}:{exclude_key}"
         if is_anon:
             cached = cache.get(cache_key)
             if cached:
@@ -141,7 +170,7 @@ class EventDetailView(generics.RetrieveAPIView):
                 return response
 
         event = self.get_object()
-        serializer = self.get_serializer(event)
+        serializer = self.get_serializer(event, exclude_fields=exclude_fields)
         response = Response(serializer.data)
         if event.status in ("published", "completed"):
             # Only populate cache from public (published/completed) events
@@ -167,7 +196,6 @@ class EventDetailView(generics.RetrieveAPIView):
         event.status = "cancelled"
         event.save(update_fields=["status"])
         _bump_cache_version()
-        cache.delete(f"events:detail:v2:{event.slug}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -192,7 +220,6 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
         serializer.save()
         _bump_cache_version()
         # Use serializer.instance.slug — avoids a redundant SELECT after save()
-        cache.delete(f"events:detail:v2:{serializer.instance.slug}")
 
 
 class EventDeleteView(generics.DestroyAPIView):
@@ -206,7 +233,6 @@ class EventDeleteView(generics.DestroyAPIView):
         instance.status = "cancelled"
         instance.save(update_fields=["status"])
         _bump_cache_version()
-        cache.delete(f"events:detail:v2:{instance.slug}")
 
 
 class EventPublishView(generics.UpdateAPIView):
@@ -222,7 +248,6 @@ class EventPublishView(generics.UpdateAPIView):
         event.status = "published"
         event.save(update_fields=["status"])
         _bump_cache_version()
-        cache.delete(f"events:detail:v2:{event.slug}")
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(serializer.data)
 

@@ -10,7 +10,7 @@ import {
   BookmarkCheck
 } from 'lucide-react';
 import useSavedEvents from '../../hooks/useSavedEvents';
-import { fetchEvent } from '../../lib/eventsApi';
+import { fetchEventLite } from '../../lib/eventsApi';
 import { useQueryClient } from '@tanstack/react-query';
 import eventQueryKeys from '../../lib/eventQueryKeys';
 import CustomAvatar from '../ui/CustomAvatar';
@@ -55,7 +55,7 @@ const EventCard = ({
   const handlePrefetch = () => {
     if (!event?.slug) return;
 
-    const queryKey = eventQueryKeys.detail(event.slug);
+    const queryKey = eventQueryKeys.detailLite(event.slug);
     const state = queryClient.getQueryState(queryKey);
     const now = Date.now();
     const recentlyPrefetchedAt = prefetchRegistry.get(event.slug) || 0;
@@ -66,7 +66,7 @@ const EventCard = ({
     prefetchRegistry.set(event.slug, now);
     queryClient.prefetchQuery({
       queryKey,
-      queryFn: () => fetchEvent(event.slug),
+      queryFn: () => fetchEventLite(event.slug),
       staleTime: 5 * 60 * 1000,
     });
   };

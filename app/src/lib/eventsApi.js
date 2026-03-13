@@ -101,6 +101,32 @@ export const mapDetailEvent = (e) => {
       ? `${e.venue_name}, ${e.city}`
       : e.venue_name || e.city || listMapped.location;
 
+  const speakers = Array.isArray(e.speakers)
+    ? e.speakers.map(s => ({
+      ...s,
+      avatar: s.avatar_url || s.avatar
+    }))
+    : undefined;
+  const schedule = Array.isArray(e.schedule)
+    ? e.schedule.map(item => ({
+      ...item,
+      // Normalise: backend returns start_time/speaker_name; component expects time/speaker
+      time: item.start_time
+        ? item.end_time
+          ? `${item.start_time} – ${item.end_time}`
+          : item.start_time
+        : item.time || '',
+      speaker: item.speaker_name || item.speaker || '',
+    }))
+    : undefined;
+  const sponsors = Array.isArray(e.sponsors)
+    ? e.sponsors.map(s => ({
+      ...s,
+      logo: s.logo_url || s.logo,
+      tier: s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Partner'
+    }))
+    : undefined;
+
   return {
     ...listMapped,
     rawCategory: e.category?.id || e.category || "",
@@ -142,29 +168,16 @@ export const mapDetailEvent = (e) => {
     promoCodes: e.promo_codes || [],
     enableWaitlist: e.enable_waitlist ?? false,
     sendReminders: e.send_reminders ?? true,
-    speakers: (e.speakers || []).map(s => ({
-      ...s,
-      avatar: s.avatar_url || s.avatar
-    })),
+    speakers,
     mc: e.mc ? {
       ...e.mc,
       avatar: e.mc.avatar_url || e.mc.avatar
     } : null,
-    schedule: (e.schedule || []).map(item => ({
-      ...item,
-      // Normalise: backend returns start_time/speaker_name; component expects time/speaker
-      time: item.start_time
-        ? item.end_time
-          ? `${item.start_time} – ${item.end_time}`
-          : item.start_time
-        : item.time || '',
-      speaker: item.speaker_name || item.speaker || '',
-    })),
-    sponsors: (e.sponsors || []).map(s => ({
-      ...s,
-      logo: s.logo_url || s.logo,
-      tier: s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Partner'
-    })),
+    schedule,
+    sponsors,
+    speakersCount: e.speakers_count ?? e.speakersCount ?? null,
+    scheduleCount: e.schedule_count ?? e.scheduleCount ?? null,
+    sponsorsCount: e.sponsors_count ?? e.sponsorsCount ?? null,
     organizer: {
       id: e.organizer?.id,
       name:
@@ -209,6 +222,9 @@ export const buildEventDetailPlaceholderFromList = (event) => {
     mc: null,
     schedule: [],
     sponsors: [],
+    speakersCount: null,
+    scheduleCount: null,
+    sponsorsCount: null,
   };
 };
 
@@ -245,6 +261,11 @@ export const fetchEvents = async (params = {}) => {
 // ── Fetch Single Event Detail ─────────────────────────────────────────────
 export const fetchEvent = async (slug) => {
   const data = await api.get(`/api/events/${slug}/`);
+  return mapDetailEvent(data);
+};
+
+export const fetchEventLite = async (slug) => {
+  const data = await api.get(`/api/events/${slug}/?exclude=speakers,schedule,sponsors`);
   return mapDetailEvent(data);
 };
 
@@ -290,15 +311,18 @@ export const trackEventView = (slug) => {
 
 // ── Event sub-resources ────────────────────────────────────────────────────
 export const fetchEventSpeakers = async (slug) => {
-  return api.get(`/api/events/${slug}/speakers/`);
+  const data = await api.get(`/api/events/${slug}/speakers/`);
+  return Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
 };
 
 export const fetchEventSchedule = async (slug) => {
-  return api.get(`/api/events/${slug}/schedule/`);
+  const data = await api.get(`/api/events/${slug}/schedule/`);
+  return Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
 };
 
 export const fetchEventSponsors = async (slug) => {
-  return api.get(`/api/events/${slug}/sponsors/`);
+  const data = await api.get(`/api/events/${slug}/sponsors/`);
+  return Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
 };
 
 // ── Notifications ───────────────────────────────────────────────────────────

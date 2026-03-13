@@ -1,5 +1,30 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+const API_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE_URL).origin;
+  } catch {
+    return null;
+  }
+})();
+
+if (API_ORIGIN && typeof document !== "undefined") {
+  const ensureLink = (rel) => {
+    const selector = `link[rel="${rel}"][href="${API_ORIGIN}"]`;
+    if (document.querySelector(selector)) return;
+    const link = document.createElement("link");
+    link.rel = rel;
+    link.href = API_ORIGIN;
+    if (rel === "preconnect") {
+      link.crossOrigin = "";
+    }
+    document.head.appendChild(link);
+  };
+
+  ensureLink("dns-prefetch");
+  ensureLink("preconnect");
+}
 
 const getAuthTokens = () => {
   try {

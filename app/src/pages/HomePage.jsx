@@ -19,7 +19,7 @@ import CategoryPill from '../components/cards/CategoryPill';
 import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
-import { fetchEvent, fetchEvents, preloadRoutes } from '../lib/eventsApi';
+import { fetchEventLite, fetchEvents, preloadRoutes } from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
@@ -92,8 +92,8 @@ const HomePage = () => {
   const touchStartX = useRef(0);
 
   const { data: allEventsData, isLoading } = useQuery({
-    queryKey: eventQueryKeys.list({ ordering: 'start_date' }),
-    queryFn: () => fetchEvents({ ordering: 'start_date' })
+    queryKey: eventQueryKeys.list({ ordering: 'start_date', page_size: 12 }),
+    queryFn: () => fetchEvents({ ordering: 'start_date', page_size: 12 })
   });
   const allEvents = allEventsData?.results || [];
 
@@ -107,12 +107,12 @@ const HomePage = () => {
       allEvents.slice(0, 4).forEach((event, index) => {
         setTimeout(() => {
           if (cancelled || !event?.slug) return;
-          const detailKey = eventQueryKeys.detail(event.slug);
+          const detailKey = eventQueryKeys.detailLite(event.slug);
           const state = queryClient.getQueryState(detailKey);
           if (state?.dataUpdatedAt && Date.now() - state.dataUpdatedAt < 5 * 60 * 1000) return;
           queryClient.prefetchQuery({
             queryKey: detailKey,
-            queryFn: () => fetchEvent(event.slug),
+            queryFn: () => fetchEventLite(event.slug),
             staleTime: 5 * 60 * 1000,
           });
         }, index * 120);
