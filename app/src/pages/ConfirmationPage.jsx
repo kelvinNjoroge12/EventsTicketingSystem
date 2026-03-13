@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useLocation, Link, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Calendar,
@@ -18,12 +18,15 @@ const ConfirmationPage = () => {
   const { orderId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { clearCart } = useCart();
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [order, setOrder] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
   const stateData = location.state;
+  const emailParam = searchParams.get('email');
 
   useEffect(() => {
     // Clear cart after successful purchase
@@ -45,13 +48,14 @@ const ConfirmationPage = () => {
     // If we don't have location.state, try to fetch the order from API
     if (!stateData && orderId) {
       setIsLoading(true);
-      api.get(`/api/orders/${orderId}/`)
+      const query = emailParam ? `?email=${encodeURIComponent(emailParam)}` : '';
+      api.get(`/api/orders/${orderId}/${query}`)
         .then(data => {
           if (mounted) setOrder(data);
         })
         .catch(err => {
           console.error("Failed to fetch order", err);
-          // navigate('/events'); // Optionally redirect, or show an error
+          setLoadError(err?.message || 'We could not load your order details.');
         })
         .finally(() => {
           if (mounted) setIsLoading(false);
@@ -138,6 +142,23 @@ END:VCALENDAR`;
     window.open(shareUrls[platform], '_blank');
   };
 
+  if (loadError && !isHydrated) {
+    return (
+      <PageWrapper>
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+          <h2 className="text-2xl font-bold text-[#0F172A] mb-2">Unable to load your order</h2>
+          <p className="text-[#64748B] mb-6">{loadError}</p>
+          <Link
+            to="/find-ticket"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#1E4DB7] text-white font-medium"
+          >
+            Find your ticket
+          </Link>
+        </div>
+      </PageWrapper>
+    );
+  }
+
   if (isLoading || !isHydrated) {
     // Return a skeleton loader or fallback
     return (
@@ -153,6 +174,11 @@ END:VCALENDAR`;
   // Use event from state if available, otherwise just use order data
   const displayTitle = event ? event.title : 'Your Event';
   const displayDate = event ? formatDate(event.date) : formatDate(finalOrder.created_at || new Date());
+  const emailDisplay =
+    stateData?.attendeeData?.email ||
+    finalOrder?.attendee_email ||
+    finalOrder?.attendee_email_masked ||
+    'your email';
 
   return (
     <PageWrapper>
@@ -226,7 +252,7 @@ END:VCALENDAR`;
           <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Check your inbox</h3>
           <p className="text-[#64748B]">
             We've sent your official tickets to <span className="font-medium text-[#0F172A]">
-              {stateData?.attendeeData?.email || finalOrder?.attendee_email || 'your email'}
+              {emailDisplay}
             </span>. Please check your inbox (and spam folder) to download or print your tickets.
           </p>
         </motion.div>

@@ -22,6 +22,26 @@ class NotificationPreference(TimeStampedModel):
 
 
 
+class EmailOptOut(TimeStampedModel):
+    CATEGORY_CHOICES = [
+        ("reminders", "Event Reminders"),
+        ("marketing", "Marketing"),
+    ]
+
+    email = models.EmailField(db_index=True)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("email", "category")
+        indexes = [
+            models.Index(fields=["email", "category"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"EmailOptOut({self.email}, {self.category})"
+
+
 class Notification(TimeStampedModel):
     """In-app notification for attendees and organizers."""
 

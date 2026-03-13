@@ -6,6 +6,7 @@ from django.core.mail import EmailMultiAlternatives
 from celery import shared_task
 from apps.events.models import Event
 from apps.orders.models import Order
+from .utils import should_send_email_notification, build_opt_out_link, is_email_opted_out
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,10 @@ def send_event_reminders():
         for order in orders:
             if not order.attendee_email:
                 continue
+            if is_email_opted_out(order.attendee_email, "reminders"):
+                continue
+            if order.attendee and not should_send_email_notification(order.attendee, "event_reminders"):
+                continue
                 
             subject = f"Reminder: Upcoming Event - {event.title}"
             
@@ -59,6 +64,7 @@ def send_event_reminders():
             date_str = event.start_date.strftime("%b %d, %Y")
             venue_str = event.venue_name or event.city or "Online"
             
+            opt_out_link = build_opt_out_link(order.attendee_email, "reminders")
             text_content = (
                 f"We can't wait to see you!\n\n"
                 f"Hi {order.attendee_first_name},\n"
@@ -66,7 +72,8 @@ def send_event_reminders():
                 f"Date: {date_str} at {time_str}\n"
                 f"Location: {venue_str}\n\n"
                 f"Your digital ticket is available here: {frontend_url}/tickets\n\n"
-                f"See you there!\nPowered by EventHub"
+                f"See you there!\nPowered by EventHub\n\n"
+                f"Stop event reminders: {opt_out_link}"
             )
             
             html_content = f"""
@@ -83,7 +90,10 @@ def send_event_reminders():
                     <p style="margin-top: 30px; text-align: center;">
                         <a href="{frontend_url}/tickets" style="background-color: {event.theme_color or '#1E4DB7'}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Your Tickets</a>
                     </p>
-                    <p style="margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center;">Powered by EventHub</p>
+                    <p style="margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center;">
+                        <a href="{opt_out_link}" style="color: #94a3b8; text-decoration: underline;">Unsubscribe from event reminders</a>
+                    </p>
+                    <p style="margin-top: 12px; font-size: 12px; color: #94a3b8; text-align: center;">Powered by EventHub</p>
                 </div>
             </body>
             </html>

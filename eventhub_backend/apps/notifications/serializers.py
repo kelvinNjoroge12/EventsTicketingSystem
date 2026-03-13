@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.utils import timezone
 from rest_framework import serializers
 from .models import Notification, NotificationPreference
+from .utils import should_send_in_app_notification
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -42,13 +43,16 @@ def create_notification(
     message: str,
     event=None,
     action_url: str = "",
-) -> Notification:
+) -> Notification | None:
     """
     Helper used by other apps (payments, orders, checkin) to fire notifications.
     Usage:
         from apps.notifications.serializers import create_notification
         create_notification(user, "ticket_confirmed", "Your ticket is confirmed!", "...", event=event)
     """
+    if recipient and not should_send_in_app_notification(recipient, notification_type):
+        return None
+
     return Notification.objects.create(
         recipient=recipient,
         notification_type=notification_type,

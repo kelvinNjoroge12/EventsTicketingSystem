@@ -33,3 +33,11 @@ export const fetchSessions = async () => api.get('/api/auth/sessions/');
 
 export const revokeSession = async (id) =>
   api.post(`/api/auth/sessions/${id}/revoke/`, {});
+
+export const fetchPaymentSettings = async () => api.get('/api/settings/payments/');
+
+export const createStripeConnectLink = async (payload = {}) =>
+  api.post('/api/settings/payments/connect/', payload);
+
+export const createStripeDashboardLink = async () =>
+  api.post('/api/settings/payments/dashboard/', {});

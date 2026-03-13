@@ -4,6 +4,7 @@ from .views import (
     NotificationMarkReadView,
     NotificationMarkAllReadView,
     UnreadCountView,
+    NotificationOptOutView,
 )
 
 urlpatterns = [
@@ -11,4 +12,5 @@ urlpatterns = [
     path("unread-count/", UnreadCountView.as_view(), name="notification-unread-count"),
     path("read-all/", NotificationMarkAllReadView.as_view(), name="notification-read-all"),
     path("<int:pk>/read/", NotificationMarkReadView.as_view(), name="notification-read"),
+    path("opt-out/", NotificationOptOutView.as_view(), name="notification-opt-out"),
 ]

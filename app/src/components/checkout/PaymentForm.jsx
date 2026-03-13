@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { motion } from 'framer-motion';
 import { CreditCard, Smartphone, Lock } from 'lucide-react';
 import CustomInput from '../ui/CustomInput';
@@ -10,16 +11,24 @@ const PaymentForm = ({
   onSubmit,
   themeColor,
   isProcessing,
+  stripeEnabled = true,
 }) => {
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const stripe = useStripe();
+  const elements = useElements();
+  const [paymentMethod, setPaymentMethod] = useState(stripeEnabled ? 'card' : 'mpesa');
   const [formData, setFormData] = useState({
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
     cardholderName: '',
     mpesaPhone: '',
   });
   const [errors, setErrors] = useState({});
+  const [cardComplete, setCardComplete] = useState(false);
+  const currency = event?.currency || 'KES';
+
+  useEffect(() => {
+    if (!stripeEnabled && paymentMethod === 'card') {
+      setPaymentMethod('mpesa');
+    }
+  }, [stripeEnabled, paymentMethod]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -28,32 +37,14 @@ const PaymentForm = ({
     }
   };
 
-  const formatCardNumber = (value) => {
-    return value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim().slice(0, 19);
-  };
-
-  const formatExpiry = (value) => {
-    return value.replace(/\//g, '').replace(/(\d{2})(\d{0,2})/, '$1/$2').slice(0, 5);
-  };
-
   const validate = () => {
     const newErrors = {};
 
     if (paymentMethod === 'card') {
-      if (!formData.cardNumber.trim()) {
-        newErrors.cardNumber = 'Card number is required';
-      } else if (formData.cardNumber.replace(/\s/g, '').length < 16) {
-        newErrors.cardNumber = 'Please enter a valid card number';
-      }
-
-      if (!formData.expiry.trim()) {
-        newErrors.expiry = 'Expiry date is required';
-      }
-
-      if (!formData.cvv.trim()) {
-        newErrors.cvv = 'CVV is required';
-      } else if (formData.cvv.length < 3) {
-        newErrors.cvv = 'Please enter a valid CVV';
+      if (!stripeEnabled) {
+        newErrors.card = 'Card payments are not available yet.';
+      } else if (!cardComplete) {
+        newErrors.card = 'Please complete your card details.';
       }
 
       if (!formData.cardholderName.trim()) {
@@ -74,8 +65,9 @@ const PaymentForm = ({
     if (validate()) {
       onSubmit({
         paymentMethod,
-        ...formData,
-      });
+        cardholderName: formData.cardholderName,
+        mpesaPhone: formData.mpesaPhone,
+      }, { stripe, elements });
     }
   };
 
@@ -97,11 +89,13 @@ const PaymentForm = ({
         <button
           type="button"
           onClick={() => setPaymentMethod('card')}
+          disabled={!stripeEnabled}
           className={`
             flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all
             ${paymentMethod === 'card'
               ? 'bg-white text-[#0F172A] shadow-sm'
               : 'text-[#64748B] hover:text-[#0F172A]'}
+            ${!stripeEnabled ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
           <CreditCard className="w-5 h-5" />
@@ -129,35 +123,32 @@ const PaymentForm = ({
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
         >
-          <CustomInput
-            label="Card Number"
-            placeholder="1234 5678 9012 3456"
-            value={formData.cardNumber}
-            onChange={(e) => handleChange('cardNumber', formatCardNumber(e.target.value))}
-            error={errors.cardNumber}
-            leftIcon={CreditCard}
-            required
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CustomInput
-              label="Expiry Date"
-              placeholder="MM/YY"
-              value={formData.expiry}
-              onChange={(e) => handleChange('expiry', formatExpiry(e.target.value))}
-              error={errors.expiry}
-              required
-            />
-            <CustomInput
-              label="CVV"
-              placeholder="123"
-              type="password"
-              maxLength={4}
-              value={formData.cvv}
-              onChange={(e) => handleChange('cvv', e.target.value.replace(/\D/g, '').slice(0, 4))}
-              error={errors.cvv}
-              required
-            />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[#0F172A]">Card Details</label>
+            <div className={`rounded-lg border ${errors.card ? 'border-red-400' : 'border-[#E2E8F0]'} px-4 py-3 bg-white`}>
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: '16px',
+                      color: '#0F172A',
+                      fontFamily: 'inherit',
+                      '::placeholder': { color: '#94A3B8' },
+                    },
+                    invalid: { color: '#DC2626' },
+                  },
+                }}
+                onChange={(event) => {
+                  setCardComplete(event.complete);
+                  if (event.error) {
+                    setErrors((prev) => ({ ...prev, card: event.error.message }));
+                  } else if (errors.card) {
+                    setErrors((prev) => ({ ...prev, card: '' }));
+                  }
+                }}
+              />
+            </div>
+            {errors.card && <p className="text-sm text-[#DC2626]">{errors.card}</p>}
           </div>
 
           <CustomInput
@@ -210,7 +201,7 @@ const PaymentForm = ({
         className="py-4"
         style={{ backgroundColor: themeColor }}
       >
-        {isProcessing ? 'Processing...' : `Pay ${event.currency} ${cart.total.toLocaleString()}`}
+        {isProcessing ? 'Processing...' : `Pay ${currency} ${cart.total.toLocaleString()}`}
       </CustomButton>
     </motion.form>
   );

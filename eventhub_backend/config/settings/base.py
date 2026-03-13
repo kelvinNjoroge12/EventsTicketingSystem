@@ -188,6 +188,7 @@ JWT_COOKIE_DOMAIN = env("JWT_COOKIE_DOMAIN", default="")
 
 # CORS
 FRONTEND_URL = env("FRONTEND_URL", default="https://events-ticketing-system.vercel.app")
+BACKEND_URL = env("BACKEND_URL", default="https://eventsticketingsystem.onrender.com")
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 

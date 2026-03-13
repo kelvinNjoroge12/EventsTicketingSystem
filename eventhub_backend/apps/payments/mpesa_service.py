@@ -14,6 +14,8 @@ from apps.orders.models import Order
 from apps.orders.models import Ticket
 from apps.orders.utils import send_ticket_email
 from apps.notifications.serializers import create_notification
+from apps.notifications.email_service import EmailService
+from apps.notifications.utils import should_send_email_notification
 from .models import Payment
 
 
@@ -181,6 +183,26 @@ class MpesaService:
                         action_url=f"/confirmation/{order.order_number}",
                     )
 
+                if order.event and order.event.organizer and order.event.organizer != order.attendee:
+                    organizer = order.event.organizer
+                    create_notification(
+                        recipient=organizer,
+                        notification_type="ticket_confirmed",
+                        title="New ticket sale",
+                        message=(
+                            f"New order #{order.order_number} for "
+                            f"{order.event.title if order.event else 'your event'} "
+                            f"by {order.attendee_first_name} {order.attendee_last_name}."
+                        ),
+                        event=order.event,
+                        action_url=f"/organizer/events/{order.event.slug}",
+                    )
+                    try:
+                        if should_send_email_notification(organizer, "new_sales"):
+                            EmailService().send_new_sale_email(organizer, order)
+                    except Exception:
+                        pass
+
                 # Dispatch email containing the tickets
                 send_ticket_email(order)
 
@@ -188,4 +210,3 @@ class MpesaService:
             payment.status = "failed"
             payment.raw_response = data
             payment.save(update_fields=["status", "raw_response"])
-

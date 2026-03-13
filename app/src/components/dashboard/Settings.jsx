@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   User,
   Bell,
@@ -6,6 +7,8 @@ import {
   Shield,
   Users,
   Link,
+  ArrowUpRight,
+  RefreshCcw,
   Camera,
   Mail,
   Phone,
@@ -16,6 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -54,6 +58,9 @@ import {
   updateTwoFactor,
   fetchSessions,
   revokeSession,
+  fetchPaymentSettings,
+  createStripeConnectLink,
+  createStripeDashboardLink,
 } from '@/lib/organizerSettingsApi';
 
 const DEFAULT_NOTIFICATIONS = {
@@ -147,8 +154,22 @@ const normalizeSessions = (data) => {
   }));
 };
 
+const normalizePaymentSettings = (data) => ({
+  stripeEnabled: data?.stripe_enabled ?? data?.stripeEnabled ?? false,
+  stripeAccountId: data?.stripe_account_id ?? data?.stripeAccountId ?? '',
+  connected: data?.connected ?? Boolean(data?.stripe_account_id),
+  chargesEnabled: data?.charges_enabled ?? data?.chargesEnabled ?? false,
+  payoutsEnabled: data?.payouts_enabled ?? data?.payoutsEnabled ?? false,
+  detailsSubmitted: data?.details_submitted ?? data?.detailsSubmitted ?? false,
+  requirements: data?.requirements ?? {},
+  disabledReason: data?.disabled_reason ?? data?.disabledReason ?? '',
+  status: data?.status ?? (data?.stripe_account_id ? 'pending' : 'not_connected'),
+  stripeError: data?.stripe_error ?? '',
+});
+
 const OrganizerSettings = ({ events = [] }) => {
   const { user, updateUser } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState(() => normalizeProfile(user));
@@ -160,6 +181,24 @@ const OrganizerSettings = ({ events = [] }) => {
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'checkin', eventId: 'none' });
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+
+  const allowedSettingsTabs = useMemo(
+    () => ['profile', 'notifications', 'payment', 'team', 'integrations', 'security'],
+    []
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const desiredTab =
+      params.get('settingsTab') ||
+      params.get('settings_tab') ||
+      params.get('section') ||
+      '';
+    const normalized = desiredTab.toLowerCase();
+    if (allowedSettingsTabs.includes(normalized)) {
+      setActiveTab(normalized);
+    }
+  }, [location.search, allowedSettingsTabs]);
 
   const eventOptions = useMemo(
     () => events.map((event) => ({ id: String(event.id), slug: event.slug, label: event.name })),
@@ -241,6 +280,30 @@ const OrganizerSettings = ({ events = [] }) => {
   });
 
   const sessions = normalizeSessions(sessionsData);
+
+  const {
+    data: paymentSettingsData,
+    refetch: refetchPaymentSettings,
+    isFetching: isFetchingPaymentSettings,
+    isLoading: isLoadingPaymentSettings,
+  } = useQuery({
+    queryKey: ['settings_payments'],
+    queryFn: fetchPaymentSettings,
+    enabled: !!user,
+  });
+
+  const paymentSettings = useMemo(
+    () => normalizePaymentSettings(paymentSettingsData),
+    [paymentSettingsData]
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(location.search);
+    if (params.get('stripe')) {
+      refetchPaymentSettings();
+    }
+  }, [location.search, refetchPaymentSettings, user]);
 
   const profileMutation = useMutation({
     mutationFn: async () => {
@@ -357,6 +420,36 @@ const OrganizerSettings = ({ events = [] }) => {
     },
   });
 
+  const stripeConnectMutation = useMutation({
+    mutationFn: (payload) => createStripeConnectLink(payload),
+    onSuccess: (data) => {
+      const url = data?.url;
+      if (url) {
+        window.location.assign(url);
+        return;
+      }
+      toast.error('Unable to start Stripe onboarding.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to connect Stripe.');
+    },
+  });
+
+  const stripeDashboardMutation = useMutation({
+    mutationFn: () => createStripeDashboardLink(),
+    onSuccess: (data) => {
+      const url = data?.url;
+      if (url) {
+        window.location.assign(url);
+        return;
+      }
+      toast.error('Unable to open Stripe dashboard.');
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to open Stripe dashboard.');
+    },
+  });
+
   const handleProfileChange = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
   };
@@ -388,6 +481,24 @@ const OrganizerSettings = ({ events = [] }) => {
       },
     });
   };
+
+  const paymentStatusMeta = useMemo(
+    () => ({
+      enabled: { label: 'Enabled', className: 'bg-green-100 text-green-700' },
+      pending: { label: 'Pending setup', className: 'bg-amber-100 text-amber-700' },
+      restricted: { label: 'Restricted', className: 'bg-red-100 text-red-700' },
+      not_connected: { label: 'Not connected', className: 'bg-gray-100 text-gray-600' },
+      error: { label: 'Error', className: 'bg-red-100 text-red-700' },
+    }),
+    []
+  );
+  const paymentStatusInfo =
+    paymentStatusMeta[paymentSettings.status] || paymentStatusMeta.not_connected;
+  const paymentRequirements = paymentSettings.requirements || {};
+  const paymentOutstanding = [
+    ...(paymentRequirements.currently_due || []),
+    ...(paymentRequirements.past_due || []),
+  ];
 
   const sidebarItems = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -639,10 +750,136 @@ const OrganizerSettings = ({ events = [] }) => {
             <Card className="animate-slide-in-right">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Payment Settings</CardTitle>
-                <CardDescription className="text-sm">Payment setup will be managed in the backend.</CardDescription>
+                <CardDescription className="text-sm">Connect Stripe to receive payouts and track onboarding status.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 lg:space-y-6">
-                <div className="text-sm text-gray-500">Payment integrations are currently disabled.</div>
+                {isLoadingPaymentSettings && (
+                  <div className="text-xs text-gray-500">Loading payment status...</div>
+                )}
+                {!paymentSettings.stripeEnabled && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    Stripe is not configured yet. Add `STRIPE_SECRET_KEY` on the backend to enable onboarding.
+                  </div>
+                )}
+
+                {paymentSettings.stripeError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {paymentSettings.stripeError}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="font-medium text-[#0F172A]">Stripe Connect</p>
+                    <p className="text-xs text-gray-500">Enable card payments and scheduled payouts.</p>
+                    {paymentSettings.stripeAccountId && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Account: <span className="font-mono">{paymentSettings.stripeAccountId}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className={cn('text-xs', paymentStatusInfo.className)}>
+                      {paymentStatusInfo.label}
+                    </Badge>
+                    {paymentSettings.stripeEnabled && (
+                      <Button
+                        size="sm"
+                        className="bg-[#1E4DB7] hover:bg-[#163B90] text-xs"
+                        onClick={() => stripeConnectMutation.mutate({})}
+                        disabled={stripeConnectMutation.isLoading}
+                      >
+                        {stripeConnectMutation.isLoading
+                          ? 'Opening...'
+                          : paymentSettings.stripeAccountId
+                            ? 'Continue Onboarding'
+                            : 'Connect Stripe'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="p-3 border border-gray-200 rounded-lg">
+                    <p className="text-xs text-gray-500">Charges</p>
+                    <p className="text-sm font-medium text-[#0F172A]">
+                      {paymentSettings.chargesEnabled ? 'Enabled' : 'Disabled'}
+                    </p>
+                    <Badge
+                      className={cn(
+                        'text-[10px] mt-2',
+                        paymentSettings.chargesEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      )}
+                    >
+                      {paymentSettings.chargesEnabled ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                  <div className="p-3 border border-gray-200 rounded-lg">
+                    <p className="text-xs text-gray-500">Payouts</p>
+                    <p className="text-sm font-medium text-[#0F172A]">
+                      {paymentSettings.payoutsEnabled ? 'Enabled' : 'Disabled'}
+                    </p>
+                    <Badge
+                      className={cn(
+                        'text-[10px] mt-2',
+                        paymentSettings.payoutsEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      )}
+                    >
+                      {paymentSettings.payoutsEnabled ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                  <div className="p-3 border border-gray-200 rounded-lg">
+                    <p className="text-xs text-gray-500">Details</p>
+                    <p className="text-sm font-medium text-[#0F172A]">
+                      {paymentSettings.detailsSubmitted ? 'Submitted' : 'Incomplete'}
+                    </p>
+                    <Badge
+                      className={cn(
+                        'text-[10px] mt-2',
+                        paymentSettings.detailsSubmitted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      )}
+                    >
+                      {paymentSettings.detailsSubmitted ? 'Complete' : 'Needs info'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {paymentOutstanding.length > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-sm font-medium text-[#0F172A]">Action required</p>
+                    <p className="text-xs text-amber-700">
+                      Complete the following items in Stripe to enable payouts.
+                    </p>
+                    <ul className="list-disc pl-5 text-xs text-amber-800 mt-2 space-y-1">
+                      {paymentOutstanding.slice(0, 6).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {paymentSettings.stripeAccountId && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => stripeDashboardMutation.mutate()}
+                      disabled={stripeDashboardMutation.isLoading}
+                    >
+                      <ArrowUpRight className="w-4 h-4 mr-1" />
+                      {stripeDashboardMutation.isLoading ? 'Opening...' : 'Open Stripe Dashboard'}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => refetchPaymentSettings()}
+                    disabled={isFetchingPaymentSettings || isLoadingPaymentSettings}
+                  >
+                    <RefreshCcw className={cn('w-4 h-4 mr-1', isFetchingPaymentSettings && 'animate-spin')} />
+                    Refresh status
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}

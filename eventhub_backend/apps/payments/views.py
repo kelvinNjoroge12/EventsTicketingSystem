@@ -16,6 +16,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.notifications.serializers import create_notification
+from apps.notifications.email_service import EmailService
+from apps.notifications.utils import should_send_email_notification
 from apps.orders.models import Order, Ticket
 from apps.orders.utils import send_ticket_email
 from apps.tickets.models import TicketType
@@ -125,6 +127,7 @@ def _notify_and_email(order: Order, title: str):
         )
 
     if order.event and order.event.organizer and order.event.organizer != order.attendee:
+        organizer = order.event.organizer
         create_notification(
             recipient=order.event.organizer,
             notification_type="ticket_confirmed",
@@ -137,6 +140,11 @@ def _notify_and_email(order: Order, title: str):
             event=order.event,
             action_url=f"/organizer/events/{order.event.slug}",
         )
+        try:
+            if should_send_email_notification(organizer, "new_sales"):
+                EmailService().send_new_sale_email(organizer, order)
+        except Exception:  # pragma: no cover
+            logger.exception("Organizer sale email failed for order %s", order.order_number)
 
     if getattr(settings, "ASYNC_TICKET_EMAIL", True):
         _dispatch_ticket_email_async(order)

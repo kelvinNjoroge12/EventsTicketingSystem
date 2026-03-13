@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Elements, CardElement } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { Calendar, MapPin, Ticket, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import StepIndicator from '../components/checkout/StepIndicator';
@@ -12,6 +14,10 @@ import { useCart } from '../context/CartContext';
 
 const SIMULATED_PAYMENTS_ENABLED =
   import.meta.env.VITE_ENABLE_SIMULATED_PAYMENTS === 'true' || import.meta.env.DEV;
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const CheckoutPage = () => {
   const { slug } = useParams();
@@ -61,7 +67,46 @@ const CheckoutPage = () => {
   };
 
   // ── Step 2: Create order + handle payment ────────────────────
-  const handlePaymentSubmit = async (paymentData) => {
+  const getOrderDetails = async (orderNumber, email) => {
+    const query = email ? `?email=${encodeURIComponent(email)}` : '';
+    return api.get(`/api/orders/${orderNumber}/${query}`);
+  };
+
+  const waitForOrderConfirmation = async (orderNumber, email) => {
+    let lastOrder = null;
+    const maxAttempts = 8;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        lastOrder = await getOrderDetails(orderNumber, email);
+        if (lastOrder?.status === 'confirmed') return lastOrder;
+      } catch {
+        // swallow and retry
+      }
+      await sleep(2500);
+    }
+    return lastOrder;
+  };
+
+  const pollMpesaStatus = async (checkoutRequestId) => {
+    if (!checkoutRequestId) {
+      throw new Error('Missing M-Pesa checkout request id.');
+    }
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const statusResponse = await api.post('/api/payments/mpesa/query/', {
+        checkout_request_id: checkoutRequestId,
+      });
+      const status = statusResponse?.status || statusResponse?.payment_status;
+      if (status === 'succeeded') return true;
+      if (status === 'failed') {
+        throw new Error('M-Pesa payment failed. Please try again.');
+      }
+      await sleep(5000);
+    }
+    throw new Error('M-Pesa payment is still pending. Please confirm on your phone and try again.');
+  };
+
+  const handlePaymentSubmit = async (paymentData, stripeContext = {}) => {
     setIsProcessing(true);
     setError('');
 
@@ -115,7 +160,7 @@ const CheckoutPage = () => {
       const isBackendFree = currentOrderContext.status === 'confirmed' || normalizedTotal === 0;
       if (isBackendFree) {
         setIsProcessing(false);
-        navigate(`/confirmation/${currentOrderContext.orderNumber}`, {
+        navigate(`/confirmation/${currentOrderContext.orderNumber}?email=${encodeURIComponent(attendeeData.email)}`, {
           state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
         });
         return;
@@ -124,26 +169,73 @@ const CheckoutPage = () => {
       if (SIMULATED_PAYMENTS_ENABLED) {
         await api.post('/api/payments/simulate/confirm/', confirmationPayload);
         setIsProcessing(false);
-        navigate(`/confirmation/${currentOrderContext.orderNumber}`, {
+        navigate(`/confirmation/${currentOrderContext.orderNumber}?email=${encodeURIComponent(attendeeData.email)}`, {
           state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
         });
         return;
       }
 
       if (paymentData.paymentMethod === 'card') {
-        await api.post('/api/payments/stripe/create-intent/', confirmationPayload);
-        setError('Payment intent created. Complete the Stripe frontend confirmation step to finalize the order.');
+        if (!stripeContext?.stripe || !stripeContext?.elements) {
+          throw new Error('Card payments are not ready yet. Please try again in a moment.');
+        }
+        const intentResponse = await api.post('/api/payments/stripe/create-intent/', confirmationPayload);
+        const clientSecret = intentResponse?.client_secret || intentResponse?.clientSecret;
+        if (!clientSecret) {
+          throw new Error('Unable to start card payment. Please try again.');
+        }
+
+        const cardElement = stripeContext.elements.getElement(CardElement);
+        if (!cardElement) {
+          throw new Error('Card details are not ready. Please check the form and try again.');
+        }
+
+        const { error: stripeError, paymentIntent } = await stripeContext.stripe.confirmCardPayment(
+          clientSecret,
+          {
+            payment_method: {
+              card: cardElement,
+              billing_details: {
+                name: paymentData.cardholderName || attendeeData?.firstName || '',
+                email: attendeeData?.email || '',
+                phone: attendeeData?.phone || '',
+              },
+            },
+            return_url: `${window.location.origin}/confirmation/${currentOrderContext.orderNumber}?email=${encodeURIComponent(attendeeData.email)}`,
+          }
+        );
+
+        if (stripeError) {
+          throw new Error(stripeError.message || 'Card payment failed.');
+        }
+
+        const status = paymentIntent?.status;
+        if (status && !['succeeded', 'processing'].includes(status)) {
+          throw new Error('Payment requires additional steps. Please try again.');
+        }
+
+        await waitForOrderConfirmation(currentOrderContext.orderNumber, attendeeData.email);
         setIsProcessing(false);
+        navigate(`/confirmation/${currentOrderContext.orderNumber}?email=${encodeURIComponent(attendeeData.email)}`, {
+          state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
+        });
         return;
       }
 
       if (paymentData.paymentMethod === 'mpesa') {
-        await api.post('/api/payments/mpesa/initiate/', {
+        const mpesaResponse = await api.post('/api/payments/mpesa/initiate/', {
           ...confirmationPayload,
           phone: paymentData.mpesaPhone,
         });
-        setError('M-Pesa request initiated. Complete callback confirmation before showing success.');
+        setError('M-Pesa prompt sent. Waiting for confirmation on your phone...');
+        const checkoutRequestId =
+          mpesaResponse?.checkout_request_id || mpesaResponse?.checkoutRequestId || mpesaResponse?.id;
+        await pollMpesaStatus(checkoutRequestId);
+        await waitForOrderConfirmation(currentOrderContext.orderNumber, attendeeData.email);
         setIsProcessing(false);
+        navigate(`/confirmation/${currentOrderContext.orderNumber}?email=${encodeURIComponent(attendeeData.email)}`, {
+          state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
+        });
         return;
       }
 
@@ -151,8 +243,8 @@ const CheckoutPage = () => {
     } catch (err) {
       console.error('Checkout error:', err);
       const msg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
+        err?.response?.error?.message ||
+        err?.response?.detail ||
         err?.message ||
         'Something went wrong. Please try again.';
       setError(msg);
@@ -170,6 +262,7 @@ const CheckoutPage = () => {
   const themeColor = event?.theme_color || event?.themeColor || '#1E4DB7';
   const accentColor = event?.accent_color || event?.accentColor || '#7C3AED';
   const currency = event?.currency || 'KES';
+  const stripeEnabled = Boolean(STRIPE_PUBLISHABLE_KEY);
 
   // Loading
   if (!event || !cart) {
@@ -280,13 +373,16 @@ const CheckoutPage = () => {
                       </button>
                     </div>
                   ) : (
-                    <PaymentForm
-                      event={event}
-                      cart={cart}
-                      onSubmit={handlePaymentSubmit}
-                      themeColor={themeColor}
-                      isProcessing={isProcessing}
-                    />
+                    <Elements stripe={stripePromise}>
+                      <PaymentForm
+                        event={event}
+                        cart={cart}
+                        onSubmit={handlePaymentSubmit}
+                        themeColor={themeColor}
+                        isProcessing={isProcessing}
+                        stripeEnabled={stripeEnabled}
+                      />
+                    </Elements>
                   )}
 
                   <div className="mt-4">

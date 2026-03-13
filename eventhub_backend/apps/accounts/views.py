@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import uuid
 
+import stripe
+
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.mail import send_mail
@@ -46,6 +48,21 @@ from apps.notifications.models import Notification
 from .tasks import send_password_reset_email, send_verification_email, send_welcome_email
 
 User = get_user_model()
+
+
+def _ensure_organizer_profile(user: User) -> OrganizerProfile:
+    profile = getattr(user, "organizer_profile", None)
+    if profile:
+        return profile
+    profile, _ = OrganizerProfile.objects.get_or_create(
+        user=user,
+        defaults={"organization_name": user.get_full_name() or user.email},
+    )
+    return profile
+
+
+def _stripe_enabled() -> bool:
+    return bool(getattr(settings, "STRIPE_SECRET_KEY", ""))
 
 
 def _extract_refresh_jti(token_str: str) -> str | None:
@@ -444,6 +461,153 @@ class IntegrationDisconnectView(APIView):
         connection.is_connected = False
         connection.save(update_fields=["is_connected"])
         return Response({"connected": False})
+
+
+class OrganizerPaymentSettingsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request):
+        if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
+            raise PermissionDenied("Only organizers can manage payment settings.")
+
+        profile = _ensure_organizer_profile(request.user)
+        stripe_account_id = profile.stripe_account_id or ""
+        stripe_ready = _stripe_enabled()
+
+        payload = {
+            "stripe_enabled": stripe_ready,
+            "stripe_account_id": stripe_account_id or None,
+            "connected": bool(stripe_account_id),
+            "charges_enabled": False,
+            "payouts_enabled": False,
+            "details_submitted": False,
+            "requirements": {},
+            "disabled_reason": "",
+            "status": "not_connected" if not stripe_account_id else "pending",
+        }
+
+        if not stripe_ready or not stripe_account_id:
+            return Response(payload)
+
+        try:
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+            account = stripe.Account.retrieve(stripe_account_id)
+        except stripe.error.StripeError as exc:
+            payload["status"] = "error"
+            payload["stripe_error"] = exc.user_message or str(exc)
+            return Response(payload)
+
+        requirements = account.get("requirements") or {}
+        disabled_reason = requirements.get("disabled_reason") or ""
+        charges_enabled = bool(account.get("charges_enabled"))
+        payouts_enabled = bool(account.get("payouts_enabled"))
+        details_submitted = bool(account.get("details_submitted"))
+
+        status_label = "enabled" if charges_enabled and payouts_enabled else "pending"
+        if disabled_reason:
+            status_label = "restricted"
+
+        payload.update(
+            {
+                "charges_enabled": charges_enabled,
+                "payouts_enabled": payouts_enabled,
+                "details_submitted": details_submitted,
+                "requirements": requirements,
+                "disabled_reason": disabled_reason,
+                "status": status_label,
+            }
+        )
+        return Response(payload)
+
+
+class OrganizerPaymentConnectView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request):
+        if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
+            raise PermissionDenied("Only organizers can manage payment settings.")
+
+        if not _stripe_enabled():
+            return Response(
+                {"detail": "Stripe is not configured."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        profile = _ensure_organizer_profile(request.user)
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        country = (request.data.get("country") or "").upper().strip()
+        if not country:
+            country = getattr(settings, "STRIPE_CONNECT_COUNTRY", "US")
+
+        try:
+            if not profile.stripe_account_id:
+                account = stripe.Account.create(
+                    type="express",
+                    country=country,
+                    email=request.user.email,
+                    capabilities={
+                        "card_payments": {"requested": True},
+                        "transfers": {"requested": True},
+                    },
+                )
+                profile.stripe_account_id = account.id
+                profile.save(update_fields=["stripe_account_id"])
+
+            frontend_base = getattr(settings, "FRONTEND_URL", "").rstrip("/")
+            refresh_url = f"{frontend_base}/organizer-dashboard?tab=settings&settingsTab=payment&stripe=refresh"
+            return_url = f"{frontend_base}/organizer-dashboard?tab=settings&settingsTab=payment&stripe=return"
+
+            account_link = stripe.AccountLink.create(
+                account=profile.stripe_account_id,
+                refresh_url=refresh_url,
+                return_url=return_url,
+                type="account_onboarding",
+            )
+        except stripe.error.StripeError as exc:
+            return Response(
+                {"detail": exc.user_message or "Unable to start Stripe onboarding."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "stripe_account_id": profile.stripe_account_id,
+                "url": account_link.url,
+            }
+        )
+
+
+class OrganizerPaymentDashboardView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request):
+        if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
+            raise PermissionDenied("Only organizers can manage payment settings.")
+
+        if not _stripe_enabled():
+            return Response(
+                {"detail": "Stripe is not configured."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        profile = _ensure_organizer_profile(request.user)
+        if not profile.stripe_account_id:
+            return Response(
+                {"detail": "No Stripe account connected yet."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        try:
+            login_link = stripe.Account.create_login_link(profile.stripe_account_id)
+        except stripe.error.StripeError as exc:
+            return Response(
+                {"detail": exc.user_message or "Unable to open Stripe dashboard."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({"url": login_link.url})
 
 
 class OrganizerTeamListView(APIView):

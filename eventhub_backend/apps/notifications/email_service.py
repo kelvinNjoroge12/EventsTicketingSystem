@@ -31,3 +31,29 @@ class EmailService:
         message = f"Hi {user.first_name},\n\nYour organizer account has been created. You can now start creating and managing events.\n\nEnjoy!\nEventHub Team"
         
         send_mail(subject, message, self.from_email, [user.email], fail_silently=True)
+
+    def send_new_sale_email(self, organizer, order):
+        event = getattr(order, "event", None)
+        event_title = event.title if event else "your event"
+        attendee_name = f"{order.attendee_first_name} {order.attendee_last_name}".strip()
+        attendee_email = order.attendee_email
+        amount = f"{order.currency} {order.total}"
+        event_ref = event.slug if event and getattr(event, "slug", "") else ""
+        details_url = (
+            f"{self.frontend_url}/organizer-dashboard?tab=event&event={event_ref}"
+            if event_ref
+            else f"{self.frontend_url}/organizer-dashboard?tab=events"
+        )
+
+        subject = f"New ticket sale: {event_title}"
+        message = (
+            f"Hi {organizer.first_name},\n\n"
+            f"You've got a new ticket sale for {event_title}.\n\n"
+            f"Order: {order.order_number}\n"
+            f"Attendee: {attendee_name} ({attendee_email})\n"
+            f"Total: {amount}\n\n"
+            f"View details: {details_url}\n\n"
+            "EventHub Team"
+        )
+
+        send_mail(subject, message, self.from_email, [organizer.email], fail_silently=True)
