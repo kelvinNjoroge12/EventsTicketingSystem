@@ -19,14 +19,16 @@ from .views import (
 urlpatterns = [
     # Top-priority specific endpoints
     path("organizer/", MyEventsListView.as_view(), name="my-events"),
+    # Alias for /organizer/ — kept for backwards-compat with old frontend builds
+    path("my/", MyEventsListView.as_view(), name="my-events-alias"),
     path("create/", EventCreateView.as_view(), name="event-create"),
     path("categories/", CategoryListView.as_view(), name="event-categories"),
     path("featured/", FeaturedEventsView.as_view(), name="event-featured"),
-    
+
     # Generic list and organizer list
     path("", EventListView.as_view(), name="event-list"),
     path("organizers/<str:id>/", OrganizerEventListView.as_view(), name="organizer-events"),
-    
+
     # Sluggish details
     path("<slug:slug>/", EventDetailView.as_view(), name="event-detail"),
     path("<slug:slug>/publish/", EventPublishView.as_view(), name="event-publish"),

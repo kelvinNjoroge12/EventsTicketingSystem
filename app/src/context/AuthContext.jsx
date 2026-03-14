@@ -5,9 +5,10 @@ import React, {
   useCallback,
   useEffect,
 } from 'react';
-import { api, setSessionHint } from '../lib/apiClient';
+import { api, setSessionHint, resetSessionState } from '../lib/apiClient';
 
 const AuthContext = createContext(null);
+
 /**
  * Normalizes a raw backend user object so UI components can safely
  * access `user.name` instead of having to join first_name + last_name
@@ -29,18 +30,16 @@ export const AuthProvider = ({ children }) => {
   // Always normalize before setting so every consumer gets `user.name`
   const setUser = useCallback((raw) => setUserRaw(normalizeUser(raw)), []);
 
-  // Verify session cookies on mount
+  // Verify session cookies on mount — attempts a token refresh if profile fetch fails
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
-      if (!setSessionHint) {
-        // no-op safety
-      }
       try {
         const profile = await api.get('/api/auth/profile/');
         if (isMounted) {
           setUser(profile);
-          setSessionHint(true);
+          // Ensure the session hint and state are fresh after a successful profile load
+          resetSessionState();
         }
       } catch (err) {
         if (isMounted) {
@@ -64,7 +63,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await api.post('/api/auth/login/', { email, password });
       setUser(data.user);
-      setSessionHint(true);
+      // Reset session state so subsequent 401s correctly trigger refresh
+      resetSessionState();
       return normalizeUser(data.user);
     } finally {
       setIsLoading(false);
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
       };
       const data = await api.post('/api/auth/register/', payload);
       setUser(data.user);
-      setSessionHint(true);
+      resetSessionState();
       return normalizeUser(data.user);
     } finally {
       setIsLoading(false);
@@ -133,4 +133,3 @@ export const useAuth = () => {
 };
 
 export default AuthContext;
-

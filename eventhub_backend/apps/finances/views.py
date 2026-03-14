@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import date, timedelta
 
@@ -182,7 +182,7 @@ class OrganizerDashboardStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if request.user.role != 'organizer' and not request.user.is_staff:
+        if request.user.role not in ('organizer', 'admin') and not request.user.is_staff:
             raise PermissionDenied("Only organizers can view this dashboard.")
 
         event_id = request.query_params.get('event_id')
@@ -245,7 +245,7 @@ class OrganizerRevenueSeriesView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if request.user.role != 'organizer' and not request.user.is_staff:
+        if request.user.role not in ('organizer', 'admin') and not request.user.is_staff:
             raise PermissionDenied("Only organizers can view this dashboard.")
 
         range_key = request.query_params.get("range", "month")
