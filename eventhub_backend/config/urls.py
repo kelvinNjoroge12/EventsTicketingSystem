@@ -26,6 +26,7 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # Health Check
     path("api/health/", health_check, name="health-check"),
+    path("api/health", health_check, name="health-check-no-slash"),
     path("api/analytics/frontend-error/", FrontendErrorReportView.as_view(), name="frontend-error"),
     path("api/analytics/frontend-error", FrontendErrorReportView.as_view(), name="frontend-error-no-slash"),
     # Ticket self-service retrieval (public, no auth)
@@ -33,6 +34,7 @@ urlpatterns = [
     # Core apps
     path("api/auth/", include("apps.accounts.urls")),
     path("api/events/", include("apps.events.urls")),
+    path("api/events/my/", include("apps.events.urls")), # Direct fallback
     path("api/", include("apps.tickets.urls")),
     path("api/orders/", include("apps.orders.urls")),
     path("api/payments/", include("apps.payments.urls")),
@@ -48,6 +50,8 @@ urlpatterns = [
     path("api/notifications/", include("apps.notifications.urls")),
     # New Finances / Budgeting module
     path("api/finances/", include("apps.finances.urls")),
+    path("api/finances", include("apps.finances.urls")), # No-slash fallback
+
     # Waitlist management (join + organizer view)
     path("api/events/<slug:slug>/waitlist/", include("apps.waitlist.urls")),
 ]

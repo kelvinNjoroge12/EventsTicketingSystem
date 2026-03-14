@@ -2,6 +2,7 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 const HAS_SESSION_KEY = "eventhub_has_session";
+const ACCESS_TOKEN_KEY = "eventhub_access_token";
 
 export const getSessionHint = () => {
   try {
@@ -18,9 +19,31 @@ export const setSessionHint = (enabled) => {
       localStorage.setItem(HAS_SESSION_KEY, "1");
     } else {
       localStorage.removeItem(HAS_SESSION_KEY);
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
     }
   } catch {
     // ignore storage failures
+  }
+};
+
+export const getStoredToken = () => {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredToken = (token) => {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (token) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+    }
+  } catch {
+    // ignore
   }
 };
 
@@ -52,15 +75,12 @@ if (API_ORIGIN && typeof document !== "undefined") {
 // Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
 let refreshPromise = null;
-// Track if we know for certain there's no valid session
-// (set to true after a failed refresh so we stop retrying)
 let sessionDefinitelyGone = false;
 
 const refreshAccessToken = async () => {
   const res = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    // Send empty body — the backend reads the refresh token from the HttpOnly cookie
     body: JSON.stringify({}),
     credentials: "include",
   });
@@ -71,15 +91,23 @@ const refreshAccessToken = async () => {
     throw new Error("Session expired. Please log in again.");
   }
 
-  // Refresh succeeded — make sure the hint is set
+  const data = await res.json().catch(() => null);
+  const token = data?.data?.access || data?.access;
+  if (token) {
+    setStoredToken(token);
+  }
+
   setSessionHint(true);
   sessionDefinitelyGone = false;
+  return token;
 };
 
 async function request(path, options = {}, retry = true) {
   const url = `${API_BASE_URL}${path}`;
+  const token = getStoredToken();
   const headers = {
     ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
@@ -91,7 +119,6 @@ async function request(path, options = {}, retry = true) {
 
   // Auto-refresh on 401 and retry once
   if (res.status === 401 && retry) {
-    // If we already know for certain the session is gone, don't bother
     if (sessionDefinitelyGone) {
       const error = new Error("Session expired. Please log in again.");
       error.status = 401;
@@ -105,19 +132,21 @@ async function request(path, options = {}, retry = true) {
           isRefreshing = false;
         });
       }
-      await refreshPromise;
+      const newToken = await refreshPromise;
 
       // Retry the original request with fresh token
       return request(
         path,
         {
           ...options,
-          headers: options.headers,
+          headers: {
+            ...options.headers,
+            ...(newToken ? { "Authorization": `Bearer ${newToken}` } : {}),
+          },
         },
         false // don't retry again
       );
     } catch {
-      // Re-throw so callers (e.g. login redirect) can handle
       const error = new Error("Session expired. Please log in again.");
       error.status = 401;
       throw error;
@@ -137,7 +166,6 @@ async function request(path, options = {}, retry = true) {
     throw error;
   }
 
-  // Our backend wraps successful responses as { success, data, message? }
   return data?.data ?? data;
 }
 
@@ -154,7 +182,14 @@ const extractFilename = (disposition, fallback) => {
 
 const download = async (path) => {
   const url = `${API_BASE_URL}${path}`;
-  const res = await fetch(url, { credentials: "include" });
+  const token = getStoredToken();
+  const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+  
+  const res = await fetch(url, { 
+    headers,
+    credentials: "include" 
+  });
+  
   if (!res.ok) {
     const data = await res.json().catch(() => null);
     const message =
@@ -187,7 +222,7 @@ export const api = {
     request(path, {
       method: "POST",
       body: formData,
-      headers: {}, // Let browser set Content-Type for multipart/form-data
+      headers: {},
     }),
   patchForm: (path, formData) =>
     request(path, {
@@ -198,16 +233,14 @@ export const api = {
   download,
 };
 
-/**
- * Called on successful login / register to reset the "session gone" flag
- * so subsequent 401s trigger a refresh attempt again.
- */
-export const resetSessionState = () => {
+export const resetSessionState = (token = null) => {
   sessionDefinitelyGone = false;
   setSessionHint(true);
+  if (token) {
+    setStoredToken(token);
+  }
 };
 
-// Proactively wakes up the Render free-tier instance on first load
 export const wakeUpServer = () => {
   try {
     fetch(`${API_BASE_URL}/api/health/`, { method: 'GET', keepalive: true }).catch(() => {});

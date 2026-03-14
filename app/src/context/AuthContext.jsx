@@ -63,8 +63,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await api.post('/api/auth/login/', { email, password });
       setUser(data.user);
-      // Reset session state so subsequent 401s correctly trigger refresh
-      resetSessionState();
+      // Reset session state and store token locally for header-based auth fallback
+      const token = data.tokens?.access || data.access_token || data.access;
+      resetSessionState(token);
       return normalizeUser(data.user);
     } finally {
       setIsLoading(false);
@@ -84,7 +85,8 @@ export const AuthProvider = ({ children }) => {
       };
       const data = await api.post('/api/auth/register/', payload);
       setUser(data.user);
-      resetSessionState();
+      const token = data.tokens?.access || data.access_token || data.access;
+      resetSessionState(token);
       return normalizeUser(data.user);
     } finally {
       setIsLoading(false);
