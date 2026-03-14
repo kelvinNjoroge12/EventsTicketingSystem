@@ -1,0 +1,6 @@
+✗ Build failed in 3.90s
+error during build:
+Could not resolve "./icons/square-arrow-right.js" from "node_modules/lucide-react/dist/esm/lucide-react.js"
+file: C:/Users/lmbua/Downloads/EventFrontend/app/node_modules/lucide-react/dist/esm/lucide-react.js
+    at getRollupError (file:///C:/Users/lmbua/Downloads/EventFrontend/app/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///C:/Users/lmbua/Downloads/EventFrontend/app/node
