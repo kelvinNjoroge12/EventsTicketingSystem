@@ -30,4 +30,4 @@ whitenoise==6.7.0
 pytest==8.3.4
 pytest-django==4.10.0
 factory-boy==3.3.1
-
+django-jazzmin==3.0.1

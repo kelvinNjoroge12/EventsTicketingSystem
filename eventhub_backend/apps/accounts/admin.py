@@ -5,7 +5,13 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from .models import OrganizerProfile, User
 
-
+@admin.action(description="Approve selected organizer profiles")
+def approve_organizers(modeladmin, request, queryset):
+    queryset.update(is_approved=True)
+    for profile in queryset:
+        if profile.user.role == 'attendee':
+            profile.user.role = 'organizer'
+            profile.user.save(update_fields=['role'])
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     model = User
@@ -49,4 +55,5 @@ class OrganizerProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "organization_name", "is_approved", "is_verified", "total_events", "total_attendees")
     list_filter = ("is_approved", "is_verified")
     search_fields = ("user__email", "organization_name")
+    actions = [approve_organizers]
 

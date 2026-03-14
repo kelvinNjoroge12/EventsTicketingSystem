@@ -204,7 +204,11 @@ class EventCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def perform_create(self, serializer):
-        serializer.save()
+        status = serializer.validated_data.get('status', 'draft')
+        if status == 'published' and not self.request.user.is_superuser:
+            serializer.save(status='pending')
+        else:
+            serializer.save()
         _bump_cache_version()
 
 
@@ -245,7 +249,10 @@ class EventPublishView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         event = self.get_object()
-        event.status = "published"
+        if request.user.is_superuser:
+            event.status = "published"
+        else:
+            event.status = "pending"
         event.save(update_fields=["status"])
         _bump_cache_version()
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())

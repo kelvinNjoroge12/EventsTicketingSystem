@@ -771,3 +771,38 @@ class OrganizerTeamMemberDetailView(APIView):
 @permission_classes([permissions.AllowAny])
 def health(request: Request):
     return Response({"status": "ok"})
+
+class RequestOrganizerRoleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request, *args, **kwargs):
+        user = request.user
+        if user.role != "attendee":
+            return Response(
+                {"success": False, "message": "You already have a special role."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        organization_name = request.data.get("organization_name", "")
+        if not organization_name:
+            organization_name = f"{user.first_name} {user.last_name}'s Organization"
+            
+        profile, created = OrganizerProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                "organization_name": organization_name,
+                "is_approved": False
+            }
+        )
+        
+        if not created and profile.is_approved:
+            user.role = "organizer"
+            user.save(update_fields=["role"])
+            return Response(
+                {"success": True, "message": "You are already approved as an organizer."}
+            )
+            
+        # Give a notification or email to admin in a real app, here we just return success
+        return Response(
+            {"success": True, "message": "Your request to become an organizer has been submitted and is pending approval."}
+        )

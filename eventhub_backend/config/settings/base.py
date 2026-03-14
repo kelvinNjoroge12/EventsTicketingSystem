@@ -26,6 +26,8 @@ DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 INSTALLED_APPS = [
+    # Third party themes
+    "jazzmin",
     # Django
     "django.contrib.admin",
     "django.contrib.auth",
@@ -291,3 +293,18 @@ if ENABLE_KEEP_ALIVE_PING:
         "task": "common.tasks.keep_alive_ping_task",
         "schedule": timedelta(seconds=KEEP_ALIVE_INTERVAL_SECONDS),
     }
+
+JAZZMIN_SETTINGS = {
+    "site_title": "EventHub SuperAdmin",
+    "site_header": "EventHub Dashboard",
+    "site_brand": "EventHub",
+    "welcome_sign": "Welcome to EventHub SuperAdmin",
+    "copyright": "EventHub Ltd",
+    "search_model": ["accounts.User", "events.Event"],
+    "show_ui_builder": True,
+    "navigation_expanded": True,
+    "topmenu_links": [
+        {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Frontend Site", "url": "https://events-ticketing-system.vercel.app/"},
+    ]
+}

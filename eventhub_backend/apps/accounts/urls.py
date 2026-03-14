@@ -18,6 +18,7 @@ from .views import (
     TwoFactorToggleView,
     TokenRefreshView,
     UserProfileView,
+    RequestOrganizerRoleView
 )
 
 urlpatterns = [
@@ -36,4 +37,5 @@ urlpatterns = [
     path("verify-email/", EmailVerificationView.as_view(), name="verify_email"),
     path("resend-verification/", ResendVerificationView.as_view(), name="resend_verification"),
     path("organizers/<uuid:id>/", OrganizerProfileView.as_view(), name="organizer_profile"),
+    path("request-organizer/", RequestOrganizerRoleView.as_view(), name="request_organizer"),
 ]

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -243,7 +243,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         await Promise.allSettled(sponsorPromises);
       }
 
-      toast.success('Event created successfully!');
+      toast.success('Your event has been submitted for review! You will get a notification once it has been approved to go live.', { duration: 6000 });
       if (onCreated) onCreated(createdEvent);
     } catch (err) {
       toast.error(err?.message || 'Failed to create event');
@@ -784,7 +784,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
             ) : (
               <>
                 <Check className="w-4 h-4 mr-1.5" />
-                Create Event
+                Submit for Review
               </>
             )}
           </Button>
