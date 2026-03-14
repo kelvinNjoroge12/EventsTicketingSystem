@@ -189,3 +189,12 @@ export const api = {
     }),
   download,
 };
+
+// Proactively wakes up the Render free-tier instance on first load
+export const wakeUpServer = () => {
+  try {
+    fetch(`${API_BASE_URL}/api/health/`, { method: 'GET', keepalive: true }).catch(() => {});
+  } catch {
+    // ignore
+  }
+};

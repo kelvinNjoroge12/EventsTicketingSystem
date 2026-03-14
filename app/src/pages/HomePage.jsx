@@ -75,6 +75,7 @@ const HomePage = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeTab, setActiveTab] = useState('attendee');
   const [searchData, setSearchData] = useState({ keyword: '', location: '', date: '' });
+  const [isSlowLoad, setIsSlowLoad] = useState(false);
 
   // Instantly redirect organizers/admins to their dashboard instead of showing the public homepage
   useEffect(() => {
@@ -96,6 +97,16 @@ const HomePage = () => {
     queryFn: () => fetchEvents({ ordering: 'start_date', page_size: 12 })
   });
   const allEvents = allEventsData?.results || [];
+
+  useEffect(() => {
+    let timer;
+    if (isLoading) {
+      timer = setTimeout(() => setIsSlowLoad(true), 4000);
+    } else {
+      setIsSlowLoad(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   useEffect(() => {
     if (!allEvents.length) return undefined;
@@ -513,8 +524,18 @@ const HomePage = () => {
           </div>
 
           {isLoading ? (
-            <div className="min-h-[360px] flex items-center justify-center">
+            <div className="min-h-[360px] flex flex-col items-center justify-center space-y-4">
               <ClassicTicketLoader visible overlay={false} ariaLabel="Loading upcoming events" />
+              {isSlowLoad && (
+                <motion.p 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  className="text-sm text-[#64748B] text-center max-w-xs"
+                >
+                  Waking up the servers... 📅<br />
+                  <span className="text-xs">(Free tiers may take up to 60s to start)</span>
+                </motion.p>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">

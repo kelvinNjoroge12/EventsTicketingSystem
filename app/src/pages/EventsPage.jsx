@@ -57,6 +57,7 @@ const EventsPage = () => {
     format: 'all', // all, in-person, online
     sort: 'popular', // popular, upcoming, newest, price-low, price-high
   });
+  const [isSlowLoad, setIsSlowLoad] = useState(false);
 
   const PAGE_SIZE = 12;
 
@@ -87,6 +88,16 @@ const EventsPage = () => {
     const pages = Array.isArray(eventsData?.pages) ? eventsData.pages : [];
     return pages.flatMap((page) => (Array.isArray(page?.results) ? page.results : []));
   }, [eventsData]);
+
+  useEffect(() => {
+    let timer;
+    if (isLoading) {
+      timer = setTimeout(() => setIsSlowLoad(true), 4000);
+    } else {
+      setIsSlowLoad(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   useEffect(() => {
     if (!allEvents.length) return undefined;
@@ -358,8 +369,18 @@ const EventsPage = () => {
         <main className="flex-1">
           {/* Events Grid */}
           {isLoading ? (
-            <div className="min-h-[360px] flex items-center justify-center">
+            <div className="min-h-[360px] flex flex-col items-center justify-center space-y-4">
               <ClassicTicketLoader visible overlay={false} ariaLabel="Loading events" />
+              {isSlowLoad && (
+                <motion.p 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  className="text-sm text-[#64748B] text-center max-w-xs"
+                >
+                  Finding the best events... 📅<br />
+                  <span className="text-xs">(Free tiers may take up to 60s to start)</span>
+                </motion.p>
+              )}
             </div>
           ) : filteredEvents.length > 0 ? (
             <motion.div

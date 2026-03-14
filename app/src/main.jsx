@@ -5,6 +5,10 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import './index.css'
 import App from './App.jsx'
+import { wakeUpServer } from './lib/apiClient.js'
+
+// Fire background ping immediately to wake Render free-tier
+wakeUpServer()
 
 // Create a client
 const queryClient = new QueryClient({
