@@ -1,2 +1,0 @@
-icons/square-arrow-right.js" from "node_modules/lucide-react/dist/esm/lucide-react.js"
-file: C:/Users/lmbua/Downloads/EventFrontend/app/node_modules/lucide-react/dist/esm/lucide-react.js[31

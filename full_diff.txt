@@ -1,7 +1,0 @@
-diff --git a/DEPLOY_TRIGGER.md b/DEPLOY_TRIGGER.md
-deleted file mode 100644
-index c694a78..0000000
---- a/DEPLOY_TRIGGER.md
-+++ /dev/null
-@@ -1 +0,0 @@
--Deploy trigger: 2026-03-12
