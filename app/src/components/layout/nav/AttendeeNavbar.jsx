@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner';
-import apiClient from '../../../lib/apiClient';
+import { api } from '../../../lib/apiClient';
 
 const AttendeeNavbar = ({ isScrolled, isActive }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -49,7 +49,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
 
   const handleRequestOrganizer = async () => {
     try {
-      const { data } = await apiClient.post('/auth/request-organizer/', {
+      const data = await api.post('/api/auth/request-organizer/', {
         organization_name: `${user.name}'s Organization`
       });
       if (data.success) {
