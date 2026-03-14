@@ -67,7 +67,7 @@ const EventsPage = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: eventQueryKeys.list({ ordering: 'start_date', page_size: PAGE_SIZE }),
+    queryKey: eventQueryKeys.listInfinite({ ordering: 'start_date', page_size: PAGE_SIZE }),
     queryFn: ({ pageParam = 1 }) => fetchEvents({ ordering: 'start_date', page: pageParam, page_size: PAGE_SIZE }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) => {
@@ -81,7 +81,6 @@ const EventsPage = () => {
       }
     },
     staleTime: 5 * 60 * 1000,
-    placeholderData: (prev) => prev,
   });
 
   const allEvents = useMemo(() => {

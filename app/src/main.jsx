@@ -19,8 +19,8 @@ const queryClient = new QueryClient({
 })
 
 const persister = createSyncStoragePersister({
-  storage: window.localStorage,
-  key: 'eventhub-cache',
+  storage: window.sessionStorage,
+  key: 'eventhub-cache-v2',
   throttleTime: 1000,
 })
 
