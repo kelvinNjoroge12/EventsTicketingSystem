@@ -301,15 +301,40 @@ const OrganizerDashboardPage = () => {
   const { data: eventsData, isLoading: isLoadingEvents } = useQuery({
     queryKey: ['organizer_events'],
     queryFn: async () => {
-      const data = await api.get('/api/events/organizer/');
-      return apiList(data);
+      // Try primary organizer endpoint first; fall back to /my/ if it fails
+      try {
+        const data = await api.get('/api/events/organizer/');
+        return apiList(data);
+      } catch {
+        const data = await api.get('/api/events/my/');
+        return apiList(data);
+      }
     },
     enabled: !!hasAccess,
     staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 
   const rawEvents = eventsData || [];
   const events = useMemo(() => rawEvents.map(normalizeEvent), [rawEvents]);
+
+  const deleteEventMutation = useMutation({
+    mutationFn: async (eventItem) => {
+      await api.delete(`/api/events/${eventItem.slug}/delete/`);
+    },
+    onSuccess: (_, eventItem) => {
+      queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
+      toast.success(`"${eventItem.name}" deleted successfully.`);
+      if (String(selectedEventId) === String(eventItem.slug) || String(selectedEventId) === String(eventItem.id)) {
+        setCurrentPage('events');
+        syncTabToUrl('events', { event: null });
+      }
+    },
+    onError: (err) => {
+      const msg = err?.response?.error?.message || err?.message || 'Failed to delete event.';
+      toast.error(msg);
+    },
+  });
 
   const selectedEvent = useMemo(
     () => events.find((eventItem) =>
