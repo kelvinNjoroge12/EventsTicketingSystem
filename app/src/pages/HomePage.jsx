@@ -275,12 +275,12 @@ const HomePage = () => {
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center">
-          <div className="max-w-4xl mx-auto">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+          <div className="max-w-3xl">
             {/* Main Content */}
-            <div className="space-y-8 flex flex-col items-center">
+            <div className="space-y-6">
               <motion.p
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold bg-white/10 text-[#f97316] border border-white/10"
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-[#f97316] border border-white/10"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
@@ -290,7 +290,7 @@ const HomePage = () => {
               </motion.p>
 
               <motion.h1
-                className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight"
+                className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight"
                 initial="hidden"
                 animate="visible"
                 variants={{
@@ -337,7 +337,7 @@ const HomePage = () => {
               </motion.h1>
 
               <motion.p
-                className="text-base md:text-lg text-slate-200 max-w-2xl mx-auto"
+                className="text-sm md:text-base text-slate-200 max-w-xl"
                 initial="hidden"
                 animate="visible"
                 variants={{
@@ -363,7 +363,7 @@ const HomePage = () => {
               </motion.p>
 
               <motion.div
-                className="flex flex-wrap justify-center gap-4"
+                className="flex flex-wrap gap-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3, type: 'spring' }}
@@ -381,7 +381,7 @@ const HomePage = () => {
               </motion.div>
 
               <motion.div
-                className="flex items-center justify-center gap-4 text-xs md:text-sm text-slate-300"
+                className="flex items-center gap-4 text-xs md:text-sm text-slate-300"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
