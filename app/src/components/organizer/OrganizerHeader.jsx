@@ -208,7 +208,7 @@ const OrganizerHeader = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
           <Input
             type="text"
-            placeholder="Search events, guests..."
+            placeholder="Search events, attendees..."
             className="pl-10 pr-4 w-48 lg:w-64 h-9 rounded-full border border-white/20 bg-white/10 text-white placeholder:text-white/60 focus:border-[#FDE68A] focus:ring-[#FDE68A]/30 transition-all duration-200"
           />
         </div>

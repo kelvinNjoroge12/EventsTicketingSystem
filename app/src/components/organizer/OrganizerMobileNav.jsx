@@ -45,7 +45,10 @@ const OrganizerMobileNav = ({ currentPage, onPageChange, onClose }) => {
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#C58B1A] to-[#FDE68A] flex items-center justify-center flex-shrink-0">
             <Ticket className="w-5 h-5 text-[#1E4DB7]" />
           </div>
-          <span className="font-bold text-lg">EventHub</span>
+          <span className="font-bold text-sm leading-tight">
+            Strathmore University
+            <span className="block text-[10px] font-semibold text-white/80 tracking-wide uppercase">Event Ticketing</span>
+          </span>
         </div>
         <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
           <X className="w-5 h-5" />
@@ -97,7 +100,7 @@ const OrganizerMobileNav = ({ currentPage, onPageChange, onClose }) => {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">{user?.name || 'Organizer'}</p>
-            <p className="text-xs text-white/50 truncate">{user?.email || 'organizer@eventhub.com'}</p>
+            <p className="text-xs text-white/50 truncate">{user?.email || 'info@strathmore.edu'}</p>
           </div>
         </div>
 

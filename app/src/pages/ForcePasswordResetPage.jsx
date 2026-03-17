@@ -71,7 +71,10 @@ const ForcePasswordResetPage = () => {
           transition={{ duration: 0.3 }}
         >
           <div className="text-center mb-6">
-            <span className="text-3xl font-bold text-[#1E4DB7]">EventHub</span>
+            <span className="block text-2xl sm:text-3xl font-bold text-[#1E4DB7]">Strathmore University</span>
+            <span className="block text-xs sm:text-sm font-semibold text-[#1E4DB7]/80 uppercase tracking-wide">
+              Event Ticketing System
+            </span>
             <p className="text-sm text-[#64748B] mt-2">For security, please set a new password.</p>
           </div>
 

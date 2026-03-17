@@ -29,28 +29,32 @@ const Footer = () => {
   };
 
   const footerLinks = {
-    Platform: [
-      { name: 'Home', path: '/' },
-      { name: 'Events', path: '/events' },
-      { name: 'Categories', path: '/events' },
+    'Strathmore University': [
+      { name: 'Brand Guidelines', href: 'https://strathmore.edu/brand-guidelines/' },
+      { name: 'Lectures Guide for Online Learning', href: 'https://strathmore.edu/lectures-guide-for-online-learning/' },
+      { name: 'Graduation Policy', href: 'https://strathmore.edu/graduation-policy/' },
+      { name: 'Lecturers Regulations for Live Video Class', href: 'https://strathmore.edu/wp-content/uploads/2023/06/Draft-SU-Online-Live-Class-Regulations-lecturers.pdf' },
+      { name: 'Students Regulations for Live Video Class', href: 'https://strathmore.edu/wp-content/uploads/2023/06/Draft-SU-Online-Live-Class-Regulations-students.pdf' },
+      { name: 'Strathmore Medical Service Providers', href: 'https://strathmore.edu/strathmore-medical-service-providers/' },
+      { name: 'ICT Services', href: 'https://icts.strathmore.edu/' },
     ],
-    Organizers: [
-      { name: 'Create Event', path: '/create-event' },
-      { name: 'Dashboard', path: '/organizer-profile' },
-      { name: 'Pricing', path: '#' },
-    ],
-    Company: [
-      { name: 'About', path: '#' },
-      { name: 'Blog', path: '#' },
-      { name: 'Careers', path: '#' },
-      { name: 'Contact', path: '#' },
-    ],
-    Legal: [
-      { name: 'Terms', path: '#' },
-      { name: 'Privacy', path: '#' },
-      { name: 'Cookie Policy', path: '#' },
+    'Quick Links': [
+      { name: 'SAGANA', href: 'https://sagana.strathmore.edu/' },
+      { name: "Students' e-Learning System", href: 'https://masomo.strathmore.edu/' },
+      { name: "AMS Students' Module", href: 'https://su-sso.strathmore.edu/susams/' },
+      { name: "Vice Chancellor's Blog", href: 'https://strathmore.edu/vice-chancellors-blog/' },
+      { name: 'FAQS', href: 'https://strathmore.edu/faqs/' },
     ],
   };
+
+  const footerBottomLinks = [
+    { name: 'University Relations & Communications', href: 'https://strathmore.edu/communication-office/' },
+    { name: 'Data Privacy Policy', href: 'https://strathmore.edu/fr/privacy-policy/' },
+    { name: 'Legal Notice', href: 'https://strathmore.edu/legal-notice/' },
+    { name: 'Whistle Blowing Platform', href: 'https://strathmore.edu/whistle-blowing-platform/' },
+    { name: 'Contact Us', href: 'https://strathmore.edu/contacts/' },
+    { name: 'Cookie Policy (EU)', href: 'https://strathmore.edu/cookie-policy-eu/' },
+  ];
 
   const socialLinks = [
     { icon: Twitter, href: '#', label: 'Twitter' },
@@ -69,11 +73,18 @@ const Footer = () => {
             {/* Logo & Tagline */}
             <div className="lg:col-span-2">
               <Link to="/" className="inline-block">
-                <span className="text-2xl font-bold text-white">EventHub</span>
+                <span className="text-2xl font-bold text-white">Strathmore University</span>
+                <span className="block text-sm font-semibold text-white/80 tracking-wide">Event Ticketing System</span>
               </Link>
               <p className="mt-4 text-white/70 text-sm max-w-xs">
-                Discover amazing events near you. Find, RSVP, and attend events that match your interests.
+                Official platform for alumni, student, and corporate events across Strathmore University.
               </p>
+              <div className="mt-5 text-sm text-white/70 space-y-1">
+                <p>Ole Sangale Road, Madaraka Estate</p>
+                <p>P.O. Box 59857, 00200, Nairobi, Kenya</p>
+                <p>Tel: +254 703 034 000 / +254 703 034 200</p>
+                <p>Email: info@strathmore.edu</p>
+              </div>
 
               {/* Social Links */}
               <div className="flex items-center gap-3 mt-6">
@@ -97,12 +108,23 @@ const Footer = () => {
                 <ul className="space-y-2">
                   {links.map((link) => (
                     <li key={link.name}>
-                      <Link
-                        to={link.path}
-                        className="text-white/70 hover:text-white transition-colors text-sm"
-                      >
-                        {link.name}
-                      </Link>
+                      {link.href?.startsWith('http') ? (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-white/70 hover:text-white transition-colors text-sm"
+                        >
+                          {link.name}
+                        </a>
+                      ) : (
+                        <Link
+                          to={link.href || '#'}
+                          className="text-white/70 hover:text-white transition-colors text-sm"
+                        >
+                          {link.name}
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -115,10 +137,10 @@ const Footer = () => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
                 <h3 className="font-semibold text-white mb-1">
-                  Stay updated on events near you
+                  Stay updated on campus events
                 </h3>
                 <p className="text-white/70 text-sm">
-                  Get weekly updates on the best events in your city.
+                  Receive weekly highlights, ticket alerts, and university updates.
                 </p>
               </div>
               <form onSubmit={handleSubscribe} className="flex gap-2 max-w-md w-full md:w-auto">
@@ -147,12 +169,24 @@ const Footer = () => {
       {/* Bottom Bar */}
       <div className={!isDashboard ? "border-t border-white/10" : ""}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className={`flex flex-col md:flex-row md:items-center ${!isDashboard ? 'md:justify-between' : 'justify-center'} gap-2 text-sm text-white/60`}>
-            <p className={isDashboard ? "text-center w-full" : ""}>&copy; {new Date().getFullYear()} EventHub. All rights reserved.</p>
+          <div className={`flex flex-col md:flex-row md:items-center ${!isDashboard ? 'md:justify-between' : 'justify-center'} gap-3 text-sm text-white/60`}>
+            <p className={isDashboard ? "text-center w-full" : ""}>
+              &copy; {new Date().getFullYear()} Strathmore University. All Rights Reserved.
+            </p>
             {!isDashboard && (
-              <p className="flex items-center gap-1">
-                Made with <span className="text-white">❤️</span> in Nairobi
-              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {footerBottomLinks.map((link) => (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    {link.name}
+                  </a>
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -162,3 +196,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

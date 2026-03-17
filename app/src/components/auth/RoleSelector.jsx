@@ -7,13 +7,13 @@ const RoleSelector = ({ selectedRole, onSelect }) => {
     {
       id: 'attendee',
       title: "I'm an Attendee",
-      description: 'Discover and attend amazing events near you',
+      description: 'Discover and attend university events for students, alumni, and corporate guests',
       icon: User,
     },
     {
       id: 'organizer',
       title: "I'm an Organizer",
-      description: 'Create and manage events for your audience',
+      description: 'Create and manage university events for students, alumni, and corporate partners',
       icon: Building2,
     },
   ];

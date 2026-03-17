@@ -331,7 +331,7 @@ const EventDetailPage = () => {
 
   const handleShare = (platform) => {
     const url = window.location.href;
-    const text = `Check out ${event.title} on EventHub!`;
+    const text = `Check out ${event.title} on the Strathmore University Event Ticketing System!`;
     const urls = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`,
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,

@@ -261,7 +261,7 @@ const EventsPage = () => {
             <FilterCardWrapper {...filterCards[1]}>
               <input
                 type="text"
-                placeholder="City or venue"
+                placeholder="University or venue"
                 value={filters.location}
                 onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
                 className="w-full bg-transparent outline-none focus:text-[#EF4444] text-[#334155] placeholder:text-[#94A3B8] truncate"

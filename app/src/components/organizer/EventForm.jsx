@@ -271,7 +271,7 @@ export const DateLocationStep = ({ data, onChange, errors }) => (
         <CustomInput label="Venue Name" value={data.venueName} onChange={(e) => onChange('venueName', e.target.value)} error={errors.venueName} placeholder="e.g., Sarit Centre" />
         <CustomInput label="Address" value={data.address} onChange={(e) => onChange('address', e.target.value)} error={errors.address} placeholder="Street address" />
         <div className="grid grid-cols-2 gap-4">
-          <CustomInput label="City" value={data.city} onChange={(e) => onChange('city', e.target.value)} error={errors.city} placeholder="e.g., Nairobi" />
+          <CustomInput label="City" value={data.city} onChange={(e) => onChange('city', e.target.value)} error={errors.city} placeholder="e.g., Nairobi (Madaraka)" />
           <CustomInput label="Country" value={data.country} onChange={(e) => onChange('country', e.target.value)} error={errors.country} placeholder="e.g., Kenya" />
         </div>
       </div>

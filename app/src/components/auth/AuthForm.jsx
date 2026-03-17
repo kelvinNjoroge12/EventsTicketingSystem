@@ -182,9 +182,13 @@ const AuthForm = ({
           />
           <label htmlFor="agreeToTerms" className="text-sm text-[#64748B]">
             I agree to the{' '}
-            <Link to="#" className="text-[#1E4DB7] hover:underline">Terms of Service</Link>
+            <a href="https://strathmore.edu/legal-notice/" target="_blank" rel="noreferrer" className="text-[#1E4DB7] hover:underline">
+              Legal Notice
+            </a>
             {' '}and{' '}
-            <Link to="#" className="text-[#1E4DB7] hover:underline">Privacy Policy</Link>
+            <a href="https://strathmore.edu/fr/privacy-policy/" target="_blank" rel="noreferrer" className="text-[#1E4DB7] hover:underline">
+              Data Privacy Policy
+            </a>
           </label>
         </div>
       )}

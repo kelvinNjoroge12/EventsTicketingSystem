@@ -43,25 +43,25 @@ const HostEventLandingPage = () => {
                                 transition={{ duration: 0.6 }}
                             >
                                 <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-[#1E4DB7] text-sm font-bold tracking-wider mb-6">
-                                    Where Event Organizers Grow
+                                    Built for Alumni, Student & Corporate Events
                                 </span>
                                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#0F172A] leading-tight mb-6">
-                                    Event hosting <br /> <span className="text-[#1E4DB7]">made easy</span>
+                                    University event hosting <br /> <span className="text-[#1E4DB7]">made easy</span>
                                 </h1>
                                 <p className="text-lg md:text-xl text-[#64748B] mb-8 max-w-lg leading-relaxed">
-                                    The all-in-one ticketing and discovery platform trusted by millions of organizers and attendees worldwide. Easily create events for free on a platform that attendees love and trust.
+                                    The official ticketing and discovery platform for Strathmore University. Create events for alumni, students, and corporate partners with a trusted campus experience.
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <Link to="/signup">
                                         <CustomButton variant="primary" size="xl" className="w-full sm:w-auto shadow-lg shadow-blue-500/30">
-                                            Get started for free
+                                            Get started
                                         </CustomButton>
                                     </Link>
-                                    <Link to="/contact">
+                                    <a href="https://strathmore.edu/contacts/" target="_blank" rel="noreferrer">
                                         <CustomButton variant="outline" size="xl" className="w-full sm:w-auto">
-                                            Contact Sales
+                                            Contact University Relations
                                         </CustomButton>
-                                    </Link>
+                                    </a>
                                 </div>
                             </motion.div>
 
@@ -86,8 +86,8 @@ const HostEventLandingPage = () => {
                                         className="w-full h-auto object-cover opacity-90"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent flex flex-col justify-end p-8">
-                                        <h3 className="text-2xl font-bold text-white mb-2">Pizza Making Masterclass</h3>
-                                        <p className="text-white/80 flex items-center gap-2"><MapPin className="w-4 h-4" /> Downtown Napoli, Italy</p>
+                                        <h3 className="text-2xl font-bold text-white mb-2">Leadership & Innovation Forum</h3>
+                                        <p className="text-white/80 flex items-center gap-2"><MapPin className="w-4 h-4" /> Strathmore University, Nairobi</p>
                                     </div>
                                 </div>
 
@@ -101,7 +101,7 @@ const HostEventLandingPage = () => {
                                         <Ticket className="w-6 h-6 text-green-600" />
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500 font-medium">Tickets Sold</p>
+                                        <p className="text-sm text-gray-500 font-medium">Tickets Issued</p>
                                         <p className="text-xl font-bold text-gray-900">1,245</p>
                                     </div>
                                 </motion.div>
@@ -117,9 +117,9 @@ const HostEventLandingPage = () => {
                             className="text-center max-w-3xl mx-auto mb-16"
                             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}
                         >
-                            <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-4">All the tools event organizers need</h2>
+                            <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-4">All the tools university organizers need</h2>
                             <p className="text-[#64748B] text-lg">
-                                From event ticketing to payment collection, tools to promote, market, and manage your events seamlessly.
+                                From ticketing to guest check-in, manage alumni, student, and corporate events with secure, campus-ready workflows.
                             </p>
                         </motion.div>
 
@@ -132,10 +132,10 @@ const HostEventLandingPage = () => {
                                 <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
                                     <Ticket className="w-7 h-7 text-indigo-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Event Ticketing</h3>
-                                <p className="text-[#64748B] mb-6">Everything you need to sell tickets for in-person or online events with a seamless checkout experience.</p>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Campus Ticketing</h3>
+                                <p className="text-[#64748B] mb-6">Issue tickets for campus, hybrid, or online events with a seamless checkout experience.</p>
                                 <Link to="/signup" className="text-indigo-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
-                                    See ticketing tools <ArrowRight className="w-4 h-4" />
+                                    Explore ticketing tools <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
 
@@ -144,10 +144,10 @@ const HostEventLandingPage = () => {
                                 <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                                     <BarChart3 className="w-7 h-7 text-blue-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Reporting & Analytics</h3>
-                                <p className="text-[#64748B] mb-6">Learn more about your buyers and discover where sales are coming from with real-time analytics.</p>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Attendance Insights</h3>
+                                <p className="text-[#64748B] mb-6">Track registrations and attendance across schools, departments, and units.</p>
                                 <Link to="/signup" className="text-blue-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
-                                    Explore reporting <ArrowRight className="w-4 h-4" />
+                                    View insights <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
 
@@ -156,10 +156,10 @@ const HostEventLandingPage = () => {
                                 <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6">
                                     <Smartphone className="w-7 h-7 text-purple-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Organizer App</h3>
-                                <p className="text-[#64748B] mb-6">Check guests in, sell tickets at the door, and track data with our easy-to-use Organizer App.</p>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Check-In Tools</h3>
+                                <p className="text-[#64748B] mb-6">Validate QR tickets, manage entry lines, and support on-site teams with ease.</p>
                                 <Link to="/signup" className="text-purple-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
-                                    Get the app <ArrowRight className="w-4 h-4" />
+                                    See check-in tools <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
 
@@ -168,10 +168,10 @@ const HostEventLandingPage = () => {
                                 <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center mb-6">
                                     <Megaphone className="w-7 h-7 text-pink-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Marketing Tools</h3>
-                                <p className="text-[#64748B] mb-6">Engage attendees and reach new ones with our suite of automated email and social marketing tools.</p>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Campus Promotion</h3>
+                                <p className="text-[#64748B] mb-6">Share event pages through university channels and student networks.</p>
                                 <Link to="/signup" className="text-pink-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
-                                    See marketing tools <ArrowRight className="w-4 h-4" />
+                                    Promotion options <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
                         </motion.div>
@@ -224,9 +224,9 @@ const HostEventLandingPage = () => {
                                 className="order-1 lg:order-2"
                                 initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}
                             >
-                                <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-6">Get paid, earn more</h2>
+                                <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-6">Collect fees and manage budgets</h2>
                                 <p className="text-[#64748B] text-lg mb-8">
-                                    Do what you love and earn more money with low-cost fees and quicker payouts, giving you the focus to build incredible experiences for your attendees.
+                                    Capture ticket revenue or waivers, track payouts, and keep budgeting clear for departments and student associations.
                                 </p>
 
                                 <ul className="space-y-6">
@@ -235,8 +235,8 @@ const HostEventLandingPage = () => {
                                             <CheckCircle2 className="w-4 h-4 text-green-600" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-[#0F172A] text-lg">Payment Processing</h4>
-                                            <p className="text-[#64748B]">Easily collect and simplify event payments with built-in, full-service payment processing.</p>
+                                            <h4 className="font-bold text-[#0F172A] text-lg">Secure Payment Processing</h4>
+                                            <p className="text-[#64748B]">Collect fees or waive tickets with clear audit trails and secure processing.</p>
                                         </div>
                                     </li>
                                     <li className="flex gap-4">
@@ -244,8 +244,8 @@ const HostEventLandingPage = () => {
                                             <CheckCircle2 className="w-4 h-4 text-blue-600" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-[#0F172A] text-lg">Low-cost fees</h4>
-                                            <p className="text-[#64748B]">Clear value, transparent fees. So you can focus on the important things.</p>
+                                            <h4 className="font-bold text-[#0F172A] text-lg">Transparent fees</h4>
+                                            <p className="text-[#64748B]">Simple pricing and visibility so you can focus on the event experience.</p>
                                         </div>
                                     </li>
                                     <li className="flex gap-4">
@@ -253,8 +253,8 @@ const HostEventLandingPage = () => {
                                             <CheckCircle2 className="w-4 h-4 text-purple-600" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-[#0F172A] text-lg">Scheduled Payouts</h4>
-                                            <p className="text-[#64748B]">Get paid before your event takes place on a customized schedule of your choice.</p>
+                                            <h4 className="font-bold text-[#0F172A] text-lg">Flexible payouts</h4>
+                                            <p className="text-[#64748B]">Coordinate payouts based on your departmental or unit requirements.</p>
                                         </div>
                                     </li>
                                 </ul>
@@ -275,22 +275,22 @@ const HostEventLandingPage = () => {
 
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}>
-                            <h2 className="text-4xl md:text-5xl font-bold mb-6">Publish your events for free</h2>
+                            <h2 className="text-4xl md:text-5xl font-bold mb-6">Publish your university events</h2>
                             <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
-                                Reach more people on the world's largest and most trusted events marketplace. Everything you need to host standout events and earn more.
+                                Reach alumni, students, and corporate guests with official Strathmore University ticketing and check-in.
                             </p>
 
                             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
                                 <Link to="/signup">
                                     <button className="w-full sm:w-auto px-8 py-4 bg-white text-[#1E4DB7] rounded-xl font-bold text-lg hover:bg-gray-50 transition-colors shadow-xl">
-                                        Get started for free
+                                        Get started
                                     </button>
                                 </Link>
-                                <Link to="/contact">
+                                <a href="https://strathmore.edu/contacts/" target="_blank" rel="noreferrer">
                                     <button className="w-full sm:w-auto px-8 py-4 bg-transparent border-2 border-white/30 text-white rounded-xl font-bold text-lg hover:bg-white/10 transition-colors">
-                                        Contact Sales
+                                        Contact University Relations
                                     </button>
-                                </Link>
+                                </a>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-left border-t border-white/20 pt-10">
@@ -302,15 +302,15 @@ const HostEventLandingPage = () => {
                                 </div>
                                 <div className="space-y-2 text-sm text-blue-100">
                                     <p className="font-bold text-white mb-4">Event Promotion</p>
-                                    <p>EventHub Ads</p>
-                                    <p>Email Marketing</p>
-                                    <p>Social Integration</p>
+                                    <p>University Announcements</p>
+                                    <p>Email & SMS Alerts</p>
+                                    <p>Student Networks</p>
                                 </div>
                                 <div className="space-y-2 text-sm text-blue-100">
                                     <p className="font-bold text-white mb-4">Event Types</p>
-                                    <p>Music Concerts</p>
-                                    <p>Food & Drinks</p>
-                                    <p>Corporate Events</p>
+                                    <p>Academic Talks</p>
+                                    <p>Sports & Recreation</p>
+                                    <p>Alumni Gatherings</p>
                                 </div>
                                 <div className="space-y-2 text-sm text-blue-100">
                                     <p className="font-bold text-white mb-4">Event Hosting</p>

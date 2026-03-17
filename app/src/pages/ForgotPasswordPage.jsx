@@ -40,8 +40,9 @@ const ForgotPasswordPage = () => {
         >
           {/* Logo */}
           <div className="text-center mb-8">
-            <Link to="/">
-              <span className="text-3xl font-bold text-[#1E4DB7]">EventHub</span>
+            <Link to="/" className="inline-flex flex-col items-center">
+              <span className="text-2xl sm:text-3xl font-bold text-[#1E4DB7]">Strathmore University</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#1E4DB7]/80 uppercase tracking-wide">Event Ticketing System</span>
             </Link>
           </div>
 

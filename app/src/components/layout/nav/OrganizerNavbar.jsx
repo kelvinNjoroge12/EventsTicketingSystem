@@ -48,8 +48,13 @@ const OrganizerNavbar = ({ isScrolled, isActive }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2">
             {/* Logo */}
-            <Link to="/organizer-dashboard" className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-xl font-bold text-white tracking-tight">EventHub</span>
+            <Link to="/organizer-dashboard" className="flex items-center gap-3 flex-shrink-0">
+              <div className="leading-tight">
+                <span className="block text-base sm:text-lg font-bold text-white tracking-tight">Strathmore University</span>
+                <span className="block text-[10px] sm:text-xs font-semibold text-white/80 tracking-wide uppercase">
+                  Event Ticketing System
+                </span>
+              </div>
               <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-white/20 text-white uppercase tracking-wider">Organizer</span>
             </Link>
 

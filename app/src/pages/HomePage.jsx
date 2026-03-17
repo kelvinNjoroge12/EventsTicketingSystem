@@ -291,7 +291,7 @@ const HomePage = () => {
                 transition={{ duration: 0.4 }}
               >
                 <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-                Live events • Concerts • Conferences
+                University events • Alumni • Student & corporate gatherings
               </motion.p>
 
               <motion.h1
@@ -306,7 +306,7 @@ const HomePage = () => {
                   }
                 }}
               >
-                {"Feel the ".split(" ").map((word, i) => (
+                {"Celebrate the ".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-2"
@@ -325,9 +325,9 @@ const HomePage = () => {
                     visible: { opacity: 1, y: 0 }
                   }}
                 >
-                  energy
+                  university
                 </motion.span>
-                {"of every event.".split(" ").map((word, i) => (
+                {"event experience.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-2 text-white"
@@ -353,7 +353,7 @@ const HomePage = () => {
                   }
                 }}
               >
-                {"Discover concerts, meetups, and festivals across the city. Secure your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
+                {"Discover alumni reunions, student clubs, corporate forums, and university-wide celebrations. Reserve your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-1"
@@ -375,12 +375,12 @@ const HomePage = () => {
               >
                 <Link to="/events">
                   <CustomButton variant="primary" size="lg" rightIcon={ArrowRight}>
-                    Browse Events
+                    Browse Campus Events
                   </CustomButton>
                 </Link>
                 <Link to="/create-event">
                   <CustomButton variant="outline" size="lg">
-                    Create an Event
+                    Create a University Event
                   </CustomButton>
                 </Link>
               </motion.div>
@@ -397,7 +397,7 @@ const HomePage = () => {
                   <span className="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white/20" />
                 </div>
                 <span>
-                  Join <span className="font-semibold text-[#f97316]">10,000+</span> attendees enjoying EventHub.
+                  Join <span className="font-semibold text-[#f97316]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Event Ticketing System.
                 </span>
               </motion.div>
             </div>
@@ -490,7 +490,7 @@ const HomePage = () => {
                         : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#1E4DB7] hover:text-[#1E4DB7]'}
                     `}
                   >
-                    <span>All</span>
+                    <span>All Events</span>
                   </button>
                   {categories.map((category) => (
                     <CategoryPill
@@ -512,7 +512,7 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-[#0F172A]">
-              Upcoming Events
+              Upcoming University Events
             </h2>
             <Link
               to="/events"
@@ -582,10 +582,10 @@ const HomePage = () => {
       <section className="py-16 bg-[#F8FAFC]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <StatBox value="10000" label="Attendees" suffix="+" />
-            <StatBox value="2000" label="Events" suffix="+" />
-            <StatBox value="500" label="Organizers" suffix="+" />
-            <StatBox value="50" label="Cities" suffix="+" />
+            <StatBox value="10000" label="Students, Alumni & Guests" suffix="+" />
+            <StatBox value="2000" label="Campus Events" suffix="+" />
+            <StatBox value="500" label="Schools, Clubs & Partners" suffix="+" />
+            <StatBox value="50" label="Partner Guests" suffix="+" />
           </div>
         </div>
       </section>
@@ -626,24 +626,24 @@ const HomePage = () => {
               <>
                 <StepCard
                   number={1}
-                  title="Discover Events"
-                  description="Browse through hundreds of events in your area. Filter by category, date, or location."
+                  title="Explore University Events"
+                  description="Browse alumni reunions, student activities, and corporate forums. Filter by school, date, or venue."
                   icon={Search}
                   tint="#EFF6FF"
                   delay={0}
                 />
                 <StepCard
                   number={2}
-                  title="Get Tickets"
-                  description="Select your ticket type, apply promo codes, and complete your purchase securely."
+                  title="Reserve Tickets"
+                  description="Choose your ticket type, apply any waivers, and complete your reservation securely."
                   icon={CheckCircle}
                   tint="#F5F3FF"
                   delay={0.1}
                 />
                 <StepCard
                   number={3}
-                  title="Attend & Enjoy"
-                  description="Show your QR ticket at the entrance and enjoy the event!"
+                  title="Attend & Check In"
+                  description="Present your QR ticket at the venue entrance and enjoy the event."
                   icon={CalendarDays}
                   tint="#F0FDF4"
                   delay={0.2}
@@ -653,24 +653,24 @@ const HomePage = () => {
               <>
                 <StepCard
                   number={1}
-                  title="Create Your Event"
-                  description="Set up your event details, add tickets, and customize your page."
+                  title="Create Your University Event"
+                  description="Publish event details, add ticket types, and customize your registration page."
                   icon={Calendar}
                   tint="#EFF6FF"
                   delay={0}
                 />
                 <StepCard
                   number={2}
-                  title="Promote & Sell"
-                  description="Share your event and watch ticket sales grow with our tools."
+                  title="Promote & Invite"
+                  description="Share the event with students, staff, and alumni using official channels."
                   icon={Users}
                   tint="#F5F3FF"
                   delay={0.1}
                 />
                 <StepCard
                   number={3}
-                  title="Manage Attendees"
-                  description="Track registrations, check in attendees, and analyze your event."
+                  title="Manage Attendance"
+                  description="Track registrations, check in guests, and review attendance insights."
                   icon={Building2}
                   tint="#F0FDF4"
                   delay={0.2}
@@ -702,10 +702,10 @@ const HomePage = () => {
 
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to Host Your Own Event?
+                Ready to Host a Strathmore Event?
               </h2>
               <p className="text-white/80 text-lg mb-8 max-w-xl mx-auto">
-                Join 500+ organizers already on EventHub and start creating memorable experiences.
+                Support your school, alumni chapter, or corporate partner event with official ticketing and check-in tools.
               </p>
               <Link to="/create-event">
                 <motion.div

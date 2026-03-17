@@ -79,8 +79,11 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2 sm:gap-4">
             {/* Logo */}
-            <Link to={isOrganizer ? "/organizer-dashboard" : "/"} className="flex-shrink-0">
-              <span className="text-xl font-bold text-white tracking-tight">EventHub</span>
+            <Link to={isOrganizer ? "/organizer-dashboard" : "/"} className="flex-shrink-0 leading-tight">
+              <span className="block text-base sm:text-lg font-bold text-white tracking-tight">Strathmore University</span>
+              <span className="block text-[10px] sm:text-xs font-semibold text-white/80 tracking-wide uppercase">
+                Event Ticketing System
+              </span>
             </Link>
 
             {/* Search bar */}
@@ -91,7 +94,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
               <div className="relative w-full group">
                 <input
                   type="text"
-                  placeholder="Search events..."
+                  placeholder="Search university events..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-4 pr-10 py-2 rounded-full bg-white/15 border-2 border-[#ef4444] text-white placeholder:text-white/60 focus:outline-none focus:bg-white/25 focus:border-[#ef4444] focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)] text-sm transition-all"
@@ -248,7 +251,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search events..."
+                      placeholder="Search university events..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-5 pr-10 py-3 rounded-full bg-white/10 border-2 border-[#ef4444] text-white placeholder:text-white/60 text-sm focus:outline-none focus:bg-white/20 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)] transition-all"
