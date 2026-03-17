@@ -50,7 +50,7 @@ const SignUpPage = () => {
           {/* Logo */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center justify-center" aria-label="Strathmore University Events Ticketing">
-              <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl bg-[#02338D] p-2 shadow-sm">
+              <div className="h-32 w-32 sm:h-36 sm:w-36 rounded-2xl bg-[#02338D] p-2 shadow-sm">
                 <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
               </div>
             </Link>

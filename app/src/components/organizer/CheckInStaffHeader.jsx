@@ -15,12 +15,12 @@ const CheckInStaffHeader = ({ title = 'Check-In Staff' }) => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-[#0F172A] text-white border-b border-white/10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src={strathmoreLogo}
             alt="Strathmore University"
-            className="h-16 w-16 object-contain"
+            className="h-20 w-20 object-contain"
           />
           <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-white/10">
             {title}

@@ -42,12 +42,12 @@ const OrganizerSidebar = ({ currentPage, onPageChange }) => {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-[#02338D] text-white z-50 flex flex-col">
-      <div className="h-20 flex items-center px-4 border-b border-white/10">
+      <div className="h-24 flex items-center px-4 border-b border-white/10">
         <div className="flex items-center">
           <img
             src={strathmoreLogo}
             alt="Strathmore University"
-            className="w-16 h-16 object-contain"
+            className="w-20 h-20 object-contain"
           />
         </div>
       </div>
