@@ -94,7 +94,7 @@ const SearchResultsPage = () => {
                 name="q"
                 defaultValue={query}
                 placeholder="Search events..."
-                className="w-full px-4 py-3 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] bg-white"
+                className="w-full px-4 py-3 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] bg-white"
               />
             </div>
             <div className="w-48">
@@ -103,7 +103,7 @@ const SearchResultsPage = () => {
                 name="location"
                 defaultValue={location}
                 placeholder="Location"
-                className="w-full px-4 py-3 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] bg-white"
+                className="w-full px-4 py-3 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] bg-white"
               />
             </div>
             <div className="w-40">
@@ -111,7 +111,7 @@ const SearchResultsPage = () => {
                 type="date"
                 name="date"
                 defaultValue={date}
-                className="w-full px-4 py-3 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] bg-white"
+                className="w-full px-4 py-3 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] bg-white"
               />
             </div>
             <CustomButton type="submit" variant="primary" className="py-3">
@@ -174,3 +174,4 @@ const SearchResultsPage = () => {
 };
 
 export default SearchResultsPage;
+

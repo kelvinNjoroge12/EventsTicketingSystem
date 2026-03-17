@@ -7,13 +7,13 @@ const RoleSelector = ({ selectedRole, onSelect }) => {
     {
       id: 'attendee',
       title: "I'm an Attendee",
-      description: 'Discover and attend university events for students, alumni, and corporate guests',
+      description: 'Discover and attend Strathmore and partner events for students, alumni, and corporate guests',
       icon: User,
     },
     {
       id: 'organizer',
       title: "I'm an Organizer",
-      description: 'Create and manage university events for students, alumni, and corporate partners',
+      description: 'Create and manage Strathmore and partner events for students, alumni, and corporate partners',
       icon: Building2,
     },
   ];
@@ -32,8 +32,8 @@ const RoleSelector = ({ selectedRole, onSelect }) => {
             className={`
               relative p-6 rounded-2xl border-2 text-left transition-all
               ${isSelected
-                ? 'border-[#1E4DB7] bg-[#EFF6FF]'
-                : 'border-[#E2E8F0] bg-white hover:border-[#1E4DB7]/50'}
+                ? 'border-[#02338D] bg-[#EFF6FF]'
+                : 'border-[#E2E8F0] bg-white hover:border-[#02338D]/50'}
             `}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -49,7 +49,7 @@ const RoleSelector = ({ selectedRole, onSelect }) => {
             {/* Checkmark */}
             {isSelected && (
               <motion.div
-                className="absolute top-4 right-4 w-6 h-6 bg-[#1E4DB7] rounded-full flex items-center justify-center"
+                className="absolute top-4 right-4 w-6 h-6 bg-[#02338D] rounded-full flex items-center justify-center"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 17 }}
@@ -62,7 +62,7 @@ const RoleSelector = ({ selectedRole, onSelect }) => {
             <div 
               className={`
                 w-12 h-12 rounded-xl flex items-center justify-center mb-4
-                ${isSelected ? 'bg-[#1E4DB7] text-white' : 'bg-[#F1F5F9] text-[#64748B]'}
+                ${isSelected ? 'bg-[#02338D] text-white' : 'bg-[#F1F5F9] text-[#64748B]'}
               `}
             >
               <Icon className="w-6 h-6" />
@@ -83,3 +83,4 @@ const RoleSelector = ({ selectedRole, onSelect }) => {
 };
 
 export default RoleSelector;
+

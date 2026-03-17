@@ -72,7 +72,7 @@ const TicketVerificationPage = () => {
             <PageWrapper>
                 <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
                     <div className="flex flex-col items-center gap-4">
-                        <Search className="w-12 h-12 text-[#1E4DB7] animate-pulse" />
+                        <Search className="w-12 h-12 text-[#02338D] animate-pulse" />
                         <h2 className="text-xl font-bold text-[#0F172A]">Verifying Ticket Securely...</h2>
                     </div>
                 </div>
@@ -94,7 +94,7 @@ const TicketVerificationPage = () => {
                         </div>
                         <h2 className="text-2xl font-bold text-[#0F172A] mb-3">Invalid Ticket</h2>
                         <p className="text-[#64748B] mb-8">{error}</p>
-                        <Link to="/" className="inline-flex items-center gap-2 text-[#1E4DB7] font-medium hover:underline">
+                        <Link to="/" className="inline-flex items-center gap-2 text-[#02338D] font-medium hover:underline">
                             <ArrowLeft className="w-4 h-4" /> Return to Home
                         </Link>
                     </motion.div>
@@ -190,7 +190,7 @@ const TicketVerificationPage = () => {
                                     whileTap={{ scale: 0.98 }}
                                     onClick={handleCheckIn}
                                     disabled={isCheckingIn}
-                                    className="w-full py-4 bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+                                    className="w-full py-4 bg-gradient-to-r from-[#02338D] to-[#7C3AED] text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
                                 >
                                     {isCheckingIn ? (
                                         <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -220,3 +220,4 @@ const TicketVerificationPage = () => {
 };
 
 export default TicketVerificationPage;
+

@@ -53,7 +53,7 @@ const SponsorsTab = ({ slug }) => {
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Event Sponsors</CardTitle>
             <p className="text-sm text-gray-500 mt-1">Manage sponsors and partners.</p>
           </div>
-          <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowSponsorModal(true)}>
+          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => setShowSponsorModal(true)}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Sponsor
           </Button>
@@ -99,7 +99,7 @@ const SponsorsTab = ({ slug }) => {
       {showSponsorModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSponsorModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex justify-between">
+            <div className="bg-[#02338D] px-6 py-4 text-white flex justify-between">
               <h3 className="font-semibold">Add Sponsor</h3>
               <button onClick={() => setShowSponsorModal(false)}><X className="w-4 h-4" /></button>
             </div>
@@ -137,3 +137,5 @@ const SponsorsTab = ({ slug }) => {
 };
 
 export default SponsorsTab;
+
+

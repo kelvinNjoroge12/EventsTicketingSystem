@@ -158,8 +158,8 @@ const TicketBox = ({
                   className={`
                     p-4 rounded-xl border-2 transition-all
                     ${isSelected
-                      ? 'border-[#1E4DB7] bg-[#EFF6FF]'
-                      : 'border-[#E2E8F0] hover:border-[#1E4DB7]/30'}
+                      ? 'border-[#02338D] bg-[#EFF6FF]'
+                      : 'border-[#E2E8F0] hover:border-[#02338D]/30'}
                   `}
                 >
                   <div className="flex items-start justify-between mb-3 gap-3">
@@ -173,7 +173,7 @@ const TicketBox = ({
                       </p>
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <p className="font-semibold text-[#1E4DB7] whitespace-nowrap">
+                      <p className="font-semibold text-[#02338D] whitespace-nowrap">
                         {ticket.price === 0 ? 'Free' : `${event.currency} ${ticket.price.toLocaleString()}`}
                       </p>
                     </div>
@@ -183,7 +183,7 @@ const TicketBox = ({
                     <button
                       onClick={() => handleQuantityChange(ticket.id, -1)}
                       disabled={qty <= 0}
-                      className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#1E4DB7] hover:text-[#1E4DB7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       aria-label={`Decrease ${ticket.type || ticket.name} quantity`}
                     >
                       <Minus className="w-4 h-4" />
@@ -192,7 +192,7 @@ const TicketBox = ({
                     <button
                       onClick={() => handleQuantityChange(ticket.id, 1)}
                       disabled={qty >= Math.min(10, ticket.remaining) || ticket.remaining <= 0}
-                      className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#1E4DB7] hover:text-[#1E4DB7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       aria-label={`Increase ${ticket.type || ticket.name} quantity`}
                     >
                       <Plus className="w-4 h-4" />
@@ -212,7 +212,7 @@ const TicketBox = ({
         <div className="mb-6">
           <button
             onClick={() => setIsPromoExpanded(!isPromoExpanded)}
-            className="flex items-center gap-2 text-sm text-[#1E4DB7] hover:underline"
+            className="flex items-center gap-2 text-sm text-[#02338D] hover:underline"
           >
             <Tag className="w-4 h-4" />
             Have a promo code?
@@ -235,7 +235,7 @@ const TicketBox = ({
                     placeholder="Enter code"
                     className={`
                       flex-1 px-3 py-2 border rounded-lg text-sm
-                      focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]
+                      focus:outline-none focus:ring-2 focus:ring-[#02338D]
                       ${promoError ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}
                     `}
                   />
@@ -341,28 +341,28 @@ const TicketBox = ({
                       placeholder="Full name *"
                       value={waitlistForm.name}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, name: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                     <input
                       type="email"
                       placeholder="Email address *"
                       value={waitlistForm.email}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, email: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                     <input
                       type="tel"
                       placeholder="Phone (optional)"
                       value={waitlistForm.phone}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, phone: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                     <input
                       type="text"
                       placeholder="Notes (optional)"
                       value={waitlistForm.notes}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, notes: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                   </div>
 
@@ -418,3 +418,4 @@ const TicketBox = ({
 };
 
 export default TicketBox;
+

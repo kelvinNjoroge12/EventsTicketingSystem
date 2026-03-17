@@ -13,7 +13,7 @@ export const EXPENSE_CATEGORIES = [
 ];
 
 export const REVENUE_SOURCES = [
-    { id: 'ticket_sales', backend: 'ticket_sales', label: 'Ticket Sales (Auto)', icon: Ticket, color: '#1E4DB7', auto: true },
+    { id: 'ticket_sales', backend: 'ticket_sales', label: 'Ticket Sales (Auto)', icon: Ticket, color: '#02338D', auto: true },
     { id: 'sponsorship', backend: 'sponsorship', label: 'Sponsorship', icon: TrendingUp, color: '#16A34A' },
     { id: 'vendor', backend: 'vendor', label: 'Vendor Booth', icon: Tent, color: '#0EA5E9' },
     { id: 'donation', backend: 'donation', label: 'Donation', icon: DollarSign, color: '#7C3AED' },
@@ -181,3 +181,4 @@ export const normalizeEvent = (event) => {
         revenue: mapped.revenue,
     };
 };
+

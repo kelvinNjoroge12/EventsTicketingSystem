@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
 import CustomInput from '../ui/CustomInput';
+import strathmoreLogo from '../../assets/strathmore-logo.png';
 
 const Footer = () => {
   const [email, setEmail] = useState('');
@@ -65,25 +66,33 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-[#1E4DB7] text-white">
+    <footer className="bg-[#02338D] text-white">
       {/* Main Footer */}
       {!isDashboard && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
             {/* Logo & Tagline */}
             <div className="lg:col-span-2">
-              <Link to="/" className="inline-block">
-                <span className="text-2xl font-bold text-white">Strathmore University</span>
-                <span className="block text-sm font-semibold text-white/80 tracking-wide">Event Ticketing System</span>
+              <Link to="/" className="inline-flex items-center gap-3">
+                <div className="h-12 w-12 rounded-md bg-white p-1">
+                  <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
+                </div>
+                <div>
+                  <span className="text-2xl font-bold text-white">Strathmore University</span>
+                  <span className="block text-sm font-semibold text-white/80 tracking-wide">Events & Partners Ticketing</span>
+                </div>
               </Link>
               <p className="mt-4 text-white/70 text-sm max-w-xs">
-                Official platform for alumni, student, and corporate events across Strathmore University.
+                Official ticketing platform for Strathmore University-organized and partner events for alumni, students, and corporate guests.
               </p>
               <div className="mt-5 text-sm text-white/70 space-y-1">
                 <p>Ole Sangale Road, Madaraka Estate</p>
                 <p>P.O. Box 59857, 00200, Nairobi, Kenya</p>
                 <p>Tel: +254 703 034 000 / +254 703 034 200</p>
                 <p>Email: info@strathmore.edu</p>
+                <a href="https://strathmore.edu/" target="_blank" rel="noreferrer" className="inline-block hover:text-white">
+                  Website: strathmore.edu
+                </a>
               </div>
 
               {/* Social Links */}
@@ -137,10 +146,10 @@ const Footer = () => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
                 <h3 className="font-semibold text-white mb-1">
-                  Stay updated on campus events
+                  Stay updated on Strathmore and partner events
                 </h3>
                 <p className="text-white/70 text-sm">
-                  Receive weekly highlights, ticket alerts, and university updates.
+                  Receive weekly highlights, ticket alerts, and official updates.
                 </p>
               </div>
               <form onSubmit={handleSubscribe} className="flex gap-2 max-w-md w-full md:w-auto">
@@ -156,7 +165,7 @@ const Footer = () => {
                   type="submit"
                   variant="primary"
                   leftIcon={Send}
-                  className="whitespace-nowrap bg-white text-[#1E4DB7] hover:bg-white/90 border-0"
+                  className="whitespace-nowrap bg-white text-[#02338D] hover:bg-white/90 border-0"
                 >
                   {isSubscribed ? 'Subscribed!' : 'Subscribe'}
                 </CustomButton>
@@ -196,4 +205,5 @@ const Footer = () => {
 };
 
 export default Footer;
+
 

@@ -32,10 +32,10 @@ const Avatar = ({
   // Generate consistent color from name
   const getColorFromName = (name) => {
     if (fallbackColor) return fallbackColor;
-    if (!name) return '#1E4DB7';
+    if (!name) return '#02338D';
 
     const colors = [
-      '#1E4DB7', '#7C3AED', '#16A34A', '#0891B2',
+      '#02338D', '#7C3AED', '#16A34A', '#0891B2',
       '#DB2777', '#EA580C', '#059669', '#9333EA'
     ];
     let hash = 0;
@@ -86,3 +86,4 @@ const Avatar = ({
 };
 
 export default Avatar;
+

@@ -14,8 +14,8 @@ const CategoryPill = ({
         flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap
         font-medium text-sm transition-all duration-200
         ${isActive
-          ? 'bg-[#1E4DB7] text-white shadow-md'
-          : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#1E4DB7] hover:text-[#1E4DB7]'}
+          ? 'bg-[#02338D] text-white shadow-md'
+          : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#02338D] hover:text-[#02338D]'}
       `}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
@@ -35,3 +35,4 @@ const CategoryPill = ({
 };
 
 export default CategoryPill;
+

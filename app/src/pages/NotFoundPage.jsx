@@ -57,7 +57,7 @@ const NotFoundPage = () => {
             transition={{ duration: 0.5 }}
           >
             <motion.h1
-              className="text-8xl md:text-9xl font-bold text-[#1E4DB7]"
+              className="text-8xl md:text-9xl font-bold text-[#02338D]"
               animate={{ y: [0, -20, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             >
@@ -104,3 +104,4 @@ const NotFoundPage = () => {
 };
 
 export default NotFoundPage;
+

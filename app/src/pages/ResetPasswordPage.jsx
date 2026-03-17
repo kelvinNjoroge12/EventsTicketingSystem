@@ -6,6 +6,7 @@ import PageWrapper from '../components/layout/PageWrapper';
 import CustomInput from '../components/ui/CustomInput';
 import CustomButton from '../components/ui/CustomButton';
 import { api } from '../lib/apiClient';
+import strathmoreLogo from '../assets/strathmore-logo.png';
 
 const ResetPasswordPage = () => {
     const [searchParams] = useSearchParams();
@@ -83,9 +84,16 @@ const ResetPasswordPage = () => {
                 >
                     {/* Logo */}
                     <div className="text-center mb-8">
-                        <Link to="/" className="inline-flex flex-col items-center">
-                            <span className="text-2xl sm:text-3xl font-bold text-[#1E4DB7]">Strathmore University</span>
-                            <span className="text-xs sm:text-sm font-semibold text-[#1E4DB7]/80 uppercase tracking-wide">Event Ticketing System</span>
+                        <Link to="/" className="inline-flex flex-col items-center gap-3">
+                            <div className="h-16 w-16 rounded-md bg-white p-2 shadow-sm">
+                                <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
+                            </div>
+                            <div>
+                                <span className="text-2xl sm:text-3xl font-bold text-[#02338D]">Strathmore University</span>
+                                <span className="block text-xs sm:text-sm font-semibold text-[#02338D]/80 uppercase tracking-wide">
+                                    Events & Partners Ticketing
+                                </span>
+                            </div>
                         </Link>
                     </div>
 
@@ -116,7 +124,7 @@ const ResetPasswordPage = () => {
                                     </p>
                                     <Link
                                         to="/login"
-                                        className="text-[#1E4DB7] hover:underline font-medium"
+                                        className="text-[#02338D] hover:underline font-medium"
                                     >
                                         Go to Login →
                                     </Link>
@@ -240,3 +248,4 @@ const ResetPasswordPage = () => {
 };
 
 export default ResetPasswordPage;
+

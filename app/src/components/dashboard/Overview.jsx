@@ -65,7 +65,7 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, delay, changeL
               {changeLabel && <span className="text-gray-400 ml-1 hidden sm:inline">{changeLabel}</span>}
             </div>
           </div>
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] flex items-center justify-center group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center group-hover:scale-110 transition-transform">
             <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
           </div>
         </div>
@@ -79,7 +79,7 @@ const getStatusColor = (status) => {
     case 'live':
       return 'bg-green-500 text-white';
     case 'upcoming':
-      return 'bg-[#C58B1A]/20 text-[#1E4DB7]';
+      return 'bg-[#C58B1A]/20 text-[#02338D]';
     case 'completed':
       return 'bg-gray-500 text-white';
     case 'draft':
@@ -100,7 +100,7 @@ const buildCategoryData = (events) => {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
   const total = events.length;
-  const colors = ['#1E4DB7', '#7C3AED', '#C58B1A', '#0F4FA8', '#B91C1C'];
+  const colors = ['#02338D', '#7C3AED', '#C58B1A', '#0F4FA8', '#B91C1C'];
 
   const data = entries.map(([name, count], index) => ({
     name,
@@ -210,7 +210,7 @@ const OrganizerDashboardOverview = ({
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] p-6 lg:p-8 text-white">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] p-6 lg:p-8 text-white">
         <div className="relative z-10">
           <h2 className="text-xl lg:text-2xl font-bold mb-1">Welcome back!</h2>
           <p className="text-white/70 text-sm lg:text-base">Here is what is happening with your events today.</p>
@@ -331,7 +331,7 @@ const OrganizerDashboardOverview = ({
           <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Recent Events</CardTitle>
           <Button
             variant="ghost"
-            className="text-[#1E4DB7] hover:text-[#C58B1A] group text-xs lg:text-sm h-8 lg:h-9"
+            className="text-[#02338D] hover:text-[#C58B1A] group text-xs lg:text-sm h-8 lg:h-9"
             onClick={onViewAll}
           >
             View All
@@ -367,8 +367,8 @@ const OrganizerDashboardOverview = ({
                             className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg object-cover"
                           />
                         ) : (
-                          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg bg-[#1E4DB7]/10 flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-[#1E4DB7]" />
+                          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg bg-[#02338D]/10 flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-[#02338D]" />
                           </div>
                         )}
                         <span className="font-medium text-[#0F172A] text-sm lg:text-base group-hover:text-[#C58B1A] transition-colors line-clamp-1">
@@ -433,3 +433,4 @@ const OrganizerDashboardOverview = ({
 };
 
 export default OrganizerDashboardOverview;
+

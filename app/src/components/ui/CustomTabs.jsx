@@ -70,7 +70,7 @@ const Tabs = ({
               className={`
                 relative px-4 py-3 text-sm font-medium
                 transition-colors duration-200
-                ${isActive ? 'text-[#1E4DB7]' : 'text-[#64748B] hover:text-[#0F172A]'}
+                ${isActive ? 'text-[#02338D]' : 'text-[#64748B] hover:text-[#0F172A]'}
                 ${tabClassName}
               `}
               role="tab"
@@ -81,7 +81,7 @@ const Tabs = ({
               {isActive && variant !== 'pills' && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1E4DB7]"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#02338D]"
                   transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 />
               )}
@@ -118,3 +118,4 @@ const Tabs = ({
 };
 
 export default Tabs;
+

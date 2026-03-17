@@ -55,7 +55,7 @@ const FindTicketPage = () => {
                     transition={{ duration: 0.4 }}
                 >
                     <div className="text-center mb-10">
-                        <div className="w-16 h-16 bg-[#EFF6FF] text-[#1E4DB7] rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-12 shadow-sm border border-blue-100">
+                        <div className="w-16 h-16 bg-[#EFF6FF] text-[#02338D] rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-12 shadow-sm border border-blue-100">
                             <Ticket className="w-8 h-8" />
                         </div>
                         <h1 className="text-3xl font-bold text-[#0F172A] mb-3">Find Your Ticket</h1>
@@ -126,3 +126,4 @@ const FindTicketPage = () => {
 };
 
 export default FindTicketPage;
+

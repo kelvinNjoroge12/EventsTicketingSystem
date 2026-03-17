@@ -38,7 +38,7 @@ const EventCard = ({
   const saved = isSaved({ id: event.id, slug: event.slug });
 
   // Use event's own theme colors for consistency with detail page
-  const themeColor = event.themeColor || '#1E4DB7';
+  const themeColor = event.themeColor || '#02338D';
   const accentColor = event.accentColor || '#7C3AED';
 
   const handleBookmark = (e) => {
@@ -222,3 +222,4 @@ const EventCard = ({
 };
 
 export default memo(EventCard);
+

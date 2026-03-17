@@ -76,13 +76,13 @@ class ErrorBoundary extends React.Component {
                         <div className="flex gap-3 justify-center">
                             <button
                                 onClick={() => this.setState({ hasError: false, error: null })}
-                                className="px-6 py-2 bg-[#1E4DB7]/10 text-[#1E4DB7] rounded-full hover:bg-[#1E4DB7]/20 font-medium transition-colors"
+                                className="px-6 py-2 bg-[#02338D]/10 text-[#02338D] rounded-full hover:bg-[#02338D]/20 font-medium transition-colors"
                             >
                                 Try Again
                             </button>
                             <button
                                 onClick={() => window.location.reload()}
-                                className="px-6 py-2 bg-[#1E4DB7] text-white rounded-full hover:bg-[#1E4DB7]/90 font-medium transition-colors"
+                                className="px-6 py-2 bg-[#02338D] text-white rounded-full hover:bg-[#02338D]/90 font-medium transition-colors"
                             >
                                 Refresh Page
                             </button>
@@ -97,3 +97,4 @@ class ErrorBoundary extends React.Component {
 }
 
 export default ErrorBoundary;
+

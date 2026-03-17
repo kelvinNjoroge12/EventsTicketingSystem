@@ -6,7 +6,7 @@
 
 :root {
   --background: #FFFFFF;
-  --primary: #1E4DB7;
+  --primary: #02338D;
   --accent: #7C3AED;
   --success: #16A34A;
   --error: #DC2626;
@@ -228,19 +228,19 @@ body {
 
 /* Button styles */
 .btn-primary {
-  @apply bg-[#1E4DB7] text-white px-6 py-3 rounded-lg font-medium transition-all duration-200;
+  @apply bg-[#02338D] text-white px-6 py-3 rounded-lg font-medium transition-all duration-200;
 }
 
 .btn-primary:hover {
-  @apply bg-[#1a44a0] transform -translate-y-0.5;
+  @apply bg-[#022A78] transform -translate-y-0.5;
 }
 
 .btn-outline {
-  @apply border-2 border-[#1E4DB7] text-[#1E4DB7] px-6 py-3 rounded-lg font-medium transition-all duration-200 bg-transparent;
+  @apply border-2 border-[#02338D] text-[#02338D] px-6 py-3 rounded-lg font-medium transition-all duration-200 bg-transparent;
 }
 
 .btn-outline:hover {
-  @apply bg-[#1E4DB7] text-white transform -translate-y-0.5;
+  @apply bg-[#02338D] text-white transform -translate-y-0.5;
 }
 
 /* Timeline line animation */
@@ -494,3 +494,5 @@ body {
     display: block !important;
   }
 }
+
+

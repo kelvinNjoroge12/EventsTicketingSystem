@@ -39,7 +39,7 @@ const StatBox = ({ value, label, suffix = '' }) => {
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
     >
-      <p className="text-3xl md:text-4xl font-bold text-[#1E4DB7]">
+      <p className="text-3xl md:text-4xl font-bold text-[#02338D]">
         {count.toLocaleString()}{suffix}
       </p>
       <p className="text-[#64748B] mt-1">{label}</p>
@@ -58,9 +58,9 @@ const StepCard = ({ number, title, description, icon: Icon, tint, delay }) => (
     transition={{ duration: 0.5, delay }}
   >
     <div className="w-12 h-12 rounded-xl bg-white/80 flex items-center justify-center mb-4">
-      <Icon className="w-6 h-6 text-[#1E4DB7]" />
+      <Icon className="w-6 h-6 text-[#02338D]" />
     </div>
-    <div className="w-8 h-8 rounded-full bg-[#1E4DB7] text-white flex items-center justify-center text-sm font-bold mb-3">
+    <div className="w-8 h-8 rounded-full bg-[#02338D] text-white flex items-center justify-center text-sm font-bold mb-3">
       {number}
     </div>
     <h3 className="font-semibold text-[#0F172A] text-lg mb-2">{title}</h3>
@@ -291,7 +291,7 @@ const HomePage = () => {
                 transition={{ duration: 0.4 }}
               >
                 <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-                University events • Alumni • Student & corporate gatherings
+                Strathmore and partner events - Alumni - Students and corporate gatherings
               </motion.p>
 
               <motion.h1
@@ -325,7 +325,7 @@ const HomePage = () => {
                     visible: { opacity: 1, y: 0 }
                   }}
                 >
-                  university
+                  Strathmore
                 </motion.span>
                 {"event experience.".split(" ").map((word, i) => (
                   <motion.span
@@ -353,7 +353,7 @@ const HomePage = () => {
                   }
                 }}
               >
-                {"Discover alumni reunions, student clubs, corporate forums, and university-wide celebrations. Reserve your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
+                {"Discover alumni reunions, student clubs, and corporate forums organized by Strathmore or in partnership. Reserve your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-1"
@@ -375,12 +375,12 @@ const HomePage = () => {
               >
                 <Link to="/events">
                   <CustomButton variant="primary" size="lg" rightIcon={ArrowRight}>
-                    Browse Campus Events
+                    Browse Events
                   </CustomButton>
                 </Link>
                 <Link to="/create-event">
                   <CustomButton variant="outline" size="lg">
-                    Create a University Event
+                    Create an Event
                   </CustomButton>
                 </Link>
               </motion.div>
@@ -397,7 +397,7 @@ const HomePage = () => {
                   <span className="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white/20" />
                 </div>
                 <span>
-                  Join <span className="font-semibold text-[#f97316]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Event Ticketing System.
+                  Join <span className="font-semibold text-[#f97316]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Events & Partners Ticketing System.
                 </span>
               </motion.div>
             </div>
@@ -486,8 +486,8 @@ const HomePage = () => {
                       flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap
                       font-medium text-sm transition-all
                       ${activeCategory === 'All'
-                        ? 'bg-[#1E4DB7] text-white shadow-md'
-                        : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#1E4DB7] hover:text-[#1E4DB7]'}
+                        ? 'bg-[#02338D] text-white shadow-md'
+                        : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#02338D] hover:text-[#02338D]'}
                     `}
                   >
                     <span>All Events</span>
@@ -512,11 +512,11 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-[#0F172A]">
-              Upcoming University Events
+              Upcoming Events
             </h2>
             <Link
               to="/events"
-              className="text-[#1E4DB7] font-medium hover:underline flex items-center gap-1"
+              className="text-[#02338D] font-medium hover:underline flex items-center gap-1"
             >
               View All
               <ArrowRight className="w-4 h-4" />
@@ -583,9 +583,9 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <StatBox value="10000" label="Students, Alumni & Guests" suffix="+" />
-            <StatBox value="2000" label="Campus Events" suffix="+" />
+            <StatBox value="2000" label="Events Hosted" suffix="+" />
             <StatBox value="500" label="Schools, Clubs & Partners" suffix="+" />
-            <StatBox value="50" label="Partner Guests" suffix="+" />
+            <StatBox value="50" label="Corporate Guests" suffix="+" />
           </div>
         </div>
       </section>
@@ -626,8 +626,8 @@ const HomePage = () => {
               <>
                 <StepCard
                   number={1}
-                  title="Explore University Events"
-                  description="Browse alumni reunions, student activities, and corporate forums. Filter by school, date, or venue."
+                  title="Explore Strathmore & Partner Events"
+                  description="Browse alumni reunions, student activities, and corporate forums. Filter by organizer, date, or venue."
                   icon={Search}
                   tint="#EFF6FF"
                   delay={0}
@@ -653,7 +653,7 @@ const HomePage = () => {
               <>
                 <StepCard
                   number={1}
-                  title="Create Your University Event"
+                  title="Create Your Event"
                   description="Publish event details, add ticket types, and customize your registration page."
                   icon={Calendar}
                   tint="#EFF6FF"
@@ -685,7 +685,7 @@ const HomePage = () => {
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            className="bg-[#1E4DB7] rounded-3xl p-8 md:p-16 text-center relative overflow-hidden"
+            className="bg-[#02338D] rounded-3xl p-8 md:p-16 text-center relative overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -702,7 +702,7 @@ const HomePage = () => {
 
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to Host a Strathmore Event?
+                Ready to Host a Strathmore or Partner Event?
               </h2>
               <p className="text-white/80 text-lg mb-8 max-w-xl mx-auto">
                 Support your school, alumni chapter, or corporate partner event with official ticketing and check-in tools.
@@ -715,7 +715,7 @@ const HomePage = () => {
                   <CustomButton
                     variant="outline"
                     size="lg"
-                    className="border-white text-white hover:bg-white hover:text-[#1E4DB7]"
+                    className="border-white text-white hover:bg-white hover:text-[#02338D]"
                   >
                     Create Your Event
                   </CustomButton>
@@ -730,3 +730,7 @@ const HomePage = () => {
 };
 
 export default HomePage;
+
+
+
+

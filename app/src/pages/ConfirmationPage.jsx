@@ -150,7 +150,7 @@ END:VCALENDAR`;
           <p className="text-[#64748B] mb-6">{loadError}</p>
           <Link
             to="/find-ticket"
-            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#1E4DB7] text-white font-medium"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#02338D] text-white font-medium"
           >
             Find your ticket
           </Link>
@@ -242,7 +242,7 @@ END:VCALENDAR`;
           transition={{ delay: 0.8 }}
           className="mb-8 p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-center"
         >
-          <div className="w-12 h-12 bg-[#EFF6FF] text-[#1E4DB7] rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12 bg-[#EFF6FF] text-[#02338D] rounded-full flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2"></path>
               <path d="m22 6-10 7L2 6"></path>
@@ -322,7 +322,7 @@ END:VCALENDAR`;
         >
           <Link
             to="/events"
-            className="inline-flex items-center gap-2 text-[#1E4DB7] font-medium hover:underline"
+            className="inline-flex items-center gap-2 text-[#02338D] font-medium hover:underline"
           >
             Browse More Events
             <ArrowRight className="w-4 h-4" />
@@ -334,3 +334,4 @@ END:VCALENDAR`;
 };
 
 export default ConfirmationPage;
+

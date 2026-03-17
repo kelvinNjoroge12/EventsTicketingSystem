@@ -99,7 +99,7 @@ const PromoCodesTab = ({ slug }) => {
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Promo Codes</CardTitle>
             <p className="text-sm text-gray-500 mt-1">Manage discount codes for your ticket buyers.</p>
           </div>
-          <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowPromoModal(true)}>
+          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => setShowPromoModal(true)}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Create Promo Code
           </Button>
@@ -145,7 +145,7 @@ const PromoCodesTab = ({ slug }) => {
                           size="icon"
                           title={promo.is_active ? "Deactivate" : "Activate"}
                           onClick={() => togglePromoMutation.mutate({ id: promo.id, is_active: !promo.is_active })}
-                          className="text-gray-400 hover:text-[#1E4DB7]"
+                          className="text-gray-400 hover:text-[#02338D]"
                         >
                           <Power className="w-4 h-4" />
                         </Button>
@@ -184,7 +184,7 @@ const PromoCodesTab = ({ slug }) => {
             className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex items-center justify-between">
+            <div className="bg-[#02338D] px-6 py-4 text-white flex items-center justify-between">
               <h3 className="font-semibold">Create Promo Code</h3>
               <button onClick={() => setShowPromoModal(false)} className="p-1 rounded-full hover:bg-white/20">
                 <X className="w-4 h-4" />
@@ -249,7 +249,7 @@ const PromoCodesTab = ({ slug }) => {
                   id="promo-active"
                   checked={promoForm.is_active}
                   onChange={(e) => setPromoForm((prev) => ({ ...prev, is_active: e.target.checked }))}
-                  className="rounded text-[#1E4DB7] focus:ring-[#1E4DB7]"
+                  className="rounded text-[#02338D] focus:ring-[#02338D]"
                 />
                 <Label htmlFor="promo-active" className="text-sm cursor-pointer">Activate immediately</Label>
               </div>
@@ -269,3 +269,5 @@ const PromoCodesTab = ({ slug }) => {
 };
 
 export default PromoCodesTab;
+
+

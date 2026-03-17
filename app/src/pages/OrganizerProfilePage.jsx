@@ -44,7 +44,7 @@ const OrganizerProfilePage = () => {
             id: organizerData.id,
             name: `${organizerData.first_name} ${organizerData.last_name}`,
             bio: organizerData.organizer_profile?.organization_bio || '',
-            brandColor: organizerData.organizer_profile?.brand_color || '#1E4DB7',
+            brandColor: organizerData.organizer_profile?.brand_color || '#02338D',
             location: '',
             website: organizerData.organizer_profile?.website || '',
             social: {
@@ -95,7 +95,7 @@ const OrganizerProfilePage = () => {
           <h1 className="text-2xl font-bold text-[#0F172A] mb-4">Organizer Not Found</h1>
           <p className="text-[#64748B] mb-6">The organizer you're looking for doesn't exist.</p>
           <Link to="/events">
-            <button className="px-6 py-3 bg-[#1E4DB7] text-white rounded-lg hover:bg-[#1a44a0]">
+            <button className="px-6 py-3 bg-[#02338D] text-white rounded-lg hover:bg-[#022A78]">
               Browse Events
             </button>
           </Link>
@@ -197,7 +197,7 @@ const OrganizerProfilePage = () => {
                       href={organizer.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[#1E4DB7] hover:underline"
+                      className="flex items-center gap-1 text-[#02338D] hover:underline"
                     >
                       <LinkIcon className="w-4 h-4" />
                       Website
@@ -273,3 +273,5 @@ const OrganizerProfilePage = () => {
 };
 
 export default OrganizerProfilePage;
+
+

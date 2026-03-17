@@ -28,8 +28,8 @@ const OrganizerCheckInLanding = () => {
       <div className="min-h-screen bg-[#F8FAFC] pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#1E4DB7]/10 flex items-center justify-center">
-              <TicketCheck className="w-5 h-5 text-[#1E4DB7]" />
+            <div className="w-10 h-10 rounded-xl bg-[#02338D]/10 flex items-center justify-center">
+              <TicketCheck className="w-5 h-5 text-[#02338D]" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#0F172A]">Your Assigned Events</h1>
@@ -68,7 +68,7 @@ const OrganizerCheckInLanding = () => {
                         )}
                       </div>
                     </div>
-                    <span className="text-xs font-semibold text-[#1E4DB7]">Open Check-In</span>
+                    <span className="text-xs font-semibold text-[#02338D]">Open Check-In</span>
                   </div>
                 </button>
               ))}
@@ -81,3 +81,4 @@ const OrganizerCheckInLanding = () => {
 };
 
 export default OrganizerCheckInLanding;
+

@@ -134,7 +134,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                         style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>
                     )}
-                    <div className="flex items-center justify-center gap-1 text-xs text-[#94A3B8] group-hover:text-[#1E4DB7] w-full mt-2">
+                    <div className="flex items-center justify-center gap-1 text-xs text-[#94A3B8] group-hover:text-[#02338D] w-full mt-2">
                       <span className="truncate">{sponsor.name}</span>
                       <ExternalLink className="w-3 h-3 flex-shrink-0" />
                     </div>
@@ -331,7 +331,7 @@ const EventDetailPage = () => {
 
   const handleShare = (platform) => {
     const url = window.location.href;
-    const text = `Check out ${event.title} on the Strathmore University Event Ticketing System!`;
+    const text = `Check out ${event.title} on the Strathmore University Events & Partners Ticketing System!`;
     const urls = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`,
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
@@ -365,14 +365,14 @@ const EventDetailPage = () => {
         <div className="max-w-7xl mx-auto px-4 py-16 text-center">
           <h1 className="text-2xl font-bold text-[#0F172A] mb-4">Event Not Found</h1>
           <p className="text-[#64748B] mb-6">The event you're looking for doesn't exist.</p>
-          <Link to="/events" className="px-6 py-3 bg-[#1E4DB7] text-white rounded-xl font-medium hover:bg-[#1a42a0] transition-colors">Browse Events</Link>
+          <Link to="/events" className="px-6 py-3 bg-[#02338D] text-white rounded-xl font-medium hover:bg-[#022A78] transition-colors">Browse Events</Link>
         </div>
       </PageWrapper>
     );
   }
 
   const saved = isSaved({ id: event.id, slug: event.slug });
-  const themeColor = event.themeColor || '#1E4DB7';
+  const themeColor = event.themeColor || '#02338D';
   const accentColor = event.accentColor || '#7C3AED';
   const hasMC = event.mc?.name;
   const showClassicLoader = !detailAlreadyCached && (isPlaceholderData || (isFetching && isLoading));
@@ -530,7 +530,7 @@ const EventDetailPage = () => {
 
           {/* Bookmark */}
           <button onClick={() => toggleSave({ id: event.id, slug: event.slug })}
-            className={`p-2.5 rounded-full backdrop-blur-sm border transition-all ${saved ? 'bg-[#1E4DB7] border-[#1E4DB7] text-white' : 'bg-white/20 border-white/20 text-white hover:bg-white/35'}`}
+            className={`p-2.5 rounded-full backdrop-blur-sm border transition-all ${saved ? 'bg-[#02338D] border-[#02338D] text-white' : 'bg-white/20 border-white/20 text-white hover:bg-white/35'}`}
             aria-label={saved ? 'Remove from saved' : 'Save event'}>
             {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
           </button>
@@ -824,3 +824,5 @@ const EventDetailPage = () => {
 };
 
 export default EventDetailPage;
+
+

@@ -10,8 +10,8 @@ const Badge = ({
   ...props
 }) => {
   const variants = {
-    default: 'bg-[#EFF6FF] text-[#1E4DB7]',
-    primary: 'bg-[#1E4DB7] text-white',
+    default: 'bg-[#EFF6FF] text-[#02338D]',
+    primary: 'bg-[#02338D] text-white',
     accent: 'bg-[#7C3AED] text-white',
     success: 'bg-[#F0FDF4] text-[#16A34A]',
     error: 'bg-[#FEF2F2] text-[#DC2626]',
@@ -48,3 +48,4 @@ const Badge = ({
 };
 
 export default Badge;
+

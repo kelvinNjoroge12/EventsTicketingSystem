@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Settings } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import strathmoreLogo from '../../assets/strathmore-logo.png';
 
 const CheckInStaffHeader = ({ title = 'Check-In Staff' }) => {
   const { user, logout } = useAuth();
@@ -16,10 +17,15 @@ const CheckInStaffHeader = ({ title = 'Check-In Staff' }) => {
     <header className="fixed top-0 left-0 right-0 z-40 bg-[#0F172A] text-white border-b border-white/10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm sm:text-base font-bold leading-tight">
-            Strathmore University
-            <span className="block text-[10px] font-semibold text-white/80 uppercase tracking-wide">Event Ticketing</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-md bg-white p-1">
+              <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
+            </div>
+            <span className="text-sm sm:text-base font-bold leading-tight">
+              Strathmore University
+              <span className="block text-[10px] font-semibold text-white/80 uppercase tracking-wide">Events & Partners</span>
+            </span>
+          </div>
           <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-white/10">
             {title}
           </span>

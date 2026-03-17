@@ -152,7 +152,7 @@ const AttendeeForm = ({
           <button
             type="button"
             onClick={() => setShowAdditional(!showAdditional)}
-            className="flex items-center gap-2 text-[#1E4DB7] hover:underline"
+            className="flex items-center gap-2 text-[#02338D] hover:underline"
           >
             <span>Additional Attendees ({cart.quantity - 1})</span>
             {showAdditional ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -213,3 +213,4 @@ const AttendeeForm = ({
 };
 
 export default AttendeeForm;
+

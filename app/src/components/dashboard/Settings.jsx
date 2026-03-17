@@ -529,7 +529,7 @@ const OrganizerSettings = ({ events = [] }) => {
                     className={cn(
                       'flex items-center gap-2 lg:gap-3 px-3 py-2 lg:py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap',
                       activeTab === item.id
-                        ? 'bg-[#1E4DB7] text-white'
+                        ? 'bg-[#02338D] text-white'
                         : 'text-gray-600 hover:bg-gray-100'
                     )}
                   >
@@ -561,7 +561,7 @@ const OrganizerSettings = ({ events = [] }) => {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <label className="absolute -bottom-1 -right-1 w-6 h-6 lg:w-8 lg:h-8 bg-[#1E4DB7] text-white rounded-full flex items-center justify-center hover:bg-[#163B90] transition-colors cursor-pointer">
+                    <label className="absolute -bottom-1 -right-1 w-6 h-6 lg:w-8 lg:h-8 bg-[#02338D] text-white rounded-full flex items-center justify-center hover:bg-[#022A78] transition-colors cursor-pointer">
                       <Camera className="w-3 h-3 lg:w-4 lg:h-4" />
                       <input
                         type="file"
@@ -655,7 +655,7 @@ const OrganizerSettings = ({ events = [] }) => {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => profileMutation.mutate()} disabled={profileMutation.isLoading} className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm">
+                  <Button onClick={() => profileMutation.mutate()} disabled={profileMutation.isLoading} className="bg-[#02338D] hover:bg-[#022A78] text-sm">
                     {profileMutation.isLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -728,7 +728,7 @@ const OrganizerSettings = ({ events = [] }) => {
                   <Button
                     onClick={() => notificationsMutation.mutate(buildNotificationPayload(notifications))}
                     disabled={notificationsMutation.isLoading}
-                    className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm"
+                    className="bg-[#02338D] hover:bg-[#022A78] text-sm"
                   >
                     {notificationsMutation.isLoading ? (
                       <>
@@ -785,7 +785,7 @@ const OrganizerSettings = ({ events = [] }) => {
                     {paymentSettings.stripeEnabled && (
                       <Button
                         size="sm"
-                        className="bg-[#1E4DB7] hover:bg-[#163B90] text-xs"
+                        className="bg-[#02338D] hover:bg-[#022A78] text-xs"
                         onClick={() => stripeConnectMutation.mutate({})}
                         disabled={stripeConnectMutation.isLoading}
                       >
@@ -911,7 +911,7 @@ const OrganizerSettings = ({ events = [] }) => {
                       <div key={member.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 lg:p-4 border border-gray-100 rounded-lg hover:bg-gray-50">
                         <div className="flex items-center gap-3 lg:gap-4">
                           <Avatar className="w-8 h-8 lg:w-10 lg:h-10">
-                            <AvatarFallback className="bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] text-white text-xs lg:text-sm">
+                            <AvatarFallback className="bg-gradient-to-br from-[#02338D] to-[#7C3AED] text-white text-xs lg:text-sm">
                               {member.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -926,7 +926,7 @@ const OrganizerSettings = ({ events = [] }) => {
                             className={cn(
                               'px-2 lg:px-3 py-1 rounded-full text-xs font-medium',
                               member.role === 'Owner' && 'bg-[#C58B1A]/20 text-[#0F172A]',
-                              member.role === 'Admin' && 'bg-[#1E4DB7] text-white',
+                              member.role === 'Admin' && 'bg-[#02338D] text-white',
                               member.role !== 'Owner' && member.role !== 'Admin' && 'bg-gray-200 text-gray-700'
                             )}
                           >
@@ -992,7 +992,7 @@ const OrganizerSettings = ({ events = [] }) => {
                       <Button
                         variant={integration.connected ? 'outline' : 'default'}
                         size="sm"
-                        className={integration.connected ? 'text-xs' : 'bg-[#1E4DB7] hover:bg-[#163B90] text-xs'}
+                        className={integration.connected ? 'text-xs' : 'bg-[#02338D] hover:bg-[#022A78] text-xs'}
                         onClick={() =>
                           integrationMutation.mutate({
                             id: integration.id,
@@ -1053,7 +1053,7 @@ const OrganizerSettings = ({ events = [] }) => {
                       />
                     </div>
                     <Button
-                      className="bg-[#1E4DB7] hover:bg-[#163B90] text-sm"
+                      className="bg-[#02338D] hover:bg-[#022A78] text-sm"
                       onClick={() => {
                         if (passwordForm.next !== passwordForm.confirm) {
                           toast.error('Passwords do not match.');
@@ -1192,7 +1192,7 @@ const OrganizerSettings = ({ events = [] }) => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
             <Button
-              className="bg-[#1E4DB7] hover:bg-[#163B90]"
+              className="bg-[#02338D] hover:bg-[#022A78]"
               onClick={handleInvite}
               disabled={inviteMutation.isLoading}
             >
@@ -1206,3 +1206,5 @@ const OrganizerSettings = ({ events = [] }) => {
 };
 
 export default OrganizerSettings;
+
+

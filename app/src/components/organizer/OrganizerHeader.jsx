@@ -177,8 +177,8 @@ const OrganizerHeader = ({
         'fixed top-0 right-0 h-16 z-40 transition-all duration-300 flex items-center justify-between px-4 lg:px-6',
         useSidebarOffset ? 'lg:left-64 left-0' : 'left-0',
         scrolled
-          ? 'bg-[#1E4DB7]/95 backdrop-blur-xl shadow-md border-b border-[#163B90]'
-          : 'bg-[#1E4DB7] border-b border-[#163B90]'
+          ? 'bg-[#02338D]/95 backdrop-blur-xl shadow-md border-b border-[#022A78]'
+          : 'bg-[#02338D] border-b border-[#022A78]'
       )}
     >
       <div className="flex items-center gap-3">
@@ -229,12 +229,12 @@ const OrganizerHeader = ({
               <span>Notifications</span>
               <div className="flex items-center gap-2">
                 {visibleNotifications.length > 0 && (
-                  <button onClick={clearNotifications} className="text-xs text-[#1E4DB7] hover:text-[#C58B1A]">
+                  <button onClick={clearNotifications} className="text-xs text-[#02338D] hover:text-[#C58B1A]">
                     Clear
                   </button>
                 )}
                 {unreadCount > 0 && (
-                  <button onClick={markAllAsRead} className="text-xs text-[#1E4DB7] hover:text-[#C58B1A]">
+                  <button onClick={markAllAsRead} className="text-xs text-[#02338D] hover:text-[#C58B1A]">
                     Mark all read
                   </button>
                 )}
@@ -263,7 +263,7 @@ const OrganizerHeader = ({
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="justify-center text-[#1E4DB7] font-medium cursor-pointer"
+              className="justify-center text-[#02338D] font-medium cursor-pointer"
               onClick={() => navigate('/organizer-dashboard?tab=settings')}
             >
               Notification settings
@@ -297,3 +297,5 @@ const OrganizerHeader = ({
 };
 
 export default OrganizerHeader;
+
+

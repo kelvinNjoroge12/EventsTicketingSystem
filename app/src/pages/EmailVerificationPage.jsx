@@ -51,7 +51,7 @@ const EmailVerificationPage = () => {
                     {status === 'verifying' && (
                         <div className="py-8">
                             <motion.div
-                                className="w-16 h-16 border-4 border-[#1E4DB7] border-t-transparent rounded-full mx-auto mb-6"
+                                className="w-16 h-16 border-4 border-[#02338D] border-t-transparent rounded-full mx-auto mb-6"
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                             />
@@ -74,7 +74,7 @@ const EmailVerificationPage = () => {
                             <p className="text-[#64748B] mb-6">{message}</p>
                             <Link
                                 to="/login"
-                                className="inline-block px-8 py-3 bg-[#1E4DB7] text-white font-medium rounded-lg hover:bg-[#1E3A8A] transition-colors"
+                                className="inline-block px-8 py-3 bg-[#02338D] text-white font-medium rounded-lg hover:bg-[#1E3A8A] transition-colors"
                             >
                                 Go to Login
                             </Link>
@@ -102,7 +102,7 @@ const EmailVerificationPage = () => {
                                 </Link>
                                 <Link
                                     to="/"
-                                    className="text-sm text-[#1E4DB7] hover:underline"
+                                    className="text-sm text-[#02338D] hover:underline"
                                 >
                                     Return Home
                                 </Link>
@@ -116,3 +116,4 @@ const EmailVerificationPage = () => {
 };
 
 export default EmailVerificationPage;
+

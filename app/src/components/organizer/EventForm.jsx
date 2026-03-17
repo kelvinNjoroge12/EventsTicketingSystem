@@ -74,7 +74,7 @@ const ImageUploader = ({ label, preview, onFile, size = 'md', hint }) => {
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
-        className={`${sizeClasses[size]} relative cursor-pointer overflow-hidden border-2 border-dashed transition-all flex items-center justify-center ${isDragging ? 'border-[#1E4DB7] bg-[#EFF6FF]' : 'border-[#E2E8F0] hover:border-[#1E4DB7]/60 bg-[#F8FAFC]'}`}
+        className={`${sizeClasses[size]} relative cursor-pointer overflow-hidden border-2 border-dashed transition-all flex items-center justify-center ${isDragging ? 'border-[#02338D] bg-[#EFF6FF]' : 'border-[#E2E8F0] hover:border-[#02338D]/60 bg-[#F8FAFC]'}`}
       >
         {preview ? (
           <>
@@ -113,7 +113,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
       <select
         value={data.category}
         onChange={(e) => onChange('category', e.target.value)}
-        className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] ${errors.category ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
+        className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.category ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
       >
         <option value="">Select a category</option>
         {categories.map((cat) => (
@@ -127,7 +127,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
       <label className="block text-sm font-medium text-[#0F172A] mb-2">Tags</label>
       <div className="flex flex-wrap gap-2 mb-2">
         {data.tags.map((tag, index) => (
-          <span key={index} className="inline-flex items-center gap-1 px-3 py-1 bg-[#EFF6FF] text-[#1E4DB7] rounded-full text-sm">
+          <span key={index} className="inline-flex items-center gap-1 px-3 py-1 bg-[#EFF6FF] text-[#02338D] rounded-full text-sm">
             {tag}
             <button onClick={() => onChange('tags', data.tags.filter((_, i) => i !== index))} className="hover:text-[#DC2626]">
               <X className="w-3 h-3" />
@@ -138,7 +138,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
       <input
         type="text"
         placeholder="Type a tag and press Enter"
-        className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+        className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D]"
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
@@ -161,7 +161,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
               key={type}
               type="button"
               onClick={() => onChange('eventType', type.toLowerCase())}
-              className={`flex-1 py-2 px-4 rounded-lg border font-medium text-sm ${data.eventType === type.toLowerCase() ? 'border-[#1E4DB7] bg-[#EFF6FF] text-[#1E4DB7]' : 'border-[#E2E8F0] text-[#64748B] hover:border-[#1E4DB7]/50'}`}
+              className={`flex-1 py-2 px-4 rounded-lg border font-medium text-sm ${data.eventType === type.toLowerCase() ? 'border-[#02338D] bg-[#EFF6FF] text-[#02338D]' : 'border-[#E2E8F0] text-[#64748B] hover:border-[#02338D]/50'}`}
             >
               {type}
             </button>
@@ -174,7 +174,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
         <select
           value={data.format}
           onChange={(e) => onChange('format', e.target.value)}
-          className="w-full px-4 py-2.5 bg-white border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+          className="w-full px-4 py-2.5 bg-white border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D]"
         >
           <option value="In-Person">In-Person</option>
           <option value="Online">Online</option>
@@ -186,7 +186,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
     {/* Brand Colors */}
     <div className="p-5 bg-gradient-to-r from-[#F8FAFC] to-[#EFF6FF] rounded-xl border border-[#E2E8F0]">
       <div className="flex items-center gap-2 mb-4">
-        <Palette className="w-4 h-4 text-[#1E4DB7]" />
+        <Palette className="w-4 h-4 text-[#02338D]" />
         <h3 className="text-sm font-semibold text-[#0F172A]">Event Branding Colors</h3>
         <span className="ml-auto text-xs text-[#64748B]">Customize your event page</span>
       </div>
@@ -197,17 +197,17 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
             <div className="relative">
               <input
                 type="color"
-                value={data.themeColor || '#1E4DB7'}
+                value={data.themeColor || '#02338D'}
                 onChange={(e) => onChange('themeColor', e.target.value)}
                 className="w-10 h-10 rounded-lg cursor-pointer border border-[#E2E8F0] p-0.5"
               />
             </div>
             <input
               type="text"
-              value={data.themeColor || '#1E4DB7'}
+              value={data.themeColor || '#02338D'}
               onChange={(e) => onChange('themeColor', e.target.value)}
-              className="flex-1 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
-              placeholder="#1E4DB7"
+              className="flex-1 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#02338D]"
+              placeholder="#02338D"
             />
           </div>
         </div>
@@ -224,7 +224,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
               type="text"
               value={data.accentColor || '#7C3AED'}
               onChange={(e) => onChange('accentColor', e.target.value)}
-              className="flex-1 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+              className="flex-1 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#02338D]"
               placeholder="#7C3AED"
             />
           </div>
@@ -233,7 +233,7 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
       {/* Color Preview */}
       <div
         className="mt-4 h-10 rounded-lg w-full"
-        style={{ background: `linear-gradient(90deg, ${data.themeColor || '#1E4DB7'}, ${data.accentColor || '#7C3AED'})` }}
+        style={{ background: `linear-gradient(90deg, ${data.themeColor || '#02338D'}, ${data.accentColor || '#7C3AED'})` }}
       />
     </div>
   </div>
@@ -257,7 +257,7 @@ export const DateLocationStep = ({ data, onChange, errors }) => (
       <select
         value={data.timezone}
         onChange={(e) => onChange('timezone', e.target.value)}
-        className="w-full px-4 py-2.5 bg-white border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+        className="w-full px-4 py-2.5 bg-white border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D]"
       >
         <option value="EAT">East Africa Time (EAT)</option>
         <option value="GMT">Greenwich Mean Time (GMT)</option>
@@ -335,7 +335,7 @@ export const DescriptionStep = ({ data, onChange }) => {
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
           onClick={() => fileInputRef.current?.click()}
-          className={`relative border-2 border-dashed rounded-xl overflow-hidden text-center cursor-pointer transition-all ${isDragging ? 'border-[#1E4DB7] bg-[#EFF6FF]' : 'border-[#E2E8F0] hover:border-[#1E4DB7]/50'} ${data.coverImagePreview ? 'aspect-video' : 'p-8'}`}
+          className={`relative border-2 border-dashed rounded-xl overflow-hidden text-center cursor-pointer transition-all ${isDragging ? 'border-[#02338D] bg-[#EFF6FF]' : 'border-[#E2E8F0] hover:border-[#02338D]/50'} ${data.coverImagePreview ? 'aspect-video' : 'p-8'}`}
         >
           {data.coverImagePreview ? (
             <>
@@ -347,7 +347,7 @@ export const DescriptionStep = ({ data, onChange }) => {
           ) : (
             <>
               <Upload className="w-10 h-10 mx-auto text-[#64748B] mb-3" />
-              <p className="text-sm text-[#64748B] mb-2">Drag and drop an image here, or <span className="text-[#1E4DB7] hover:underline">browse</span></p>
+              <p className="text-sm text-[#64748B] mb-2">Drag and drop an image here, or <span className="text-[#02338D] hover:underline">browse</span></p>
               <p className="text-xs text-[#94A3B8]">Recommended: 1200x630px, JPG or PNG</p>
             </>
           )}
@@ -398,16 +398,16 @@ export const SpeakersStep = ({ data, onChange }) => {
               />
               <div className="flex-1 grid grid-cols-2 gap-3">
                 <input type="text" placeholder="Full Name *" value={speaker.name} onChange={(e) => updateSpeaker(index, 'name', e.target.value)}
-                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
                 <input type="text" placeholder="Title / Role" value={speaker.title} onChange={(e) => updateSpeaker(index, 'title', e.target.value)}
-                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
                 <input type="text" placeholder="Organization" value={speaker.organization} onChange={(e) => updateSpeaker(index, 'organization', e.target.value)}
-                  className="col-span-2 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                  className="col-span-2 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
               </div>
             </div>
 
             <textarea placeholder="Short bio..." value={speaker.bio} onChange={(e) => updateSpeaker(index, 'bio', e.target.value)} rows={3}
-              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm" />
           </motion.div>
         ))}
       </AnimatePresence>
@@ -419,7 +419,7 @@ export const SpeakersStep = ({ data, onChange }) => {
       {/* MC Section */}
       <div className="pt-6 border-t border-[#E2E8F0]">
         <div className="flex items-center gap-2 mb-4">
-          <input type="checkbox" id="hasMC" checked={data.hasMC} onChange={(e) => onChange('hasMC', e.target.checked)} className="w-4 h-4 rounded border-[#E2E8F0] text-[#1E4DB7] focus:ring-[#1E4DB7]" />
+          <input type="checkbox" id="hasMC" checked={data.hasMC} onChange={(e) => onChange('hasMC', e.target.checked)} className="w-4 h-4 rounded border-[#E2E8F0] text-[#02338D] focus:ring-[#02338D]" />
           <label htmlFor="hasMC" className="text-sm font-semibold text-[#0F172A]">Add an MC / Host</label>
         </div>
 
@@ -436,9 +436,9 @@ export const SpeakersStep = ({ data, onChange }) => {
               />
               <div className="flex-1 space-y-3">
                 <input type="text" placeholder="MC / Host Name *" value={data.mcName} onChange={(e) => onChange('mcName', e.target.value)}
-                  className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                  className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
                 <textarea placeholder="MC Bio / Introduction" value={data.mcBio} onChange={(e) => onChange('mcBio', e.target.value)} rows={3}
-                  className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+                  className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm" />
               </div>
             </div>
           </motion.div>
@@ -469,7 +469,7 @@ export const ScheduleStep = ({ data, onChange }) => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#1E4DB7] text-white flex items-center justify-center text-xs font-bold">{index + 1}</div>
+                <div className="w-7 h-7 rounded-full bg-[#02338D] text-white flex items-center justify-center text-xs font-bold">{index + 1}</div>
                 <h4 className="font-semibold text-[#0F172A]">Schedule Item</h4>
               </div>
               <button type="button" onClick={() => removeItem(index)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
@@ -481,15 +481,15 @@ export const ScheduleStep = ({ data, onChange }) => {
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
                 <input type="time" value={item.time} onChange={(e) => updateItem(index, 'time', e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                  className="w-full pl-9 pr-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
               </div>
               <input type="text" placeholder="Session Title *" value={item.title} onChange={(e) => updateItem(index, 'title', e.target.value)}
-                className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
             </div>
             <input type="text" placeholder="Speaker / Presenter (optional)" value={item.speaker} onChange={(e) => updateItem(index, 'speaker', e.target.value)}
-              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
             <textarea placeholder="Session description..." value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} rows={2}
-              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm" />
           </motion.div>
         ))}
       </AnimatePresence>
@@ -511,7 +511,7 @@ export const SponsorsStep = ({ data, onChange }) => {
     onChange('sponsors', arr);
   };
 
-  const tierColors = { Platinum: '#E5E7EB', Gold: '#FCD34D', Silver: '#9CA3AF', Bronze: '#CD7F32', Partner: '#1E4DB7' };
+  const tierColors = { Platinum: '#E5E7EB', Gold: '#FCD34D', Silver: '#9CA3AF', Bronze: '#CD7F32', Partner: '#02338D' };
 
   return (
     <div className="space-y-6">
@@ -539,14 +539,14 @@ export const SponsorsStep = ({ data, onChange }) => {
               />
               <div className="flex-1 grid grid-cols-2 gap-3">
                 <input type="text" placeholder="Sponsor Name *" value={sponsor.name} onChange={(e) => updateSponsor(index, 'name', e.target.value)}
-                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
                 <select value={sponsor.tier} onChange={(e) => updateSponsor(index, 'tier', e.target.value)}
-                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm"
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
                 >
                   {Object.keys(tierColors).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <input type="url" placeholder="Website URL" value={sponsor.website} onChange={(e) => updateSponsor(index, 'website', e.target.value)}
-                  className="col-span-2 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                  className="col-span-2 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
               </div>
             </div>
           </motion.div>
@@ -598,7 +598,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
               <div>
                 <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Type</label>
                 <select value={ticket.type} onChange={(e) => updateTicket(index, 'type', e.target.value)}
-                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm"
+                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
                 >
                   {['Standard', 'VIP', 'Early Bird', 'Free', 'Donation'].map(t => <option key={t}>{t}</option>)}
                 </select>
@@ -607,20 +607,20 @@ export const TicketsStep = ({ data, onChange, errors }) => {
                 <label className="block text-xs font-medium text-[#64748B] mb-1">Price (KES)</label>
                 <input type="number" placeholder="0" value={ticket.price} onChange={(e) => updateTicket(index, 'price', parseInt(e.target.value) || 0)}
                   disabled={ticket.type === 'Free'}
-                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] disabled:bg-[#F1F5F9] text-sm" />
+                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] disabled:bg-[#F1F5F9] text-sm" />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-[#64748B] mb-1">Quantity Available</label>
               <input type="number" placeholder="100" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', parseInt(e.target.value) || 0)}
-                className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] text-sm" />
+                className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Description (optional)</label>
               <textarea placeholder="What's included, access level, perks..." value={ticket.description} onChange={(e) => updateTicket(index, 'description', e.target.value)} rows={2}
-                className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm" />
+                className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm" />
             </div>
           </motion.div>
         ))}
@@ -639,7 +639,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
               key={policy}
               type="button"
               onClick={() => onChange('refundPolicy', policy)}
-              className={`py-2.5 px-4 rounded-xl border text-sm font-medium transition-all ${data.refundPolicy === policy ? 'border-[#1E4DB7] bg-[#EFF6FF] text-[#1E4DB7]' : 'border-[#E2E8F0] text-[#64748B] hover:border-[#1E4DB7]/50'}`}
+              className={`py-2.5 px-4 rounded-xl border text-sm font-medium transition-all ${data.refundPolicy === policy ? 'border-[#02338D] bg-[#EFF6FF] text-[#02338D]' : 'border-[#E2E8F0] text-[#64748B] hover:border-[#02338D]/50'}`}
             >
               {policy}
             </button>
@@ -647,7 +647,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
         </div>
         {data.refundPolicy === 'Custom' && (
           <textarea placeholder="Describe your custom refund policy..." rows={3}
-            className="w-full mt-3 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] resize-none text-sm"
+            className="w-full mt-3 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm"
             value={data.customRefundPolicy || ''}
             onChange={(e) => onChange('customRefundPolicy', e.target.value)}
           />
@@ -666,7 +666,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
             type="checkbox"
             checked={Boolean(data.enableWaitlist)}
             onChange={(e) => onChange('enableWaitlist', e.target.checked)}
-            className="w-4 h-4 rounded border-[#CBD5E1] text-[#1E4DB7] focus:ring-[#1E4DB7]"
+            className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
           />
         </div>
         <div className="flex items-center justify-between gap-4 p-4 bg-white border border-[#E2E8F0] rounded-xl">
@@ -678,7 +678,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
             type="checkbox"
             checked={Boolean(data.sendReminders)}
             onChange={(e) => onChange('sendReminders', e.target.checked)}
-            className="w-4 h-4 rounded border-[#CBD5E1] text-[#1E4DB7] focus:ring-[#1E4DB7]"
+            className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
           />
         </div>
       </div>
@@ -686,3 +686,4 @@ export const TicketsStep = ({ data, onChange, errors }) => {
     </div>
   );
 };
+

@@ -65,7 +65,7 @@ const getStatusColor = (status) => {
     case 'live':
       return 'bg-green-500 text-white';
     case 'upcoming':
-      return 'bg-[#C58B1A]/20 text-[#1E4DB7]';
+      return 'bg-[#C58B1A]/20 text-[#02338D]';
     case 'completed':
       return 'bg-gray-500 text-white';
     case 'draft':
@@ -112,7 +112,7 @@ const OrganizerEventDetail = ({
     time: detail?.startTime || detail?.time || '',
     location: detail?.venueName || detail?.location || '',
     address: detail?.address || '',
-    theme_color: detail?.themeColor || detail?.theme_color || '#1E4DB7',
+    theme_color: detail?.themeColor || detail?.theme_color || '#02338D',
     accent_color: detail?.accentColor || detail?.accent_color || '#7C3AED',
   }));
 
@@ -127,7 +127,7 @@ const OrganizerEventDetail = ({
       time: detail.startTime || detail.time || '',
       location: detail.venueName || detail.location || '',
       address: detail.address || '',
-      theme_color: detail.themeColor || detail.theme_color || '#1E4DB7',
+      theme_color: detail.themeColor || detail.theme_color || '#02338D',
       accent_color: detail.accentColor || detail.accent_color || '#7C3AED',
     });
   }, [detail]);
@@ -154,7 +154,7 @@ const OrganizerEventDetail = ({
   const revenueByTicketType = ticketTypes.map((ticket) => ({
     name: ticket.name,
     revenue: ticket.sold * ticket.price,
-    color: ticket.name.toLowerCase().includes('vip') ? '#C58B1A' : '#1E4DB7',
+    color: ticket.name.toLowerCase().includes('vip') ? '#C58B1A' : '#02338D',
   }));
 
   const filteredAttendees = useMemo(() => {
@@ -289,7 +289,7 @@ const OrganizerEventDetail = ({
             {eventImage ? (
               <img src={eventImage} alt={eventTitle} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED]" />
+              <div className="w-full h-full bg-gradient-to-br from-[#02338D] to-[#7C3AED]" />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 text-white">
@@ -301,7 +301,7 @@ const OrganizerEventDetail = ({
             <Card>
               <CardContent className="p-3 lg:p-4">
                 <div className="flex items-center gap-2 lg:gap-3">
-                  <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-[#1E4DB7] flex items-center justify-center">
+                  <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-[#02338D] flex items-center justify-center">
                     <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
                   </div>
                   <div>
@@ -399,7 +399,7 @@ const OrganizerEventDetail = ({
               </div>
               <div className="h-2 lg:h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#1E4DB7] to-[#C58B1A] rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-[#02338D] to-[#C58B1A] rounded-full transition-all duration-500"
                   style={{ width: `${checkInPercentage}%` }}
                 />
               </div>
@@ -539,7 +539,7 @@ const OrganizerEventDetail = ({
                       <PieChart>
                         <Pie data={ticketSalesData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={4} dataKey="sold">
                           {ticketSalesData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={index === 0 ? '#C58B1A' : '#1E4DB7'} />
+                            <Cell key={`cell-${index}`} fill={index === 0 ? '#C58B1A' : '#02338D'} />
                           ))}
                         </Pie>
                         <Tooltip />
@@ -557,7 +557,7 @@ const OrganizerEventDetail = ({
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full"
-                          style={{ backgroundColor: index === 0 ? '#C58B1A' : '#1E4DB7' }}
+                          style={{ backgroundColor: index === 0 ? '#C58B1A' : '#02338D' }}
                         />
                         <span className="text-gray-600">{ticket.name}</span>
                       </div>
@@ -574,7 +574,7 @@ const OrganizerEventDetail = ({
               </CardHeader>
               <CardContent className="space-y-3 lg:space-y-4">
                 {[
-                  { label: 'Total Guests', value: eventStats?.totalAttendees || totalAttendees, icon: Users, color: '#1E4DB7' },
+                  { label: 'Total Guests', value: eventStats?.totalAttendees || totalAttendees, icon: Users, color: '#02338D' },
                   { label: 'Checked In', value: eventStats?.totalCheckins || checkedInCount, icon: CheckCircle, color: '#16A34A' },
                   { label: 'Revenue', value: formatMoney(eventStats?.totalRevenue || 0), icon: DollarSign, color: '#C58B1A', text: true },
                   { label: 'Net Profit', value: formatMoney(eventStats?.netProfit || 0), icon: TrendingUp, color: '#B91C1C', text: true },
@@ -615,7 +615,7 @@ const OrganizerEventDetail = ({
                 {[
                   { label: 'Total Revenue', value: formatMoney(eventStats?.totalRevenue || 0), color: '#16A34A' },
                   { label: 'Total Expenses', value: formatMoney(eventStats?.totalExpenses || 0), color: '#B91C1C' },
-                  { label: 'Net Profit', value: formatMoney(eventStats?.netProfit || 0), color: '#1E4DB7' },
+                  { label: 'Net Profit', value: formatMoney(eventStats?.netProfit || 0), color: '#02338D' },
                 ].map((item) => (
                   <div key={item.label} className="border border-[#E2E8F0] rounded-xl p-4">
                     <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">{item.label}</p>
@@ -633,7 +633,7 @@ const OrganizerEventDetail = ({
                   <button
                     key={option.id}
                     onClick={() => setEntryView(option.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${entryView === option.id ? 'bg-[#1E4DB7] text-white border-[#1E4DB7]' : 'border-[#E2E8F0] text-gray-600'
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${entryView === option.id ? 'bg-[#02338D] text-white border-[#02338D]' : 'border-[#E2E8F0] text-gray-600'
                       }`}
                   >
                     {option.label}
@@ -758,7 +758,7 @@ const OrganizerEventDetail = ({
               </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={onEditEvent}>Open Full Editor</Button>
-                <Button className="bg-[#1E4DB7] hover:bg-[#163B90]" onClick={handleQuickSave} disabled={savingQuickEdit}>
+                <Button className="bg-[#02338D] hover:bg-[#022A78]" onClick={handleQuickSave} disabled={savingQuickEdit}>
                   {savingQuickEdit ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
@@ -770,7 +770,7 @@ const OrganizerEventDetail = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base lg:text-lg font-bold text-[#0F172A]">
-                <Palette className="w-5 h-5 text-[#1E4DB7]" />
+                <Palette className="w-5 h-5 text-[#02338D]" />
                 Event Branding
               </CardTitle>
             </CardHeader>
@@ -838,7 +838,7 @@ const OrganizerEventDetail = ({
               </div>
 
               <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100">
-                <Button className="bg-[#1E4DB7] hover:bg-[#163B90]" onClick={handleQuickSave} disabled={savingQuickEdit}>
+                <Button className="bg-[#02338D] hover:bg-[#022A78]" onClick={handleQuickSave} disabled={savingQuickEdit}>
                   {savingQuickEdit ? 'Saving...' : 'Save Theme'}
                 </Button>
               </div>
@@ -853,3 +853,5 @@ const OrganizerEventDetail = ({
 };
 
 export default OrganizerEventDetail;
+
+

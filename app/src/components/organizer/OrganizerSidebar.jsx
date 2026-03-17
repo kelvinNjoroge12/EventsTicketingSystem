@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Calendar, QrCode, PlusCircle, Settings, LogOut, Ticket } from 'lucide-react';
+import { Home, Calendar, QrCode, PlusCircle, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import strathmoreLogo from '../../assets/strathmore-logo.png';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,15 +41,15 @@ const OrganizerSidebar = ({ currentPage, onPageChange }) => {
     : 'U';
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-[#1E4DB7] text-white z-50 flex flex-col">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-[#02338D] text-white z-50 flex flex-col">
       <div className="h-16 flex items-center px-4 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#C58B1A] to-[#FDE68A] flex items-center justify-center flex-shrink-0">
-            <Ticket className="w-5 h-5 text-[#1E4DB7]" />
+          <div className="w-10 h-10 rounded-lg bg-white p-1 flex items-center justify-center flex-shrink-0">
+            <img src={strathmoreLogo} alt="Strathmore University" className="w-full h-full object-contain" />
           </div>
           <span className="font-bold text-sm leading-tight">
             Strathmore University
-            <span className="block text-[10px] font-semibold text-white/80 tracking-wide uppercase">Event Ticketing</span>
+            <span className="block text-[10px] font-semibold text-white/80 tracking-wide uppercase">Events & Partners</span>
           </span>
         </div>
       </div>
@@ -130,3 +131,4 @@ const OrganizerSidebar = ({ currentPage, onPageChange }) => {
 };
 
 export default OrganizerSidebar;
+

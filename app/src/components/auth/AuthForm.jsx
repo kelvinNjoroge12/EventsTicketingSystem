@@ -178,15 +178,15 @@ const AuthForm = ({
             id="agreeToTerms"
             checked={formData.agreeToTerms}
             onChange={(e) => handleChange('agreeToTerms', e.target.checked)}
-            className="mt-1 w-4 h-4 rounded border-[#E2E8F0] text-[#1E4DB7] focus:ring-[#1E4DB7]"
+            className="mt-1 w-4 h-4 rounded border-[#E2E8F0] text-[#02338D] focus:ring-[#02338D]"
           />
           <label htmlFor="agreeToTerms" className="text-sm text-[#64748B]">
             I agree to the{' '}
-            <a href="https://strathmore.edu/legal-notice/" target="_blank" rel="noreferrer" className="text-[#1E4DB7] hover:underline">
+            <a href="https://strathmore.edu/legal-notice/" target="_blank" rel="noreferrer" className="text-[#02338D] hover:underline">
               Legal Notice
             </a>
             {' '}and{' '}
-            <a href="https://strathmore.edu/fr/privacy-policy/" target="_blank" rel="noreferrer" className="text-[#1E4DB7] hover:underline">
+            <a href="https://strathmore.edu/fr/privacy-policy/" target="_blank" rel="noreferrer" className="text-[#02338D] hover:underline">
               Data Privacy Policy
             </a>
           </label>
@@ -197,7 +197,7 @@ const AuthForm = ({
         <div className="flex justify-end">
           <Link
             to="/forgot-password"
-            className="text-sm text-[#1E4DB7] hover:underline"
+            className="text-sm text-[#02338D] hover:underline"
           >
             Forgot Password?
           </Link>
@@ -218,3 +218,4 @@ const AuthForm = ({
 };
 
 export default AuthForm;
+

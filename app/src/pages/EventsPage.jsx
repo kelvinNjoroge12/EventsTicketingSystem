@@ -23,7 +23,7 @@ import eventQueryKeys from '../lib/eventQueryKeys';
 
 // Define filter cards styling statically 
 const filterCards = [
-  { id: 'category', title: 'Category', icon: List, hoverClass: 'group-hover:text-[#1E4DB7]' },
+  { id: 'category', title: 'Category', icon: List, hoverClass: 'group-hover:text-[#02338D]' },
   { id: 'location', title: 'Location', icon: MapPin, hoverClass: 'group-hover:text-[#EF4444]' },
   { id: 'date', title: 'Date Range', icon: CalendarDays, hoverClass: 'group-hover:text-[#22C55E]' },
   { id: 'price', title: 'Price', icon: Tag, hoverClass: 'group-hover:text-[#F59E0B]' },
@@ -233,7 +233,7 @@ const EventsPage = () => {
             <p className="text-[#64748B] text-sm flex items-center gap-2">
               Showing {filteredEvents.length} events
               {hasActiveFilters() && (
-                <button onClick={clearFilters} className="text-[#1E4DB7] hover:underline ml-2 font-medium">
+                <button onClick={clearFilters} className="text-[#02338D] hover:underline ml-2 font-medium">
                   Clear Filters
                 </button>
               )}
@@ -248,7 +248,7 @@ const EventsPage = () => {
               <select
                 value={filters.category}
                 onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                className="w-full bg-transparent outline-none focus:text-[#1E4DB7] cursor-pointer text-[#334155] truncate"
+                className="w-full bg-transparent outline-none focus:text-[#02338D] cursor-pointer text-[#334155] truncate"
               >
                 <option value="">All Categories</option>
                 {(Array.isArray(categories) ? categories : []).map(cat => (
@@ -261,7 +261,7 @@ const EventsPage = () => {
             <FilterCardWrapper {...filterCards[1]}>
               <input
                 type="text"
-                placeholder="University or venue"
+                placeholder="Organizer or venue"
                 value={filters.location}
                 onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
                 className="w-full bg-transparent outline-none focus:text-[#EF4444] text-[#334155] placeholder:text-[#94A3B8] truncate"
@@ -439,3 +439,4 @@ const EventsPage = () => {
 };
 
 export default EventsPage;
+

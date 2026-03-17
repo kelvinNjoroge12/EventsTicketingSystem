@@ -44,7 +44,7 @@ const Input = forwardRef(({
             soft-field w-full px-4 py-2.5 bg-white border
             text-[#0F172A] placeholder-[#94A3B8]
             transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-[#1E4DB7] focus:border-transparent
+            focus:outline-none focus:ring-2 focus:ring-[#02338D] focus:border-transparent
             disabled:bg-[#F1F5F9] disabled:text-[#94A3B8] disabled:cursor-not-allowed
             ${error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E8F0]'}
             ${hasRounded ? '' : 'rounded-2xl'}
@@ -85,3 +85,4 @@ const Input = forwardRef(({
 Input.displayName = 'Input';
 
 export default Input;
+

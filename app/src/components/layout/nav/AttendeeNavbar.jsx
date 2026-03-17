@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner';
 import { api } from '../../../lib/apiClient';
+import strathmoreLogo from '../../../assets/strathmore-logo.png';
 
 const AttendeeNavbar = ({ isScrolled, isActive }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -74,16 +75,23 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
     <>
       <a href="#main-content" className="skip-to-main">Skip to main content</a>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 bg-[#1E4DB7] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#1E4DB7]/95 backdrop-blur-sm' : ''}`}
+        className={`fixed top-0 left-0 right-0 z-40 bg-[#02338D] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#02338D]/95 backdrop-blur-sm' : ''}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2 sm:gap-4">
             {/* Logo */}
-            <Link to={isOrganizer ? "/organizer-dashboard" : "/"} className="flex-shrink-0 leading-tight">
-              <span className="block text-base sm:text-lg font-bold text-white tracking-tight">Strathmore University</span>
-              <span className="block text-[10px] sm:text-xs font-semibold text-white/80 tracking-wide uppercase">
-                Event Ticketing System
-              </span>
+            <Link to={isOrganizer ? "/organizer-dashboard" : "/"} className="flex items-center gap-2 flex-shrink-0">
+              <img
+                src={strathmoreLogo}
+                alt="Strathmore University"
+                className="h-10 w-10 rounded-md bg-white p-1 object-contain"
+              />
+              <div className="leading-tight">
+                <span className="block text-base sm:text-lg font-bold text-white tracking-tight">Strathmore University</span>
+                <span className="block text-[10px] sm:text-xs font-semibold text-white/80 tracking-wide uppercase">
+                  Events & Partners Ticketing
+                </span>
+              </div>
             </Link>
 
             {/* Search bar */}
@@ -94,7 +102,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
               <div className="relative w-full group">
                 <input
                   type="text"
-                  placeholder="Search university events..."
+                  placeholder="Search Strathmore & partner events..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-4 pr-10 py-2 rounded-full bg-white/15 border-2 border-[#ef4444] text-white placeholder:text-white/60 focus:outline-none focus:bg-white/25 focus:border-[#ef4444] focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)] text-sm transition-all"
@@ -168,15 +176,15 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
                         </div>
                         {isOrganizer ? (
                           <Link to="/organizer-dashboard" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
-                            <LayoutDashboard className="w-4 h-4 text-[#1E4DB7]" /> Dashboard
+                            <LayoutDashboard className="w-4 h-4 text-[#02338D]" /> Dashboard
                           </Link>
                         ) : (
                           <button onClick={() => { setShowProfileMenu(false); handleRequestOrganizer(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
-                            <LayoutDashboard className="w-4 h-4 text-[#1E4DB7]" /> Request Organizer Access
+                            <LayoutDashboard className="w-4 h-4 text-[#02338D]" /> Request Organizer Access
                           </button>
                         )}
                         <Link to="/my-tickets" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
-                          <Ticket className="w-4 h-4 text-[#1E4DB7]" /> My Tickets
+                          <Ticket className="w-4 h-4 text-[#02338D]" /> My Tickets
                         </Link>
                         <Link to="/settings" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
                           <Settings className="w-4 h-4 text-[#64748B]" /> Settings
@@ -227,7 +235,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="md:hidden border-t border-white/10 bg-[#1E4DB7] overflow-hidden"
+              className="md:hidden border-t border-white/10 bg-[#02338D] overflow-hidden"
             >
               <nav className="px-4 py-4 space-y-1">
                 {/* 1. Home Link */}
@@ -251,7 +259,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search university events..."
+                      placeholder="Search Strathmore & partner events..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-5 pr-10 py-3 rounded-full bg-white/10 border-2 border-[#ef4444] text-white placeholder:text-white/60 text-sm focus:outline-none focus:bg-white/20 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)] transition-all"
@@ -319,3 +327,4 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
 };
 
 export default AttendeeNavbar;
+

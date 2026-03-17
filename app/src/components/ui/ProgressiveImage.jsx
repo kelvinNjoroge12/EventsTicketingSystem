@@ -26,7 +26,7 @@ const ProgressiveImage = ({
     sizes,
     alt = '',
     className = '',
-    placeholderColor = '#1E4DB7',
+    placeholderColor = '#02338D',
     accentColor,
     style = {},
     loading = 'lazy',
@@ -126,3 +126,4 @@ const ProgressiveImage = ({
 };
 
 export default ProgressiveImage;
+

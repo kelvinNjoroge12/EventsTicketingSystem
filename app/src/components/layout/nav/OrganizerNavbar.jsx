@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner';
+import strathmoreLogo from '../../../assets/strathmore-logo.png';
 
 const OrganizerNavbar = ({ isScrolled, isActive }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -43,16 +44,21 @@ const OrganizerNavbar = ({ isScrolled, isActive }) => {
     <>
       <a href="#main-content" className="skip-to-main">Skip to main content</a>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 bg-[#1E4DB7] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#1E4DB7]/95 backdrop-blur-sm' : ''}`}
+        className={`fixed top-0 left-0 right-0 z-40 bg-[#02338D] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#02338D]/95 backdrop-blur-sm' : ''}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2">
             {/* Logo */}
             <Link to="/organizer-dashboard" className="flex items-center gap-3 flex-shrink-0">
+              <img
+                src={strathmoreLogo}
+                alt="Strathmore University"
+                className="h-10 w-10 rounded-md bg-white p-1 object-contain"
+              />
               <div className="leading-tight">
                 <span className="block text-base sm:text-lg font-bold text-white tracking-tight">Strathmore University</span>
                 <span className="block text-[10px] sm:text-xs font-semibold text-white/80 tracking-wide uppercase">
-                  Event Ticketing System
+                  Events & Partners Ticketing
                 </span>
               </div>
               <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-white/20 text-white uppercase tracking-wider">Organizer</span>
@@ -158,7 +164,7 @@ const OrganizerNavbar = ({ isScrolled, isActive }) => {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="md:hidden border-t border-white/10 bg-[#1E4DB7] overflow-hidden"
+              className="md:hidden border-t border-white/10 bg-[#02338D] overflow-hidden"
             >
               <nav className="px-4 py-4 space-y-1">
                 {orgLinks.map((link) => (
@@ -207,3 +213,4 @@ const OrganizerNavbar = ({ isScrolled, isActive }) => {
 };
 
 export default OrganizerNavbar;
+

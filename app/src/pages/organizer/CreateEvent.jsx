@@ -188,7 +188,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         venue_address: eventData.address || '',
         country: 'Kenya',
         refund_policy: 'no_refund',
-        theme_color: '#1E4DB7',
+        theme_color: '#02338D',
         accent_color: '#7C3AED',
         send_reminders: eventData.sendReminders,
         enable_waitlist: eventData.enableWaitlist,
@@ -609,7 +609,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         return (
           <div className="space-y-4 lg:space-y-6 animate-slide-in-right">
             <Card className="overflow-hidden">
-              <div className="h-24 lg:h-32 bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED]" />
+              <div className="h-24 lg:h-32 bg-gradient-to-br from-[#02338D] to-[#7C3AED]" />
               <CardContent className="p-4 lg:p-6">
                 <div className="-mt-10 lg:-mt-16 mb-3 lg:mb-4">
                   <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-xl bg-gray-200 border-2 lg:border-4 border-white flex items-center justify-center">
@@ -770,7 +770,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         </Button>
 
         {currentStep < 5 ? (
-          <Button onClick={handleNext} disabled={!isStepValid()} className="bg-[#1E4DB7] hover:bg-[#163B90] text-xs lg:text-sm">
+          <Button onClick={handleNext} disabled={!isStepValid()} className="bg-[#02338D] hover:bg-[#022A78] text-xs lg:text-sm">
             Next
             <ChevronRight className="w-4 h-4 ml-1.5" />
           </Button>
@@ -795,3 +795,5 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
 };
 
 export default OrganizerCreateEvent;
+
+

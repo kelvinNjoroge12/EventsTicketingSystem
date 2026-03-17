@@ -96,7 +96,7 @@ const AccountSettingsPage = () => {
                     <div className="md:w-64 flex-shrink-0">
                         <div className="bg-white border border-[#E2E8F0] rounded-2xl p-4 sticky top-24">
                             <div className="flex items-center gap-3 p-4 mb-4 border-b border-[#E2E8F0]">
-                                <div className="w-12 h-12 rounded-full bg-[#1E4DB7] text-white flex items-center justify-center font-bold text-lg">
+                                <div className="w-12 h-12 rounded-full bg-[#02338D] text-white flex items-center justify-center font-bold text-lg">
                                     {user.name?.charAt(0) || 'U'}
                                 </div>
                                 <div className="overflow-hidden">
@@ -113,7 +113,7 @@ const AccountSettingsPage = () => {
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                                            ? 'bg-[#EFF6FF] text-[#1E4DB7]'
+                                            ? 'bg-[#EFF6FF] text-[#02338D]'
                                             : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                                             }`}
                                     >
@@ -277,3 +277,4 @@ const AccountSettingsPage = () => {
 };
 
 export default AccountSettingsPage;
+

@@ -54,7 +54,7 @@ const MyTicketsPage = () => {
                         <p className="text-[#64748B] mb-6">Looks like you haven't bought any tickets.</p>
                         <Link
                             to="/events"
-                            className="px-6 py-2.5 bg-[#1E4DB7] text-white font-medium rounded-lg hover:bg-[#1E3A8A] transition-colors inline-block"
+                            className="px-6 py-2.5 bg-[#02338D] text-white font-medium rounded-lg hover:bg-[#1E3A8A] transition-colors inline-block"
                         >
                             Browse Events
                         </Link>
@@ -90,7 +90,7 @@ const MyTicketsPage = () => {
                                             </div>
                                             <Link
                                                 to={`/confirmation/${order.order_number}`}
-                                                className="p-2 text-[#1E4DB7] hover:bg-[#EFF6FF] rounded-lg transition-colors flex items-center gap-1"
+                                                className="p-2 text-[#02338D] hover:bg-[#EFF6FF] rounded-lg transition-colors flex items-center gap-1"
                                             >
                                                 <span className="text-sm font-medium">View</span>
                                                 <ArrowRight className="w-4 h-4" />
@@ -108,3 +108,4 @@ const MyTicketsPage = () => {
 };
 
 export default MyTicketsPage;
+

@@ -57,7 +57,7 @@ export const mapEvent = (e) => {
     status: resolvedStatus,
     time: e.start_time,
     location: mapLocation,
-    themeColor: e.theme_color || "#1E4DB7",
+    themeColor: e.theme_color || "#02338D",
     accentColor: e.accent_color || "#7C3AED",
     attendeeCount: e.attendee_count || e.ticketsSold || 0,
     ticketsSold: e.attendee_count || e.ticketsSold || 0,
@@ -76,7 +76,7 @@ export const mapEvent = (e) => {
         ((e.organizer?.first_name || "") + (e.organizer?.last_name ? " " + e.organizer.last_name : "")) ||
         "Organizer",
       avatar: e.organizer?.avatar || null,
-      brandColor: e.organizer?.brand_color || "#1E4DB7",
+      brandColor: e.organizer?.brand_color || "#02338D",
       totalEvents: e.organizer?.total_events || 0,
       totalAttendees: e.organizer?.total_attendees || 0,
       bio: "",
@@ -185,7 +185,7 @@ export const mapDetailEvent = (e) => {
         ((e.organizer?.first_name || "") + (e.organizer?.last_name ? " " + e.organizer.last_name : "")) ||
         "Unknown Organizer",
       avatar: e.organizer?.avatar || null,
-      brandColor: e.organizer?.brand_color || "#1E4DB7",
+      brandColor: e.organizer?.brand_color || "#02338D",
       totalEvents: e.organizer?.total_events || 0,
       totalAttendees: e.organizer?.total_attendees || 0,
       bio: e.organizer?.organization_name || e.organizer?.bio || "",
@@ -368,3 +368,4 @@ export const preloadRoutes = () => {
     setTimeout(preload, 1000);
   }
 };
+

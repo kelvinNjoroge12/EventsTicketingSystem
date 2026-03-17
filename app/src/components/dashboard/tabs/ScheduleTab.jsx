@@ -61,7 +61,7 @@ const ScheduleTab = ({ slug }) => {
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Event Schedule</CardTitle>
             <p className="text-sm text-gray-500 mt-1">Manage event agenda and sessions.</p>
           </div>
-          <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowScheduleModal(true)}>
+          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => setShowScheduleModal(true)}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Session
           </Button>
@@ -89,7 +89,7 @@ const ScheduleTab = ({ slug }) => {
                   </div>
                   <div>
                     <h4 className="font-bold text-[#0F172A]">{session.title}</h4>
-                    {session.speaker_name && <p className="text-sm text-[#1E4DB7]">Speaker: {session.speaker_name}</p>}
+                    {session.speaker_name && <p className="text-sm text-[#02338D]">Speaker: {session.speaker_name}</p>}
                     {session.location && <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> {session.location}</p>}
                   </div>
                 </div>
@@ -107,7 +107,7 @@ const ScheduleTab = ({ slug }) => {
       {showScheduleModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowScheduleModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex justify-between">
+            <div className="bg-[#02338D] px-6 py-4 text-white flex justify-between">
               <h3 className="font-semibold">Add Schedule Item</h3>
               <button onClick={() => setShowScheduleModal(false)}><X className="w-4 h-4" /></button>
             </div>
@@ -156,3 +156,5 @@ const ScheduleTab = ({ slug }) => {
 };
 
 export default ScheduleTab;
+
+

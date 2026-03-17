@@ -114,7 +114,7 @@ const TicketsTab = ({ slug }) => {
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Ticket Tiers</CardTitle>
             <p className="text-sm text-gray-500 mt-1">Manage pricing, quantities, and sales status for each tier.</p>
           </div>
-          <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => { setEditingTicket(null); setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true }); setShowTicketModal(true); }}>
+          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => { setEditingTicket(null); setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true }); setShowTicketModal(true); }}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Ticket Tier
           </Button>
@@ -149,7 +149,7 @@ const TicketsTab = ({ slug }) => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditTicket(ticket)} className="text-gray-400 hover:text-[#1E4DB7]">
+                        <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditTicket(ticket)} className="text-gray-400 hover:text-[#02338D]">
                           <Pencil className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="icon" title={ticket.is_active ? 'Pause Sales' : 'Resume Sales'} onClick={() => toggleTicketMutation.mutate({ id: ticket.id, is_active: !ticket.is_active })} className="text-gray-400 hover:text-[#C58B1A]">
@@ -250,7 +250,7 @@ const TicketsTab = ({ slug }) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTicketModal(false)}>Cancel</Button>
-            <Button onClick={handleSaveTicket} disabled={createTicketMutation.isPending || updateTicketMutation.isPending} className="bg-[#1E4DB7] text-white">
+            <Button onClick={handleSaveTicket} disabled={createTicketMutation.isPending || updateTicketMutation.isPending} className="bg-[#02338D] text-white">
               {editingTicket ? 'Update Tier' : 'Create Tier'}
             </Button>
           </DialogFooter>
@@ -261,3 +261,5 @@ const TicketsTab = ({ slug }) => {
 };
 
 export default TicketsTab;
+
+

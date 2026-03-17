@@ -49,7 +49,7 @@ const getStatusColor = (status) => {
     case 'live':
       return 'bg-green-500 text-white';
     case 'upcoming':
-      return 'bg-[#C58B1A]/20 text-[#1E4DB7]';
+      return 'bg-[#C58B1A]/20 text-[#02338D]';
     case 'completed':
       return 'bg-gray-500 text-white';
     case 'draft':
@@ -198,12 +198,12 @@ const OrganizerMyEvents = ({
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-[#1E4DB7] to-[#7C3AED] flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center">
                   <Calendar className="w-10 h-10 text-white/70" />
                 </div>
               )}
               <div className="absolute top-2 lg:top-3 left-2 lg:left-3">
-                <Badge className={cn('capitalize text-xs bg-white text-[#1E4DB7] border border-[#E2E8F0]')}>{event.status}</Badge>
+                <Badge className={cn('capitalize text-xs bg-white text-[#02338D] border border-[#E2E8F0]')}>{event.status}</Badge>
               </div>
               <div className="absolute top-2 lg:top-3 right-2 lg:right-3">
                 <DropdownMenu>
@@ -285,7 +285,7 @@ const OrganizerMyEvents = ({
                 </div>
                 <div className="h-1.5 lg:h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-[#1E4DB7] to-[#C58B1A] rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-[#02338D] to-[#C58B1A] rounded-full transition-all duration-500"
                     style={{
                       width: event.totalTickets ? `${(event.ticketsSold / event.totalTickets) * 100}%` : '0%',
                     }}
@@ -345,3 +345,4 @@ const OrganizerMyEvents = ({
 };
 
 export default OrganizerMyEvents;
+

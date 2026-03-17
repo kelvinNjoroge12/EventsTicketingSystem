@@ -16,7 +16,7 @@ const SponsorCard = ({ sponsor, tier, themeColor }) => {
   // Generate consistent color from sponsor name
   const getSponsorColor = (name) => {
     const colors = [
-      '#1E4DB7', '#7C3AED', '#16A34A', '#0891B2', 
+      '#02338D', '#7C3AED', '#16A34A', '#0891B2', 
       '#DB2777', '#EA580C', '#059669', '#9333EA'
     ];
     let hash = 0;
@@ -72,3 +72,4 @@ const SponsorCard = ({ sponsor, tier, themeColor }) => {
 };
 
 export default SponsorCard;
+

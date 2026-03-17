@@ -53,7 +53,7 @@ const SpeakersTab = ({ slug }) => {
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Speakers / Lineup</CardTitle>
             <p className="text-sm text-gray-500 mt-1">Manage speakers and hosts for your event.</p>
           </div>
-          <Button className="bg-[#1E4DB7] hover:bg-[#163B90] text-white text-xs lg:text-sm" onClick={() => setShowSpeakerModal(true)}>
+          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => setShowSpeakerModal(true)}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Speaker
           </Button>
@@ -102,7 +102,7 @@ const SpeakersTab = ({ slug }) => {
       {showSpeakerModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSpeakerModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-[#1E4DB7] px-6 py-4 text-white flex justify-between">
+            <div className="bg-[#02338D] px-6 py-4 text-white flex justify-between">
               <h3 className="font-semibold">Add Speaker</h3>
               <button onClick={() => setShowSpeakerModal(false)}><X className="w-4 h-4" /></button>
             </div>
@@ -122,7 +122,7 @@ const SpeakersTab = ({ slug }) => {
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-2">
-                <input type="checkbox" id="is_mc" checked={speakerForm.is_mc} onChange={e => setSpeakerForm(p => ({ ...p, is_mc: e.target.checked }))} className="rounded text-[#1E4DB7]" />
+                <input type="checkbox" id="is_mc" checked={speakerForm.is_mc} onChange={e => setSpeakerForm(p => ({ ...p, is_mc: e.target.checked }))} className="rounded text-[#02338D]" />
                 <Label htmlFor="is_mc" className="cursor-pointer text-sm">Is this speaker the Host / MC?</Label>
               </div>
               <div className="flex justify-end gap-3 mt-4">
@@ -138,3 +138,5 @@ const SpeakersTab = ({ slug }) => {
 };
 
 export default SpeakersTab;
+
+

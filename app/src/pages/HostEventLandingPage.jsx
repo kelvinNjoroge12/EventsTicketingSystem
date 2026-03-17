@@ -42,14 +42,14 @@ const HostEventLandingPage = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.6 }}
                             >
-                                <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-[#1E4DB7] text-sm font-bold tracking-wider mb-6">
+                                <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-[#02338D] text-sm font-bold tracking-wider mb-6">
                                     Built for Alumni, Student & Corporate Events
                                 </span>
                                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#0F172A] leading-tight mb-6">
-                                    University event hosting <br /> <span className="text-[#1E4DB7]">made easy</span>
+                                    Strathmore and partner event hosting <br /> <span className="text-[#02338D]">made easy</span>
                                 </h1>
                                 <p className="text-lg md:text-xl text-[#64748B] mb-8 max-w-lg leading-relaxed">
-                                    The official ticketing and discovery platform for Strathmore University. Create events for alumni, students, and corporate partners with a trusted campus experience.
+                                    The official ticketing and discovery platform for Strathmore University. Create events organized by Strathmore or in partnership for alumni, students, and corporate guests.
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <Link to="/signup">
@@ -117,9 +117,9 @@ const HostEventLandingPage = () => {
                             className="text-center max-w-3xl mx-auto mb-16"
                             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}
                         >
-                            <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-4">All the tools university organizers need</h2>
+                            <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-4">All the tools Strathmore organizers need</h2>
                             <p className="text-[#64748B] text-lg">
-                                From ticketing to guest check-in, manage alumni, student, and corporate events with secure, campus-ready workflows.
+                                From ticketing to guest check-in, manage alumni, student, and corporate events with secure, partner-ready workflows.
                             </p>
                         </motion.div>
 
@@ -132,8 +132,8 @@ const HostEventLandingPage = () => {
                                 <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
                                     <Ticket className="w-7 h-7 text-indigo-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Campus Ticketing</h3>
-                                <p className="text-[#64748B] mb-6">Issue tickets for campus, hybrid, or online events with a seamless checkout experience.</p>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Official Ticketing</h3>
+                                <p className="text-[#64748B] mb-6">Issue tickets for Strathmore-organized or partner events with a seamless checkout experience.</p>
                                 <Link to="/signup" className="text-indigo-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
                                     Explore ticketing tools <ArrowRight className="w-4 h-4" />
                                 </Link>
@@ -168,8 +168,8 @@ const HostEventLandingPage = () => {
                                 <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center mb-6">
                                     <Megaphone className="w-7 h-7 text-pink-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">Campus Promotion</h3>
-                                <p className="text-[#64748B] mb-6">Share event pages through university channels and student networks.</p>
+                                <h3 className="text-xl font-bold text-[#0F172A] mb-3">University Promotion</h3>
+                                <p className="text-[#64748B] mb-6">Share event pages through official channels and partner networks.</p>
                                 <Link to="/signup" className="text-pink-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
                                     Promotion options <ArrowRight className="w-4 h-4" />
                                 </Link>
@@ -268,21 +268,21 @@ const HostEventLandingPage = () => {
                 </section>
 
                 {/* ── CTA SECTION ── */}
-                <section className="py-24 bg-[#1E4DB7] text-white relative overflow-hidden">
+                <section className="py-24 bg-[#02338D] text-white relative overflow-hidden">
                     {/* Decorative Background Elements */}
                     <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
                     <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-400/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
 
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}>
-                            <h2 className="text-4xl md:text-5xl font-bold mb-6">Publish your university events</h2>
+                            <h2 className="text-4xl md:text-5xl font-bold mb-6">Publish your Strathmore and partner events</h2>
                             <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
                                 Reach alumni, students, and corporate guests with official Strathmore University ticketing and check-in.
                             </p>
 
                             <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
                                 <Link to="/signup">
-                                    <button className="w-full sm:w-auto px-8 py-4 bg-white text-[#1E4DB7] rounded-xl font-bold text-lg hover:bg-gray-50 transition-colors shadow-xl">
+                                    <button className="w-full sm:w-auto px-8 py-4 bg-white text-[#02338D] rounded-xl font-bold text-lg hover:bg-gray-50 transition-colors shadow-xl">
                                         Get started
                                     </button>
                                 </Link>
@@ -328,3 +328,4 @@ const HostEventLandingPage = () => {
 };
 
 export default HostEventLandingPage;
+

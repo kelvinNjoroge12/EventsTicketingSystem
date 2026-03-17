@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const PALETTES = [
-  ['#0B1020', '#1E4DB7', 'rgba(30,77,183,0.85)'],
+  ['#0B1020', '#02338D', 'rgba(30,77,183,0.85)'],
   ['#0B1020', '#C58B1A', 'rgba(197,139,26,0.85)'],
   ['#0B1020', '#B91C1C', 'rgba(185,28,28,0.85)'],
   ['#0B1020', '#7C3AED', 'rgba(124,58,237,0.85)'],
@@ -215,3 +215,4 @@ const ClassicTicketLoader = ({
 };
 
 export default ClassicTicketLoader;
+

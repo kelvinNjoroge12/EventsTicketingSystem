@@ -259,7 +259,7 @@ const CheckoutPage = () => {
     });
   };
 
-  const themeColor = event?.theme_color || event?.themeColor || '#1E4DB7';
+  const themeColor = event?.theme_color || event?.themeColor || '#02338D';
   const accentColor = event?.accent_color || event?.accentColor || '#7C3AED';
   const currency = event?.currency || 'KES';
   const stripeEnabled = Boolean(STRIPE_PUBLISHABLE_KEY);
@@ -269,7 +269,7 @@ const CheckoutPage = () => {
     return (
       <PageWrapper>
         <div className="max-w-7xl mx-auto px-4 py-24 flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 animate-spin text-[#1E4DB7]" />
+          <Loader2 className="w-10 h-10 animate-spin text-[#02338D]" />
           <p className="text-[#64748B]">Loading checkout...</p>
         </div>
       </PageWrapper>
@@ -347,7 +347,7 @@ const CheckoutPage = () => {
                     </div>
                     <button
                       onClick={() => { setCurrentStep(0); setError(''); }}
-                      className="text-sm text-[#1E4DB7] hover:underline font-medium"
+                      className="text-sm text-[#02338D] hover:underline font-medium"
                     >
                       Edit
                     </button>
@@ -484,3 +484,4 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
+

@@ -21,7 +21,7 @@ const OrganizerCheckInSelect = ({
             <select
               value={checkInEventId}
               onChange={(e) => onSelectEvent(e.target.value)}
-              className="w-full px-4 py-3 border border-[#E2E8F0] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]/20"
+              className="w-full px-4 py-3 border border-[#E2E8F0] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]/20"
             >
               {events.map((event) => (
                 <option key={event.id} value={event.id}>
@@ -33,7 +33,7 @@ const OrganizerCheckInSelect = ({
           <button
             onClick={onOpenCheckin}
             disabled={!checkInEventId}
-            className="px-5 py-3 rounded-2xl text-sm font-semibold text-white bg-[#1E4DB7] hover:bg-[#163B90] disabled:opacity-50 inline-flex items-center gap-2"
+            className="px-5 py-3 rounded-2xl text-sm font-semibold text-white bg-[#02338D] hover:bg-[#022A78] disabled:opacity-50 inline-flex items-center gap-2"
           >
             <Ticket className="w-4 h-4" />
             Open Check-In
@@ -69,3 +69,5 @@ const OrganizerCheckInSelect = ({
 };
 
 export default OrganizerCheckInSelect;
+
+

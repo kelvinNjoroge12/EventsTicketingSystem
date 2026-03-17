@@ -76,7 +76,7 @@ const CreateEventPage = () => {
             tags: eventData.tags || [],
             eventType: 'public',
             format: eventData.format === 'in_person' ? 'In-Person' : eventData.format === 'online' ? 'Online' : 'Hybrid',
-            themeColor: eventData.themeColor || '#1E4DB7',
+            themeColor: eventData.themeColor || '#02338D',
             accentColor: eventData.accentColor || '#7C3AED',
             startDate: eventData.startDate || '',
             startTime: eventData.startTime || '',
@@ -157,7 +157,7 @@ const CreateEventPage = () => {
     tags: [],
     eventType: 'public',
     format: 'In-Person',
-    themeColor: '#1E4DB7',
+    themeColor: '#02338D',
     accentColor: '#7C3AED',
     startDate: '',
     startTime: '',
@@ -276,7 +276,7 @@ const CreateEventPage = () => {
       country: formData.country || 'Kenya',
       streaming_link: ensureUrl(formData.streamingLink),
       refund_policy: mapRefundPolicy(formData.refundPolicy),
-      theme_color: formData.themeColor || '#1E4DB7',
+      theme_color: formData.themeColor || '#02338D',
       accent_color: formData.accentColor || '#7C3AED',
       enable_waitlist: Boolean(formData.enableWaitlist),
       send_reminders: Boolean(formData.sendReminders),
@@ -568,7 +568,7 @@ const CreateEventPage = () => {
       return (
         <div className="flex flex-col items-center justify-center py-20">
           <motion.div
-            className="w-12 h-12 border-4 border-[#1E4DB7] border-t-transparent rounded-full mb-4"
+            className="w-12 h-12 border-4 border-[#02338D] border-t-transparent rounded-full mb-4"
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           />
@@ -672,7 +672,7 @@ const CreateEventPage = () => {
               <div className="space-y-6">
                 <div className="bg-[#F8FAFC] p-5 rounded-2xl border border-[#E2E8F0] space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-white shadow-sm border border-[#E2E8F0] text-[#1E4DB7]">
+                    <div className="p-2 rounded-lg bg-white shadow-sm border border-[#E2E8F0] text-[#02338D]">
                       <Calendar className="w-4 h-4" />
                     </div>
                     <div>
@@ -682,7 +682,7 @@ const CreateEventPage = () => {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-white shadow-sm border border-[#E2E8F0] text-[#1E4DB7]">
+                    <div className="p-2 rounded-lg bg-white shadow-sm border border-[#E2E8F0] text-[#02338D]">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div>
@@ -714,7 +714,7 @@ const CreateEventPage = () => {
                           {s.logoPreview ? (
                             <img src={s.logoPreview} alt={s.name} className="w-full h-full object-contain" />
                           ) : (
-                            <span className="text-[10px] font-bold text-[#1E4DB7]">{s.name?.charAt(0)}</span>
+                            <span className="text-[10px] font-bold text-[#02338D]">{s.name?.charAt(0)}</span>
                           )}
                         </div>
                       ))}
@@ -813,7 +813,7 @@ const CreateEventPage = () => {
             type="datetime-local"
             value={scheduledDate}
             onChange={(e) => setScheduledDate(e.target.value)}
-            className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E4DB7]"
+            className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D]"
           />
           <div className="flex gap-3">
             <CustomButton variant="outline" fullWidth onClick={() => setShowScheduleModal(false)}>Cancel</CustomButton>
@@ -826,3 +826,4 @@ const CreateEventPage = () => {
 };
 
 export default CreateEventPage;
+

@@ -26,7 +26,7 @@ const SpeakerCard = ({ speaker, themeColor }) => {
           <h3 className="font-semibold text-[#0F172A] text-lg mb-1">
             {speaker.name}
           </h3>
-          <p className="text-[#1E4DB7] font-medium text-sm mb-1">
+          <p className="text-[#02338D] font-medium text-sm mb-1">
             {speaker.title}
           </p>
           <p className="text-[#64748B] text-sm">
@@ -94,3 +94,4 @@ const SpeakerCard = ({ speaker, themeColor }) => {
 };
 
 export default SpeakerCard;
+

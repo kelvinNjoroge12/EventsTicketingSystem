@@ -362,7 +362,7 @@ const CheckInPage = () => {
                         setManualHelper('');
                       }}
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        mode === item.id ? 'bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] text-white shadow-md' : 'text-[#64748B] hover:text-[#0F172A]'
+                        mode === item.id ? 'bg-gradient-to-r from-[#02338D] to-[#7C3AED] text-white shadow-md' : 'text-[#64748B] hover:text-[#0F172A]'
                       }`}
                     >
                       <item.icon className="w-4 h-4" /> {item.label}
@@ -374,7 +374,7 @@ const CheckInPage = () => {
                   {mode === 'camera' ? (
                     <div className="space-y-4">
                       <p className="text-sm text-[#64748B] font-medium flex items-center gap-2">
-                        <Camera className="w-4 h-4 text-[#1E4DB7]" />
+                        <Camera className="w-4 h-4 text-[#02338D]" />
                         Point your camera at the attendee QR code
                       </p>
                       <QRCameraScanner
@@ -389,7 +389,7 @@ const CheckInPage = () => {
                   ) : (
                     <div className="space-y-4">
                       <p className="text-sm text-[#64748B] font-medium flex items-center gap-2">
-                        <Keyboard className="w-4 h-4 text-[#1E4DB7]" />
+                        <Keyboard className="w-4 h-4 text-[#02338D]" />
                         Enter the QR code or order number
                       </p>
                       <form onSubmit={handleManualSubmit} className="space-y-3">
@@ -417,7 +417,7 @@ const CheckInPage = () => {
                           disabled={!manualInput.trim() || isScanning}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          className="w-full py-4 bg-gradient-to-r from-[#1E4DB7] to-[#7C3AED] text-white rounded-xl font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                          className="w-full py-4 bg-gradient-to-r from-[#02338D] to-[#7C3AED] text-white rounded-xl font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
                         >
                           {isScanning ? (
                             <>Checking in...</>
@@ -531,3 +531,4 @@ const CheckInPage = () => {
 };
 
 export default CheckInPage;
+

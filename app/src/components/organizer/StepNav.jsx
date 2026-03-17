@@ -22,7 +22,7 @@ const StepNav = ({ steps, currentStep, completedSteps }) => {
                     ${isCompleted 
                       ? 'bg-[#16A34A] text-white' 
                       : isCurrent 
-                        ? 'bg-[#1E4DB7] text-white'
+                        ? 'bg-[#02338D] text-white'
                         : 'bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]'}
                   `}
                   initial={false}
@@ -39,7 +39,7 @@ const StepNav = ({ steps, currentStep, completedSteps }) => {
                 </motion.div>
                 <span className={`
                   mt-2 text-xs font-medium whitespace-nowrap
-                  ${isCompleted ? 'text-[#16A34A]' : isCurrent ? 'text-[#1E4DB7]' : 'text-[#64748B]'}
+                  ${isCompleted ? 'text-[#16A34A]' : isCurrent ? 'text-[#02338D]' : 'text-[#64748B]'}
                 `}>
                   {step.label}
                 </span>
@@ -67,3 +67,4 @@ const StepNav = ({ steps, currentStep, completedSteps }) => {
 };
 
 export default StepNav;
+

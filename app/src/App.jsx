@@ -41,7 +41,7 @@ const ForcePasswordResetPage = lazy(() => import('./pages/ForcePasswordResetPage
 // Loading fallback — plain CSS spinner, no framer-motion transforms
 const PageLoader = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
-    <div className="w-16 h-16 border-4 border-[#1E4DB7] border-t-transparent rounded-full animate-spin" />
+    <div className="w-16 h-16 border-4 border-[#02338D] border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
@@ -262,3 +262,4 @@ function App() {
 }
 
 export default App;
+
