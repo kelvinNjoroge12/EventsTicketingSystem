@@ -109,14 +109,17 @@ class OrderDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        email = (self.request.query_params.get("email") or "").strip().lower()
+
+        # If email is provided, anyone can look up the order (if the email matches exactly)
+        if email:
+            return Order.objects.filter(attendee_email__iexact=email)
+
+        # Otherwise, if logged in, they can look up their own orders
         if user and user.is_authenticated:
             return Order.objects.filter(attendee=user)
 
-        email = (self.request.query_params.get("email") or "").strip().lower()
-        if not email:
-            return Order.objects.none()
-
-        return Order.objects.filter(attendee__isnull=True, attendee_email__iexact=email)
+        return Order.objects.none()
 
 
 class OrderListView(generics.ListAPIView):
