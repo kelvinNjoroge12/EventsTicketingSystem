@@ -6,7 +6,10 @@ import {
   Download,
   Share2,
   Check,
-  ArrowRight
+  ArrowRight,
+  Mail,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import QRTicket from '../components/checkout/QRTicket';
@@ -24,6 +27,8 @@ const ConfirmationPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [order, setOrder] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const [isResending, setIsResending] = useState(false);
+  const [resendStatus, setResendStatus] = useState({ text: '', type: '' });
 
   const stateData = location.state;
   const emailParam = searchParams.get('email');
@@ -142,6 +147,29 @@ END:VCALENDAR`;
     window.open(shareUrls[platform], '_blank');
   };
 
+  const currentRawEmail =
+    stateData?.attendeeData?.email ||
+    emailParam ||
+    (finalOrder?.attendee_email_masked ? null : finalOrder?.attendee_email);
+
+  const handleResendEmail = async () => {
+    if (!currentRawEmail) return;
+    setIsResending(true);
+    setResendStatus({ text: '', type: '' });
+
+    try {
+      const res = await api.post(`/api/orders/${orderId}/resend-email/`, { email: currentRawEmail });
+      setResendStatus({ text: res?.message || 'Email sent successfully!', type: 'success' });
+    } catch (err) {
+      setResendStatus({
+        text: err?.response?.error?.message || err?.message || 'Failed to resend email.',
+        type: 'error'
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   if (loadError && !isHydrated) {
     return (
       <PageWrapper>
@@ -250,11 +278,36 @@ END:VCALENDAR`;
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Check your inbox</h3>
-          <p className="text-[#64748B]">
+          <p className="text-[#64748B] mb-3">
             We've sent your official tickets to <span className="font-medium text-[#0F172A]">
               {emailDisplay}
             </span>. Please check your inbox (and spam folder) to download or print your tickets.
           </p>
+
+          {currentRawEmail && (
+            <div className="mt-4 flex flex-col items-center">
+              <button
+                onClick={handleResendEmail}
+                disabled={isResending || resendStatus.type === 'success'}
+                className="inline-flex items-center gap-2 text-sm font-medium text-[#02338D] hover:text-[#1E4DB7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isResending ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                ) : resendStatus.type === 'success' ? (
+                  <><Check className="w-4 h-4 text-[#16A34A]" /> Sent</>
+                ) : (
+                  <><Mail className="w-4 h-4" /> Resend email</>
+                )}
+              </button>
+              
+              {resendStatus.text && (
+                <div className={`mt-2 flex items-center gap-1.5 text-sm ${resendStatus.type === 'error' ? 'text-red-600' : 'text-[#16A34A]'}`}>
+                  {resendStatus.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : null}
+                  <span>{resendStatus.text}</span>
+                </div>
+              )}
+            </div>
+          )}
         </motion.div>
 
         {/* Action Buttons */}
@@ -334,4 +387,3 @@ END:VCALENDAR`;
 };
 
 export default ConfirmationPage;
-

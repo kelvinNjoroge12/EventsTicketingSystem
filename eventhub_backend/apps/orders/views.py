@@ -146,6 +146,33 @@ class OrderCancelView(generics.GenericAPIView):
         return Response({"message": "Order cancelled."})
 
 
+class OrderResendEmailView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "auth"
+    lookup_field = "order_number"
+
+    def post(self, request, order_number: str):
+        email = (request.data.get("email") or "").strip().lower()
+        if not email:
+            return Response({"error": "Email is required to verify ownership."}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = get_object_or_404(Order, order_number=order_number)
+        
+        # Verify the requested email matches the order's email
+        if order.attendee_email.strip().lower() != email:
+            return Response({"error": "Order not found for this email address."}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.status != "confirmed":
+            return Response({"error": "Only confirmed orders can have their tickets resent."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            send_ticket_email(order)
+            return Response({"message": "Ticket email has been resent."})
+        except Exception as e:
+            logger.error(f"Failed to resend email for order {order.order_number}: {e}")
+            return Response({"error": "Failed to send the email. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 import io
 import qrcode
 from django.http import HttpResponse

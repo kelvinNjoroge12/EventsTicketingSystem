@@ -5,7 +5,6 @@ import { AlertCircle } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import AuthForm from '../components/auth/AuthForm';
 import { useAuth } from '../context/AuthContext';
-import strathmoreLogo from '../assets/strathmore-logo.png';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
@@ -40,22 +39,13 @@ const SignUpPage = () => {
 
   return (
     <PageWrapper>
-      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-[calc(100vh-112px)] flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <motion.div
           className="w-full max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center justify-center" aria-label="Strathmore University Events Ticketing">
-              <div className="h-32 w-32 sm:h-36 sm:w-36 rounded-2xl bg-[#02338D] p-2 shadow-sm">
-                <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
-              </div>
-            </Link>
-          </div>
-
           {/* Card */}
           <div className="bg-white rounded-3xl shadow-xl border border-[#E2E8F0] overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-[#02338D] via-[#3B82F6] to-[#7C3AED]" />

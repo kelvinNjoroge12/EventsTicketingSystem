@@ -135,6 +135,7 @@ const RequireAuth = ({ children, roles }) => {
 
 const AppRoutes = ({ onLocationKey }) => {
   const location = useLocation();
+  const { user } = useAuth();
   const organizerRoles = ['organizer', 'admin'];
   const staffRoles = ['organizer', 'admin', 'checkin', 'staff'];
   const isOrganizerRoute =
@@ -144,6 +145,19 @@ const AppRoutes = ({ onLocationKey }) => {
     /^\/force-password-reset\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
     /^\/edit-event\/[^/]+\/?$/.test(location.pathname);
+  const publicRoutes = [
+    /^\/$/,
+    /^\/events\/?$/,
+    /^\/events\/[^/]+\/?$/,
+    /^\/search\/?$/,
+    /^\/organizers\/[^/]+\/?$/,
+    /^\/sell-tickets\/?$/,
+    /^\/find-ticket\/?$/,
+    /^\/t\/[^/]+\/?$/,
+    /^\/verify-email\/?$/,
+  ];
+  const isPublicRoute = publicRoutes.some((regex) => regex.test(location.pathname));
+
   const hideFooter =
     /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
     /^\/organizer-checkin\/?$/.test(location.pathname) ||
@@ -151,7 +165,10 @@ const AppRoutes = ({ onLocationKey }) => {
     /^\/settings\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
     /^\/edit-event\/[^/]+\/?$/.test(location.pathname) ||
-    /^\/organizer-dashboard\/?$/.test(location.pathname);
+    /^\/organizer-dashboard\/?$/.test(location.pathname) ||
+    /^\/login\/?$/.test(location.pathname) ||
+    /^\/signup\/?$/.test(location.pathname) ||
+    (Boolean(user) && !isPublicRoute);
 
   return (
     <>

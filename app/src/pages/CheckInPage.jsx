@@ -22,14 +22,28 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/apiClient';
 import PageWrapper from '../components/layout/PageWrapper';
 
-const QRCameraScanner = ({ onScan, onError, active }) => {
+const QRCameraScanner = ({ onScan, onError, active, paused }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const scanIntervalRef = useRef(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const onScanRef = useRef(onScan);
+  const pausedRef = useRef(paused);
+  const lastScanRef = useRef({ value: null, time: 0 });
+  const isStartingRef = useRef(false);
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   const startCamera = useCallback(async () => {
+    if (streamRef.current || isStartingRef.current) return;
+    isStartingRef.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -37,13 +51,15 @@ const QRCameraScanner = ({ onScan, onError, active }) => {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        await videoRef.current.play();
         setCameraReady(true);
       }
     } catch (err) {
       const msg = 'Camera access denied or not available on this device. Use manual entry.';
       setCameraError(msg);
       if (onError) onError(msg);
+    } finally {
+      isStartingRef.current = false;
     }
   }, [onError]);
 
@@ -51,8 +67,9 @@ const QRCameraScanner = ({ onScan, onError, active }) => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
-    if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+    if (scanIntervalRef.current) clearTimeout(scanIntervalRef.current);
     setCameraReady(false);
+    streamRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -64,22 +81,33 @@ const QRCameraScanner = ({ onScan, onError, active }) => {
 
     if ('BarcodeDetector' in window && videoRef.current) {
       const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-      scanIntervalRef.current = setInterval(async () => {
-        if (!videoRef.current || videoRef.current.readyState !== 4) return;
+      const scanLoop = async () => {
+        if (!videoRef.current) return;
+        if (pausedRef.current || videoRef.current.readyState !== 4) {
+          scanIntervalRef.current = setTimeout(scanLoop, 350);
+          return;
+        }
         try {
           const barcodes = await detector.detect(videoRef.current);
           if (barcodes.length > 0) {
-            onScan(barcodes[0].rawValue);
-            stopCamera();
+            const value = barcodes[0].rawValue;
+            const now = Date.now();
+            const last = lastScanRef.current;
+            if (last.value !== value || now - last.time > 2000) {
+              lastScanRef.current = { value, time: now };
+              onScanRef.current?.(value);
+            }
           }
         } catch {
           // ignore frame errors
         }
-      }, 500);
+        scanIntervalRef.current = setTimeout(scanLoop, 350);
+      };
+      scanIntervalRef.current = setTimeout(scanLoop, 350);
     }
 
     return () => stopCamera();
-  }, [active, onScan, startCamera, stopCamera]);
+  }, [active, startCamera, stopCamera]);
 
   if (cameraError) {
     return (
@@ -161,19 +189,31 @@ const CheckInPage = () => {
   const [manualHelper, setManualHelper] = useState('');
   const [result, setResult] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanState, setScanState] = useState('idle'); // idle | verifying | ready | submitting
+  const [scanPreview, setScanPreview] = useState(null);
+  const [pendingCode, setPendingCode] = useState('');
   const [event, setEvent] = useState(null);
   const [attendance, setAttendance] = useState(null);
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(true);
   const [activeTab, setActiveTab] = useState('scan');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const resetScan = useCallback(() => {
+    setScanState('idle');
+    setScanPreview(null);
+    setPendingCode('');
+  }, []);
+
   useEffect(() => {
     if (result) {
-      const t = setTimeout(() => setResult(null), 5000);
+      const t = setTimeout(() => {
+        setResult(null);
+        resetScan();
+      }, 2500);
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [result]);
+  }, [result, resetScan]);
 
   const loadAttendance = useCallback(async () => {
     setIsLoadingAttendance(true);
@@ -203,9 +243,41 @@ const CheckInPage = () => {
     loadEvent();
   }, [slug]);
 
-  const performScan = async (qrCodeData) => {
+  const isUuid = (value) => /^[0-9a-fA-F-]{8}-[0-9a-fA-F-]{4}-[1-5][0-9a-fA-F-]{3}-[89abAB][0-9a-fA-F-]{3}-[0-9a-fA-F-]{12}$/.test(value);
+
+  const verifyTicket = useCallback(async (qrCodeData) => {
+    if (!qrCodeData) return;
+    setScanState('verifying');
+    setScanPreview(null);
+    setPendingCode(qrCodeData);
+    setResult(null);
+    try {
+      const data = await api.get(`/api/orders/qr/${qrCodeData}/verify/`);
+      if (data?.event?.slug && data.event.slug !== slug) {
+        setResult({ type: 'error', message: 'Ticket does not belong to this event.' });
+        resetScan();
+        return;
+      }
+      if (data?.status !== 'valid' || data?.checked_in_at) {
+        const statusMsg = data?.checked_in_at
+          ? 'Ticket has already been checked in.'
+          : `Ticket is ${data?.status || 'invalid'}.`;
+        setResult({ type: 'error', message: statusMsg });
+        resetScan();
+        return;
+      }
+      setScanPreview(data);
+      setScanState('ready');
+    } catch (err) {
+      setResult({ type: 'error', message: err?.message || 'Invalid QR code.' });
+      resetScan();
+    }
+  }, [resetScan, slug]);
+
+  const submitCheckIn = useCallback(async (qrCodeData) => {
     if (isScanning || !qrCodeData) return;
     setIsScanning(true);
+    setScanState('submitting');
     setResult(null);
     try {
       const data = await api.post(`/api/events/${slug}/checkin/scan/`, { qr_code_data: qrCodeData });
@@ -218,18 +290,27 @@ const CheckInPage = () => {
       setIsScanning(false);
       setManualInput('');
     }
-  };
+  }, [isScanning, loadAttendance, slug]);
+
+  const handleCameraScan = useCallback((qrCodeData) => {
+    if (!qrCodeData || scanState !== 'idle') return;
+    verifyTicket(qrCodeData);
+  }, [scanState, verifyTicket]);
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
     const val = manualInput.trim();
     if (!val) return;
-    performScan(val);
+    if (isUuid(val)) {
+      verifyTicket(val);
+      return;
+    }
+    submitCheckIn(val);
   };
 
   const toggleCheckIn = (guest) => {
     if (guest.scanCode) {
-      performScan(guest.scanCode);
+      submitCheckIn(guest.scanCode);
       return;
     }
     setMode('manual');
@@ -350,21 +431,22 @@ const CheckInPage = () => {
             {activeTab === 'scan' && (
               <motion.div key="scan" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
                 <div className="flex gap-2 bg-white border border-[#E2E8F0] rounded-2xl p-1.5 w-fit">
-                  {[
-                    { id: 'camera', label: 'Scan Camera', icon: Camera },
-                    { id: 'manual', label: 'Manual Entry', icon: Keyboard },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setMode(item.id);
-                        setResult(null);
-                        setManualHelper('');
-                      }}
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        mode === item.id ? 'bg-gradient-to-r from-[#02338D] to-[#7C3AED] text-white shadow-md' : 'text-[#64748B] hover:text-[#0F172A]'
-                      }`}
-                    >
+                    {[
+                      { id: 'camera', label: 'Scan Camera', icon: Camera },
+                      { id: 'manual', label: 'Manual Entry', icon: Keyboard },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setMode(item.id);
+                          setResult(null);
+                          setManualHelper('');
+                          resetScan();
+                        }}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          mode === item.id ? 'bg-gradient-to-r from-[#02338D] to-[#7C3AED] text-white shadow-md' : 'text-[#64748B] hover:text-[#0F172A]'
+                        }`}
+                      >
                       <item.icon className="w-4 h-4" /> {item.label}
                     </button>
                   ))}
@@ -378,9 +460,10 @@ const CheckInPage = () => {
                         Point your camera at the attendee QR code
                       </p>
                       <QRCameraScanner
-                        onScan={performScan}
+                        onScan={handleCameraScan}
                         onError={(msg) => setResult({ type: 'error', message: msg })}
                         active={mode === 'camera'}
+                        paused={scanState !== 'idle'}
                       />
                       <p className="text-center text-xs text-[#94A3B8]">
                         QR scanning via camera works best on modern Chrome or Edge.
@@ -431,6 +514,46 @@ const CheckInPage = () => {
                       {manualHelper && (
                         <p className="text-xs text-gray-500">{manualHelper}</p>
                       )}
+                    </div>
+                  )}
+
+                  {scanState === 'verifying' && (
+                    <div className="flex items-center gap-2 text-sm text-[#64748B]">
+                      <RotateCcw className="w-4 h-4 animate-spin" />
+                      Verifying ticket...
+                    </div>
+                  )}
+
+                  {scanState === 'ready' && scanPreview && (
+                    <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-3">
+                      <div>
+                        <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Attendee</p>
+                        <p className="text-lg font-semibold text-[#0F172A]">{scanPreview.attendee_name || 'Guest'}</p>
+                        <p className="text-sm text-[#64748B]">{scanPreview.attendee_email || scanPreview.attendee_email_masked || 'Email hidden'}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs text-[#64748B]">
+                        <span className="px-2 py-1 rounded-full bg-white border border-[#E2E8F0]">
+                          {scanPreview.ticket_type_name || 'General Admission'}
+                        </span>
+                        <span className="px-2 py-1 rounded-full bg-white border border-[#E2E8F0]">
+                          Order {scanPreview.order_number || '—'}
+                        </span>
+                        <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+                          Valid
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          className="bg-[#02338D] hover:bg-[#022A78] text-white"
+                          onClick={() => submitCheckIn(pendingCode)}
+                          disabled={isScanning}
+                        >
+                          {isScanning ? 'Checking in...' : 'Confirm Check-In'}
+                        </Button>
+                        <Button variant="outline" onClick={resetScan} disabled={isScanning}>
+                          Scan Another
+                        </Button>
+                      </div>
                     </div>
                   )}
 

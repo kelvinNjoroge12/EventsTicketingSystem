@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
 import CustomInput from '../ui/CustomInput';
-import strathmoreLogo from '../../assets/strathmore-logo.png';
 
 const Footer = () => {
   const [email, setEmail] = useState('');
@@ -73,9 +72,6 @@ const Footer = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
             {/* Logo & Tagline */}
             <div className="lg:col-span-2">
-              <Link to="/" className="inline-flex items-center" aria-label="Strathmore University Events Ticketing">
-                <img src={strathmoreLogo} alt="Strathmore University" className="h-32 w-32 sm:h-36 sm:w-36 object-contain" />
-              </Link>
               <p className="mt-4 text-white/70 text-sm max-w-xs">
                 Official ticketing platform for Strathmore University-organized and affiliated events for alumni, students, and corporate guests.
               </p>
