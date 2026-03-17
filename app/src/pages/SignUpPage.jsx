@@ -49,15 +49,9 @@ const SignUpPage = () => {
         >
           {/* Logo */}
           <div className="text-center mb-8">
-            <Link to="/" className="inline-flex flex-col items-center gap-3">
-              <div className="h-16 w-16 rounded-md bg-white p-2 shadow-sm">
+            <Link to="/" className="inline-flex items-center justify-center" aria-label="Strathmore University Events Ticketing">
+              <div className="h-20 w-20 rounded-2xl bg-[#02338D] p-2 shadow-sm">
                 <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
-              </div>
-              <div>
-                <span className="text-2xl sm:text-3xl font-bold text-[#02338D]">Strathmore University</span>
-                <span className="block text-xs sm:text-sm font-semibold text-[#02338D]/80 uppercase tracking-wide">
-                  Events & Partners Ticketing
-                </span>
               </div>
             </Link>
           </div>

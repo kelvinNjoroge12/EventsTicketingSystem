@@ -80,18 +80,16 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2 sm:gap-4">
             {/* Logo */}
-            <Link to={isOrganizer ? "/organizer-dashboard" : "/"} className="flex items-center gap-2 flex-shrink-0">
+            <Link
+              to={isOrganizer ? "/organizer-dashboard" : "/"}
+              className="flex items-center flex-shrink-0"
+              aria-label="Strathmore University Events Ticketing"
+            >
               <img
                 src={strathmoreLogo}
                 alt="Strathmore University"
-                className="h-10 w-10 rounded-md bg-white p-1 object-contain"
+                className="h-14 w-14 object-contain"
               />
-              <div className="leading-tight">
-                <span className="block text-base sm:text-lg font-bold text-white tracking-tight">Strathmore University</span>
-                <span className="block text-[10px] sm:text-xs font-semibold text-white/80 tracking-wide uppercase">
-                  Events & Partners Ticketing
-                </span>
-              </div>
             </Link>
 
             {/* Search bar */}

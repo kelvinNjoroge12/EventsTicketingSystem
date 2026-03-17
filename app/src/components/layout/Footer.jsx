@@ -73,14 +73,8 @@ const Footer = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
             {/* Logo & Tagline */}
             <div className="lg:col-span-2">
-              <Link to="/" className="inline-flex items-center gap-3">
-                <div className="h-12 w-12 rounded-md bg-white p-1">
-                  <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
-                </div>
-                <div>
-                  <span className="text-2xl font-bold text-white">Strathmore University</span>
-                  <span className="block text-sm font-semibold text-white/80 tracking-wide">Events & Partners Ticketing</span>
-                </div>
+              <Link to="/" className="inline-flex items-center" aria-label="Strathmore University Events Ticketing">
+                <img src={strathmoreLogo} alt="Strathmore University" className="h-20 w-20 object-contain" />
               </Link>
               <p className="mt-4 text-white/70 text-sm max-w-xs">
                 Official ticketing platform for Strathmore University-organized and partner events for alumni, students, and corporate guests.
