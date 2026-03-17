@@ -260,7 +260,7 @@ const HomePage = () => {
     <PageWrapper>
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#1e293b]">
-        <div className="absolute inset-0 opacity-25">
+        <div className="absolute inset-0 opacity-25 z-0">
           <div
             className="w-full h-full bg-cover bg-center"
             style={{
@@ -268,14 +268,16 @@ const HomePage = () => {
             }}
           />
         </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/85 via-[#020617]/50 to-transparent z-0 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/80 via-[#020617]/35 to-transparent z-0 pointer-events-none" />
 
         <motion.div
-          className="absolute -right-32 top-10 hidden lg:block w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-[#ef4444] via-[#f97316] to-[#eab308] opacity-60 blur-3xl"
+          className="absolute -right-32 top-10 hidden lg:block w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-[#ef4444] via-[#f97316] to-[#eab308] opacity-60 blur-3xl z-0"
           animate={{ y: [0, -12, 0] }}
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
           <div className="max-w-3xl">
             {/* Main Content */}
             <div className="space-y-6">
@@ -400,7 +402,7 @@ const HomePage = () => {
         </div>
 
         {/* Category Pills (visible on first landing view) */}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
           <div
             className="bg-white/95 backdrop-blur rounded-2xl border border-white/20 shadow-lg px-4 py-4"
             onWheel={handleWheel}
