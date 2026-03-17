@@ -100,7 +100,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
               <div className="relative w-full group">
                 <input
                   type="text"
-                  placeholder="Search Strathmore & partner events..."
+                  placeholder="Search Strathmore events..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-4 pr-10 py-2 rounded-full bg-white/15 border-2 border-[#ef4444] text-white placeholder:text-white/60 focus:outline-none focus:bg-white/25 focus:border-[#ef4444] focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)] text-sm transition-all"
@@ -257,7 +257,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search Strathmore & partner events..."
+                      placeholder="Search Strathmore events..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-5 pr-10 py-3 rounded-full bg-white/10 border-2 border-[#ef4444] text-white placeholder:text-white/60 text-sm focus:outline-none focus:bg-white/20 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.3)] transition-all"

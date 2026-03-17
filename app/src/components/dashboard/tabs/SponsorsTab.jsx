@@ -45,13 +45,20 @@ const SponsorsTab = ({ slug }) => {
     onError: (err) => toast.error(err?.message || 'Failed to remove sponsor.')
   });
 
+  const formatTierLabel = (tier) => {
+    if (!tier) return '';
+    const normalized = String(tier).toLowerCase();
+    if (normalized === 'partner') return 'Supporter';
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
   return (
     <div className="space-y-4 lg:space-y-6">
       <Card>
         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Event Sponsors</CardTitle>
-            <p className="text-sm text-gray-500 mt-1">Manage sponsors and partners.</p>
+            <p className="text-sm text-gray-500 mt-1">Manage sponsors.</p>
           </div>
           <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => setShowSponsorModal(true)}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
@@ -83,7 +90,7 @@ const SponsorsTab = ({ slug }) => {
                     )}
                   </div>
                   <h4 className="font-bold text-[#0F172A] text-sm truncate">{sponsor.name}</h4>
-                  <Badge className="mt-2 text-[10px] capitalize" variant="outline">{sponsor.tier}</Badge>
+                  <Badge className="mt-2 text-[10px]" variant="outline">{formatTierLabel(sponsor.tier)}</Badge>
                 </div>
               ))}
             </div>
@@ -116,7 +123,7 @@ const SponsorsTab = ({ slug }) => {
                     <option value="gold">Gold</option>
                     <option value="silver">Silver</option>
                     <option value="bronze">Bronze</option>
-                    <option value="partner">Partner</option>
+                    <option value="partner">Supporter</option>
                   </select>
                 </div>
                 <div>

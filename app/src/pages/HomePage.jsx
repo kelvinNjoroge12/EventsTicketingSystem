@@ -291,7 +291,7 @@ const HomePage = () => {
                 transition={{ duration: 0.4 }}
               >
                 <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-                Strathmore and partner events - Alumni - Students and corporate gatherings
+                Strathmore-affiliated events - Alumni - Students and corporate gatherings
               </motion.p>
 
               <motion.h1
@@ -353,7 +353,7 @@ const HomePage = () => {
                   }
                 }}
               >
-                {"Discover alumni reunions, student clubs, and corporate forums organized by Strathmore or in partnership. Reserve your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
+                {"Discover alumni reunions, student clubs, and corporate forums organized by Strathmore or in collaboration. Reserve your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-1"
@@ -397,7 +397,7 @@ const HomePage = () => {
                   <span className="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white/20" />
                 </div>
                 <span>
-                  Join <span className="font-semibold text-[#f97316]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Events & Partners Ticketing System.
+                  Join <span className="font-semibold text-[#f97316]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Events Ticketing System.
                 </span>
               </motion.div>
             </div>
@@ -584,7 +584,7 @@ const HomePage = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <StatBox value="10000" label="Students, Alumni & Guests" suffix="+" />
             <StatBox value="2000" label="Events Hosted" suffix="+" />
-            <StatBox value="500" label="Schools, Clubs & Partners" suffix="+" />
+            <StatBox value="500" label="Schools, Clubs & Associations" suffix="+" />
             <StatBox value="50" label="Corporate Guests" suffix="+" />
           </div>
         </div>
@@ -626,7 +626,7 @@ const HomePage = () => {
               <>
                 <StepCard
                   number={1}
-                  title="Explore Strathmore & Partner Events"
+                  title="Explore Strathmore-Affiliated Events"
                   description="Browse alumni reunions, student activities, and corporate forums. Filter by organizer, date, or venue."
                   icon={Search}
                   tint="#EFF6FF"
@@ -702,10 +702,10 @@ const HomePage = () => {
 
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to Host a Strathmore or Partner Event?
+                Ready to Host a Strathmore-Affiliated Event?
               </h2>
               <p className="text-white/80 text-lg mb-8 max-w-xl mx-auto">
-                Support your school, alumni chapter, or corporate partner event with official ticketing and check-in tools.
+                Support your school, alumni chapter, or corporate-sponsored event with official ticketing and check-in tools.
               </p>
               <Link to="/create-event">
                 <motion.div

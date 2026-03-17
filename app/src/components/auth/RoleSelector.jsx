@@ -7,13 +7,13 @@ const RoleSelector = ({ selectedRole, onSelect }) => {
     {
       id: 'attendee',
       title: "I'm an Attendee",
-      description: 'Discover and attend Strathmore and partner events for students, alumni, and corporate guests',
+      description: 'Discover and attend Strathmore-organized and affiliated events for students, alumni, and corporate guests',
       icon: User,
     },
     {
       id: 'organizer',
       title: "I'm an Organizer",
-      description: 'Create and manage Strathmore and partner events for students, alumni, and corporate partners',
+      description: 'Create and manage Strathmore-organized and affiliated events for students, alumni, and corporate guests',
       icon: Building2,
     },
   ];

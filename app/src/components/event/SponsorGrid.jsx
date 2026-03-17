@@ -7,6 +7,7 @@ const SponsorGrid = ({ sponsors, themeColor }) => {
 
   // Group sponsors by tier
   const tiers = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'];
+  const tierLabels = { Partner: 'Supporter' };
   const groupedSponsors = tiers.reduce((acc, tier) => {
     const tierSponsors = sponsors.filter(s => s.tier === tier);
     if (tierSponsors.length > 0) {
@@ -22,16 +23,18 @@ const SponsorGrid = ({ sponsors, themeColor }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        Sponsors & Partners
+        Sponsors
       </motion.h2>
 
-      {Object.entries(groupedSponsors).map(([tier, tierSponsors]) => (
+      {Object.entries(groupedSponsors).map(([tier, tierSponsors]) => {
+        const displayTier = tierLabels[tier] || tier;
+        return (
         <div key={tier} className="space-y-4">
           <h3 
             className="text-lg font-semibold"
             style={{ color: themeColor }}
           >
-            {tier} Sponsors
+            {displayTier} Sponsors
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {tierSponsors.map((sponsor, index) => (
@@ -50,7 +53,7 @@ const SponsorGrid = ({ sponsors, themeColor }) => {
             ))}
           </div>
         </div>
-      ))}
+      )})}
     </div>
   );
 };

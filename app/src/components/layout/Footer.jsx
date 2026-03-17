@@ -77,7 +77,7 @@ const Footer = () => {
                 <img src={strathmoreLogo} alt="Strathmore University" className="h-20 w-20 object-contain" />
               </Link>
               <p className="mt-4 text-white/70 text-sm max-w-xs">
-                Official ticketing platform for Strathmore University-organized and partner events for alumni, students, and corporate guests.
+                Official ticketing platform for Strathmore University-organized and affiliated events for alumni, students, and corporate guests.
               </p>
               <div className="mt-5 text-sm text-white/70 space-y-1">
                 <p>Ole Sangale Road, Madaraka Estate</p>
@@ -140,7 +140,7 @@ const Footer = () => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
                 <h3 className="font-semibold text-white mb-1">
-                  Stay updated on Strathmore and partner events
+                  Stay updated on Strathmore events
                 </h3>
                 <p className="text-white/70 text-sm">
                   Receive weekly highlights, ticket alerts, and official updates.

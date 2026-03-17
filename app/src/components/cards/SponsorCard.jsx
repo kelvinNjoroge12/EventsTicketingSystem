@@ -12,6 +12,7 @@ const SponsorCard = ({ sponsor, tier, themeColor }) => {
   };
 
   const height = tierHeights[tier] || 80;
+  const displayTier = tier === 'Partner' ? 'Supporter' : tier;
 
   // Generate consistent color from sponsor name
   const getSponsorColor = (name) => {
@@ -65,7 +66,7 @@ const SponsorCard = ({ sponsor, tier, themeColor }) => {
           color: themeColor
         }}
       >
-        {tier}
+        {displayTier}
       </div>
     </motion.a>
   );

@@ -113,6 +113,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
     Bronze: 'text-orange-700 border-orange-300 bg-orange-50',
     Partner: 'text-blue-600 border-blue-300 bg-blue-50',
   };
+  const tierLabels = { Partner: 'Supporter' };
 
   return (
     <div className="space-y-8 w-full overflow-hidden">
@@ -120,7 +121,7 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
         <div key={tier} className="w-full">
           <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs sm:text-sm font-semibold mb-4 max-w-full ${tierStyles[tier]}`}>
             <Building2 className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">{tier} Sponsor{items.length > 1 ? 's' : ''}</span>
+            <span className="truncate">{(tierLabels[tier] || tier)} Sponsor{items.length > 1 ? 's' : ''}</span>
           </div>
           <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             {items.map((sponsor, i) => (
@@ -331,7 +332,7 @@ const EventDetailPage = () => {
 
   const handleShare = (platform) => {
     const url = window.location.href;
-    const text = `Check out ${event.title} on the Strathmore University Events & Partners Ticketing System!`;
+    const text = `Check out ${event.title} on the Strathmore University Events Ticketing System!`;
     const urls = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`,
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,

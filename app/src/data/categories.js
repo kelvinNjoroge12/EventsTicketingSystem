@@ -45,13 +45,13 @@ export const categories = [
     id: "cat-008",
     name: "Corporate & Executive",
     icon: "CE",
-    description: "Executive forums, corporate partnerships, and industry events"
+    description: "Executive forums, corporate collaborations, and industry events"
   },
   {
     id: "cat-009",
     name: "Community Outreach",
     icon: "CO",
-    description: "Community service, partnerships, and impact programs"
+    description: "Community service, collaborations, and impact programs"
   },
   {
     id: "cat-010",
