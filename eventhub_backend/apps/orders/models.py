@@ -42,7 +42,7 @@ class Order(TimeStampedModel):
 
     payment_method = models.CharField(
         max_length=20,
-        choices=[("stripe", "Stripe"), ("mpesa", "M-Pesa"), ("free", "Free")],
+        choices=[("card", "Card"), ("stripe", "Stripe"), ("mpesa", "M-Pesa"), ("free", "Free")],
     )
     notes = models.TextField(blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)

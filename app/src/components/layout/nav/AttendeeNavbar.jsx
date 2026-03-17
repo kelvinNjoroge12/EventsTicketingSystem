@@ -78,7 +78,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
         className={`fixed top-0 left-0 right-0 z-40 bg-[#02338D] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#02338D]/95 backdrop-blur-sm' : ''}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[4rem] py-2 gap-2 sm:gap-4">
+          <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[5.5rem] py-2 gap-2 sm:gap-4">
             {/* Logo */}
             <Link
               to={isOrganizer ? "/organizer-dashboard" : "/"}
@@ -88,7 +88,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
               <img
                 src={strathmoreLogo}
                 alt="Strathmore University"
-                className="h-14 w-14 object-contain"
+                className="h-20 w-20 object-contain"
               />
             </Link>
 
@@ -319,7 +319,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
           )}
         </AnimatePresence>
       </header>
-      <div className="h-16" />
+      <div className="h-24" />
     </>
   );
 };

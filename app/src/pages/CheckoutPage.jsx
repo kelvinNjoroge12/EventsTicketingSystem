@@ -132,12 +132,14 @@ const CheckoutPage = () => {
         };
 
         const order = await api.post('/api/orders/create/', payload);
-        const createdOrderNumber = order?.order_number;
-        const simulationToken = order?.simulation_token;
-        const orderStatus = order?.status;
-        orderTotal = Number(order?.total ?? 0);
+        // Support both direct response {order_number, status, total} and any legacy wrapping
+        const orderData = order?.order_number ? order : (order?.data ?? order);
+        const createdOrderNumber = orderData?.order_number;
+        const simulationToken = orderData?.simulation_token;
+        const orderStatus = orderData?.status;
+        orderTotal = Number(orderData?.total ?? 0);
         if (!createdOrderNumber) {
-          throw new Error('Order creation failed. Please try again.');
+          throw new Error('Order creation failed: no order number returned. Please try again.');
         }
 
         currentOrderContext = {

@@ -41,12 +41,12 @@ const OrganizerMobileNav = ({ currentPage, onPageChange, onClose }) => {
 
   return (
     <aside className="h-full w-72 bg-[#02338D] text-white flex flex-col shadow-2xl">
-      <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
+      <div className="h-20 flex items-center justify-between px-4 border-b border-white/10">
         <div className="flex items-center">
           <img
             src={strathmoreLogo}
             alt="Strathmore University"
-            className="w-12 h-12 object-contain"
+            className="w-16 h-16 object-contain"
           />
         </div>
         <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">

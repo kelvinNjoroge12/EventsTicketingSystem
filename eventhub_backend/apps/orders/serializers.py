@@ -106,9 +106,13 @@ class OrderCreateSerializer(serializers.Serializer):
         discount_amount: Decimal = validated_data["discount_amount"]
         promo_obj: PromoCode | None = validated_data["promo_obj"]
 
+        net_amount = subtotal - discount_amount
+        is_free_order = net_amount == Decimal("0") or validated_data.get("payment_method") == "free"
+
+        # No service fee on free orders
         service_percent = getattr(settings, "STRIPE_SERVICE_FEE_PERCENT", 3.0)
-        service_fee = (subtotal - discount_amount) * Decimal(service_percent) / Decimal("100")
-        total = subtotal - discount_amount + service_fee
+        service_fee = Decimal("0") if is_free_order else (net_amount * Decimal(service_percent) / Decimal("100"))
+        total = net_amount + service_fee
 
         ip_addr = request.META.get("HTTP_X_FORWARDED_FOR", "")
         if ip_addr:
@@ -170,7 +174,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 )
 
         # Auto-confirm free orders and generate tickets
-        if total == 0 or validated_data["payment_method"] == "free":
+        if is_free_order:
             order.status = "confirmed"
             order.save(update_fields=["status"])
             # For each item, move reserved -> sold and create individual Ticket rows

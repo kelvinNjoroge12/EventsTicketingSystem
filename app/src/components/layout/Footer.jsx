@@ -74,7 +74,7 @@ const Footer = () => {
             {/* Logo & Tagline */}
             <div className="lg:col-span-2">
               <Link to="/" className="inline-flex items-center" aria-label="Strathmore University Events Ticketing">
-                <img src={strathmoreLogo} alt="Strathmore University" className="h-20 w-20 object-contain" />
+                <img src={strathmoreLogo} alt="Strathmore University" className="h-24 w-24 sm:h-28 sm:w-28 object-contain" />
               </Link>
               <p className="mt-4 text-white/70 text-sm max-w-xs">
                 Official ticketing platform for Strathmore University-organized and affiliated events for alumni, students, and corporate guests.

@@ -92,7 +92,7 @@ class OrderCreateView(generics.GenericAPIView):
                 logger.error(f"Failed to send email for order {order.order_number}: {e}")
 
         data = OrderDetailSerializer(order).data
-        return Response({"data": data}, status=status.HTTP_201_CREATED)
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
