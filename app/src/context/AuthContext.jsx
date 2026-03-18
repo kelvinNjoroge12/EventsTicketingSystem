@@ -5,7 +5,13 @@ import React, {
   useCallback,
   useEffect,
 } from 'react';
-import { api, setSessionHint, resetSessionState } from '../lib/apiClient';
+import {
+  api,
+  setSessionHint,
+  resetSessionState,
+  getSessionHint,
+  getStoredToken,
+} from '../lib/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -34,6 +40,15 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
+      const hasSessionHint = getSessionHint() || !!getStoredToken();
+      if (!hasSessionHint) {
+        if (isMounted) {
+          setUserRaw(null);
+          setIsInitializing(false);
+        }
+        return;
+      }
+
       try {
         const profile = await api.get('/api/auth/profile/');
         if (isMounted) {
