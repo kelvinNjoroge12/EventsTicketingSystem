@@ -268,12 +268,7 @@ const HomePage = () => {
               }}
             />
           </div>
-
-        <motion.div
-          className="absolute -right-32 top-10 hidden lg:block w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-[#ef4444] via-[#f97316] to-[#eab308] opacity-60 blur-3xl"
-          animate={{ y: [0, -12, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-        />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#02338D]/80 via-[#02338D]/45 to-transparent pointer-events-none" />
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
             <div className="grid gap-10">
