@@ -24,7 +24,7 @@ const CategoryPill = ({
       role="tab"
       aria-selected={isActive}
     >
-      {typeof Icon === 'function' ? (
+      {Icon && (typeof Icon === 'function' || typeof Icon === 'object') ? (
         <Icon className={`w-4 h-4 ${category.iconColor || 'text-[#02338D]'}`} aria-hidden="true" />
       ) : (
         <span className={`text-lg ${category.iconColor || 'text-[#02338D]'}`}>{category.icon}</span>
