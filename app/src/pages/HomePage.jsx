@@ -259,13 +259,30 @@ const HomePage = () => {
   return (
     <PageWrapper>
       {/* Hero Section */}
-      <section className="bg-[#F8FAFC]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
-          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
-            {/* Left Content */}
-            <div className="space-y-4">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#1e293b]">
+        <div className="absolute inset-0 opacity-25 z-0">
+          <div
+            className="w-full h-full bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${heroImage})`,
+            }}
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/85 via-[#020617]/50 to-transparent z-0 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/80 via-[#020617]/35 to-transparent z-0 pointer-events-none" />
+
+        <motion.div
+          className="absolute -right-32 top-10 hidden lg:block w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-[#ef4444] via-[#f97316] to-[#eab308] opacity-60 blur-3xl z-0"
+          animate={{ y: [0, -12, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+          <div className="max-w-3xl">
+            {/* Main Content */}
+            <div className="space-y-6">
               <motion.p
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#0F172A]/10 text-[#f97316] border border-[#0F172A]/10"
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-[#f97316] border border-white/10"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
@@ -275,7 +292,7 @@ const HomePage = () => {
               </motion.p>
 
               <motion.h1
-                className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#0F172A] leading-tight"
+                className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight"
                 initial="hidden"
                 animate="visible"
                 variants={{
@@ -310,7 +327,7 @@ const HomePage = () => {
                 {"event experience.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
-                    className="inline-block mr-2 text-[#0F172A]"
+                    className="inline-block mr-2 text-white"
                     variants={{
                       hidden: { opacity: 0, y: 20 },
                       visible: { opacity: 1, y: 0 }
@@ -322,7 +339,7 @@ const HomePage = () => {
               </motion.h1>
 
               <motion.p
-                className="text-sm md:text-base text-[#475569] max-w-xl"
+                className="text-sm md:text-base text-slate-200 max-w-xl"
                 initial="hidden"
                 animate="visible"
                 variants={{
@@ -366,81 +383,62 @@ const HomePage = () => {
               </motion.div>
 
               <motion.div
-                className="hidden sm:flex items-center gap-4 text-xs md:text-sm text-[#64748B]"
+                className="flex items-center gap-4 text-xs md:text-sm text-slate-300"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
               >
                 <div className="flex -space-x-2">
-                  <span className="w-8 h-8 rounded-full bg-[#f97316] border-2 border-white/80" />
-                  <span className="w-8 h-8 rounded-full bg-[#22c55e] border-2 border-white/80" />
-                  <span className="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white/80" />
+                  <span className="w-8 h-8 rounded-full bg-[#f97316] border-2 border-white/20" />
+                  <span className="w-8 h-8 rounded-full bg-[#22c55e] border-2 border-white/20" />
+                  <span className="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white/20" />
                 </div>
                 <span>
                   Join <span className="font-semibold text-[#f97316]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Events Ticketing System.
                 </span>
               </motion.div>
             </div>
-
-            {/* Right Image Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-6 lg:mt-0"
-            >
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white bg-white">
-                <img
-                  src={heroImage}
-                  alt="Strathmore University event audience"
-                  className="w-full h-52 sm:h-60 md:h-72 lg:h-80 object-cover"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A]/45 via-transparent to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/40 via-transparent to-transparent" />
-              </div>
-            </motion.div>
           </div>
+        </div>
 
-          {/* Category Pills (visible on first landing view) */}
-          <div className="mt-6 bg-white border border-[#E2E8F0] rounded-2xl shadow-sm px-4 py-4 overflow-hidden">
+        {/* Category Pills (visible on first landing view) */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <div
+            className="bg-white/95 backdrop-blur rounded-2xl border border-white/20 shadow-lg px-4 py-4"
+            onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+          >
             <div
-              className="overflow-hidden cursor-grab active:cursor-grabbing"
-              onWheel={handleWheel}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
+              ref={trackRef}
+              className="flex gap-3 w-max"
+              style={{ willChange: 'transform' }}
             >
-              <div
-                ref={trackRef}
-                className="flex gap-3 w-max"
-                style={{ willChange: 'transform' }}
-              >
-                {/* Duplicate the category list once for a seamless infinite loop */}
-                {[...Array(2)].map((_, loopIndex) => (
-                  <div key={loopIndex} className="flex gap-3 pr-3">
-                    <button
-                      onClick={() => handleCategoryClick('All')}
-                      className={`
-                        flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap
-                        font-medium text-sm transition-all
-                        ${activeCategory === 'All'
-                          ? 'bg-[#02338D] text-white shadow-md'
-                          : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#02338D] hover:text-[#02338D]'}
-                      `}
-                    >
-                      <span>All Events</span>
-                    </button>
-                    {categories.map((category) => (
-                      <CategoryPill
-                        key={category.id}
-                        category={{ ...category, count: categoryCounts[normalizeCategory(category.name)] ?? 0 }}
-                        isActive={activeCategory === category.name}
-                        onClick={() => handleCategoryClick(category.name)}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
+              {/* Duplicate the category list once for a seamless infinite loop */}
+              {[...Array(2)].map((_, loopIndex) => (
+                <div key={loopIndex} className="flex gap-3 pr-3">
+                  <button
+                    onClick={() => handleCategoryClick('All')}
+                    className={`
+                      flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap
+                      font-medium text-sm transition-all
+                      ${activeCategory === 'All'
+                        ? 'bg-[#02338D] text-white shadow-md'
+                        : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#02338D] hover:text-[#02338D]'}
+                    `}
+                  >
+                    <span>All Events</span>
+                  </button>
+                  {categories.map((category) => (
+                    <CategoryPill
+                      key={category.id}
+                      category={{ ...category, count: categoryCounts[normalizeCategory(category.name)] ?? 0 }}
+                      isActive={activeCategory === category.name}
+                      onClick={() => handleCategoryClick(category.name)}
+                    />
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         </div>
