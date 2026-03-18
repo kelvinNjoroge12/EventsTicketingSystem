@@ -6,7 +6,6 @@ import PageWrapper from '../components/layout/PageWrapper';
 import CustomInput from '../components/ui/CustomInput';
 import CustomButton from '../components/ui/CustomButton';
 import { api } from '../lib/apiClient';
-import strathmoreLogo from '../assets/strathmore-logo.png';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -39,15 +38,6 @@ const ForgotPasswordPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center justify-center" aria-label="Strathmore University Events Ticketing">
-              <div className="h-32 w-32 sm:h-36 sm:w-36 rounded-2xl bg-[#02338D] p-2 shadow-sm">
-                <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
-              </div>
-            </Link>
-          </div>
-
           {/* Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-[#E2E8F0] p-8">
             <AnimatePresence mode="wait">

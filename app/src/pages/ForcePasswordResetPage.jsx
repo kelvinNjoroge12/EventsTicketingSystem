@@ -7,7 +7,6 @@ import CustomInput from '../components/ui/CustomInput';
 import CustomButton from '../components/ui/CustomButton';
 import { api } from '../lib/apiClient';
 import { useAuth } from '../context/AuthContext';
-import strathmoreLogo from '../assets/strathmore-logo.png';
 
 const ForcePasswordResetPage = () => {
   const navigate = useNavigate();
@@ -72,10 +71,7 @@ const ForcePasswordResetPage = () => {
           transition={{ duration: 0.3 }}
         >
           <div className="text-center mb-6">
-            <div className="mx-auto h-32 w-32 sm:h-36 sm:w-36 rounded-2xl bg-[#02338D] p-2 shadow-sm">
-              <img src={strathmoreLogo} alt="Strathmore University" className="h-full w-full object-contain" />
-            </div>
-            <p className="text-sm text-[#64748B] mt-3">For security, please set a new password.</p>
+            <p className="text-sm text-[#64748B]">For security, please set a new password.</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-lg border border-[#E2E8F0] p-8">
