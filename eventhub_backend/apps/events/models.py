@@ -121,3 +121,10 @@ class Event(TimeStampedModel):
     def __str__(self) -> str:  # pragma: no cover
         return self.title
 
+    @property
+    def date(self):  # Backward-compatible alias for legacy code paths
+        return self.start_date
+
+    @property
+    def time(self):  # Backward-compatible alias for legacy code paths
+        return self.start_time
