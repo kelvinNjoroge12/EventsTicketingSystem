@@ -274,31 +274,38 @@ const HomePage = () => {
             <div className="grid gap-10">
               {/* Left Content */}
               <div className="space-y-6 w-full lg:w-1/2 max-w-[560px]">
-                <motion.h1
-                  className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight whitespace-nowrap"
-                  initial="hidden"
-                  animate="visible"
-                  variants={{
-                    hidden: { opacity: 0 },
-                    visible: {
-                      opacity: 1,
-                      transition: { staggerChildren: 0.12, delayChildren: 0.1 }
-                    }
-                  }}
+                <motion.div
+                  className="inline-flex w-fit rounded-full border border-white/10 bg-white/10 px-5 py-3"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
                 >
-                  {["Reconect.", "Network.", "Inspire"].map((word, i) => (
-                    <motion.span
-                      key={i}
-                      className={`inline-block ${i === 1 ? 'text-[#7A0019]' : 'text-white'}`}
-                      variants={{
-                        hidden: { opacity: 0, y: 20 },
-                        visible: { opacity: 1, y: 0 }
-                      }}
-                    >
-                      {word}
-                    </motion.span>
-                  ))}
-                </motion.h1>
+                  <motion.h1
+                    className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight whitespace-nowrap"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                      hidden: { opacity: 0 },
+                      visible: {
+                        opacity: 1,
+                        transition: { staggerChildren: 0.12, delayChildren: 0.1 }
+                      }
+                    }}
+                  >
+                    {["Reconect.", "Network.", "Inspire"].map((word, i) => (
+                      <motion.span
+                        key={i}
+                        className={`inline-block ${i === 1 ? 'text-[#7A0019]' : 'text-white'}`}
+                        variants={{
+                          hidden: { opacity: 0, y: 20 },
+                          visible: { opacity: 1, y: 0 }
+                        }}
+                      >
+                        {word}
+                      </motion.span>
+                    ))}
+                  </motion.h1>
+                </motion.div>
 
                 <motion.p
                   className="text-sm md:text-base text-slate-200 max-w-[560px]"
