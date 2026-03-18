@@ -19,7 +19,6 @@ import CategoryPill from '../components/cards/CategoryPill';
 import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
-import heroImage from '../assets/strathmore-hero.jpg';
 import { fetchEventLite, fetchEvents, preloadRoutes } from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categories } from '../data/categories';
@@ -269,7 +268,8 @@ const HomePage = () => {
           <div
             className="w-full h-full bg-cover bg-center"
             style={{
-              backgroundImage: `url(${heroImage})`,
+              backgroundImage:
+                "url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1400&q=80')",
             }}
           />
         </div>
