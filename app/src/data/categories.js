@@ -1,68 +1,116 @@
+import {
+  BookOpen,
+  Lightbulb,
+  Wrench,
+  Users,
+  Network,
+  GraduationCap,
+  HeartPulse,
+  Trophy,
+  Palette,
+  Rocket,
+  Briefcase,
+  Handshake,
+  Mic2,
+  Ticket
+} from "lucide-react";
+
+const ICON_COLORS = {
+  blue: "text-[#02338D]",
+  gold: "text-[#D4AF37]",
+  red: "text-[#7A0019]",
+};
+
 export const categories = [
   {
     id: "cat-001",
     name: "Academic & Research",
-    icon: "AR",
+    icon: BookOpen,
+    iconColor: ICON_COLORS.blue,
     description: "Academic talks, research seminars, and scholarly forums"
   },
   {
     id: "cat-002",
-    name: "Workshops & Training",
-    icon: "WT",
-    description: "Skills workshops, labs, and professional training sessions"
+    name: "Knowledge Series",
+    icon: Lightbulb,
+    iconColor: ICON_COLORS.gold,
+    description: "Thought-leadership sessions, guest talks, and expert panels"
   },
   {
     id: "cat-003",
-    name: "Student Life",
-    icon: "SL",
-    description: "Student clubs, socials, and community experiences"
+    name: "Workshops & Training",
+    icon: Wrench,
+    iconColor: ICON_COLORS.blue,
+    description: "Skills workshops, labs, and professional training sessions"
   },
   {
     id: "cat-004",
-    name: "Faith & Service",
-    icon: "FS",
-    description: "Chapel gatherings, service initiatives, and outreach events"
+    name: "Student Life",
+    icon: Users,
+    iconColor: ICON_COLORS.gold,
+    description: "Student clubs, socials, and community experiences"
   },
   {
     id: "cat-005",
-    name: "Sports & Recreation",
-    icon: "SR",
-    description: "Athletics, fitness, and recreation activities"
+    name: "Networking",
+    icon: Network,
+    iconColor: ICON_COLORS.red,
+    description: "Industry mixers, meetups, and professional connections"
   },
   {
     id: "cat-006",
-    name: "Arts & Culture",
-    icon: "AC",
-    description: "Performances, exhibitions, and cultural showcases"
+    name: "Alumni Reunion",
+    icon: GraduationCap,
+    iconColor: ICON_COLORS.gold,
+    description: "Class reunions, alumni meetups, and homecoming moments"
   },
   {
     id: "cat-007",
-    name: "Entrepreneurship & Innovation",
-    icon: "EI",
-    description: "Innovation challenges, startup forums, and maker events"
+    name: "Wellness Events",
+    icon: HeartPulse,
+    iconColor: ICON_COLORS.red,
+    description: "Wellbeing workshops, fitness sessions, and mental health talks"
   },
   {
     id: "cat-008",
-    name: "Corporate & Executive",
-    icon: "CE",
-    description: "Executive forums, corporate collaborations, and industry events"
+    name: "Sports & Recreation",
+    icon: Trophy,
+    iconColor: ICON_COLORS.blue,
+    description: "Athletics, fitness, and recreation activities"
   },
   {
     id: "cat-009",
-    name: "Community Outreach",
-    icon: "CO",
-    description: "Community service, collaborations, and impact programs"
+    name: "Arts & Culture",
+    icon: Palette,
+    iconColor: ICON_COLORS.gold,
+    description: "Performances, exhibitions, and cultural showcases"
   },
   {
     id: "cat-010",
-    name: "Alumni Events",
-    icon: "AL",
-    description: "Alumni reunions, networking, and homecoming events"
+    name: "Entrepreneurship & Innovation",
+    icon: Rocket,
+    iconColor: ICON_COLORS.red,
+    description: "Innovation challenges, startup forums, and maker events"
   },
   {
     id: "cat-011",
+    name: "Corporate & Executive",
+    icon: Briefcase,
+    iconColor: ICON_COLORS.blue,
+    description: "Executive forums, corporate collaborations, and industry events"
+  },
+  {
+    id: "cat-012",
+    name: "Community Outreach",
+    icon: Handshake,
+    iconColor: ICON_COLORS.gold,
+    description: "Community service, collaborations, and impact programs"
+  },
+  {
+    id: "cat-013",
     name: "Conferences & Seminars",
-    icon: "CS",
+    icon: Mic2,
+    iconColor: ICON_COLORS.red,
     description: "University-wide conferences, symposia, and panels"
   }
 ];
@@ -73,5 +121,5 @@ export const getCategoryByName = (name) => {
 
 export const getCategoryIcon = (name) => {
   const category = getCategoryByName(name);
-  return category ? category.icon : "EV";
+  return category ? category.icon : Ticket;
 };

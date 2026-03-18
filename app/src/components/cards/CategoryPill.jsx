@@ -7,6 +7,8 @@ const CategoryPill = ({
   onClick,
   index = 0,
 }) => {
+  const Icon = category?.icon;
+
   return (
     <motion.button
       onClick={onClick}
@@ -22,7 +24,11 @@ const CategoryPill = ({
       role="tab"
       aria-selected={isActive}
     >
-      <span className="text-lg">{category.icon}</span>
+      {typeof Icon === 'function' ? (
+        <Icon className={`w-4 h-4 ${category.iconColor || 'text-[#02338D]'}`} aria-hidden="true" />
+      ) : (
+        <span className={`text-lg ${category.iconColor || 'text-[#02338D]'}`}>{category.icon}</span>
+      )}
       <span>{category.name}</span>
       <span className={`
         px-2 py-0.5 rounded-full text-xs
