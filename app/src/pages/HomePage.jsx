@@ -19,6 +19,7 @@ import CategoryPill from '../components/cards/CategoryPill';
 import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
+import heroImage from '../assets/strathmore-hero.jpg';
 import { fetchEventLite, fetchEvents, preloadRoutes } from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categories } from '../data/categories';
@@ -193,11 +194,6 @@ const HomePage = () => {
     return fe;
   }, [allEvents, activeCategory, categoryCounts]);
 
-  const heroEvt = useMemo(() => {
-    if (!allEvents || allEvents.length === 0) return null;
-    return allEvents.find(e => e.isFeatured) || allEvents[0];
-  }, [allEvents]);
-
   const updateTrackPosition = () => {
     if (!trackRef.current) return;
     const scrollWidth = trackRef.current.scrollWidth;
@@ -263,16 +259,15 @@ const HomePage = () => {
   return (
     <PageWrapper>
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#1e293b]">
-        <div className="absolute inset-0 opacity-25">
-          <div
-            className="w-full h-full bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1400&q=80')",
-            }}
-          />
-        </div>
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#1e293b]">
+          <div className="absolute inset-0 opacity-25">
+            <div
+              className="w-full h-full bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${heroImage})`,
+              }}
+            />
+          </div>
 
         <motion.div
           className="absolute -right-32 top-10 hidden lg:block w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-[#ef4444] via-[#f97316] to-[#eab308] opacity-60 blur-3xl"
@@ -280,10 +275,10 @@ const HomePage = () => {
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            {/* Left Content */}
-            <div className="space-y-6">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+            <div className="grid gap-10">
+              {/* Left Content */}
+              <div className="space-y-6">
               <motion.p
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-[#f97316] border border-white/10"
                 initial={{ opacity: 0, y: -10 }}
@@ -402,66 +397,9 @@ const HomePage = () => {
               </motion.div>
             </div>
 
-            {/* Right Content – dynamic hero preview */}
-            <div className="hidden lg:flex justify-end">
-              {heroEvt ? (
-                <motion.div
-                  className="relative w-full max-w-md rounded-3xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-xl shadow-2xl"
-                  initial={{ opacity: 0, y: 40 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7, delay: 0.2 }}
-                >
-                  <Link to={`/events/${heroEvt.slug}`}>
-                    <div
-                      className="h-56 bg-cover bg-center"
-                      style={{
-                        backgroundImage: `url(${heroEvt.coverImage || 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80'})`,
-                      }}
-                    >
-                      <div className="h-full w-full bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-between p-4">
-                        <div className="flex justify-between items-center text-xs text-slate-100">
-                          <span className="px-2 py-1 rounded-full bg-red-500/80 font-semibold">
-                            {heroEvt.isFeatured ? 'Featured Event' : 'Trending Now'}
-                          </span>
-                          <span className="flex items-center gap-1 text-slate-300">
-                            <Users className="w-3 h-3" />
-                            {heroEvt.attendeeCount}+ attending
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-slate-200 text-xs mb-1">{heroEvt.location}</p>
-                          <h3 className="text-xl font-bold text-white">
-                            {heroEvt.title}
-                          </h3>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-3 bg-slate-950/80">
-                      <div className="flex items-center justify-between text-xs text-slate-200">
-                        <span>{new Date(heroEvt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {heroEvt.time}</span>
-                        <span className="flex items-center gap-1">
-                          <span className="inline-block w-2 h-2 rounded-full bg-[#ef4444]" />
-                          {heroEvt.isFree ? 'Free Event' : 'Limited Spots'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-200">
-                        <span>{heroEvt.category}</span>
-                        <span className="font-semibold text-white">
-                          {heroEvt.isFree ? 'FREE' : `KES ${heroEvt.price.toLocaleString()}`}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ) : (
-                <div className="w-full max-w-md h-96 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md flex items-center justify-center">
-                  <p className="text-white/50 text-sm">More events coming soon</p>
-                </div>
-              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
       {/* Category Pills */}
       <section className="py-8 bg-white border-b border-[#E2E8F0] overflow-hidden">
