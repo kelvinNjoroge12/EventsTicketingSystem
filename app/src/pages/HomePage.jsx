@@ -261,136 +261,145 @@ const HomePage = () => {
       {/* Hero Section */}
       <section className="bg-[#F8FAFC]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white bg-white">
-            <img
-              src={heroImage}
-              alt="Strathmore University event audience"
-              className="w-full h-[320px] sm:h-[380px] lg:h-[460px] object-cover"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#02338D]/85 via-[#02338D]/45 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#02338D]/80 via-[#02338D]/30 to-transparent" />
+          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+            {/* Left Content */}
+            <div className="space-y-4">
+              <motion.p
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#0F172A]/10 text-[#f97316] border border-[#0F172A]/10"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
+                Strathmore-affiliated events - Alumni - Students and corporate gatherings
+              </motion.p>
 
-            <div className="absolute inset-0 flex items-start">
-              <div className="w-full max-w-3xl px-6 sm:px-10 lg:px-14 py-8 sm:py-10 lg:py-12 space-y-5 text-white">
-                <motion.p
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-[#C8102E] border border-white/20"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <span className="w-2 h-2 rounded-full bg-[#C8102E]" />
-                  Strathmore-affiliated events - Alumni - Students and corporate gatherings
-                </motion.p>
-
-                <motion.h1
-                  className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight"
-                  initial="hidden"
-                  animate="visible"
-                  variants={{
-                    hidden: { opacity: 0 },
-                    visible: {
-                      opacity: 1,
-                      transition: { staggerChildren: 0.12, delayChildren: 0.1 }
-                    }
-                  }}
-                >
-                  {"Celebrate the ".split(" ").map((word, i) => (
-                    <motion.span
-                      key={i}
-                      className="inline-block mr-2"
-                      variants={{
-                        hidden: { opacity: 0, y: 20 },
-                        visible: { opacity: 1, y: 0 }
-                      }}
-                    >
-                      {word}
-                    </motion.span>
-                  ))}
+              <motion.h1
+                className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#0F172A] leading-tight"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.12, delayChildren: 0.1 }
+                  }
+                }}
+              >
+                {"Celebrate the ".split(" ").map((word, i) => (
                   <motion.span
-                    className="inline-block mr-2 text-[#C8102E]"
+                    key={i}
+                    className="inline-block mr-2"
                     variants={{
                       hidden: { opacity: 0, y: 20 },
                       visible: { opacity: 1, y: 0 }
                     }}
                   >
-                    Strathmore
+                    {word}
                   </motion.span>
-                  {"event experience.".split(" ").map((word, i) => (
-                    <motion.span
-                      key={i}
-                      className="inline-block mr-2 text-white"
-                      variants={{
-                        hidden: { opacity: 0, y: 20 },
-                        visible: { opacity: 1, y: 0 }
-                      }}
-                    >
-                      {word}
-                    </motion.span>
-                  ))}
-                </motion.h1>
-
-                <motion.p
-                  className="text-sm md:text-base text-white/85 max-w-xl"
-                  initial="hidden"
-                  animate="visible"
+                ))}
+                <motion.span
+                  className="inline-block mr-2 text-[#ef4444]"
                   variants={{
-                    hidden: { opacity: 0 },
-                    visible: {
-                      opacity: 1,
-                      transition: { staggerChildren: 0.04, delayChildren: 0.4 }
-                    }
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { opacity: 1, y: 0 }
                   }}
                 >
-                  {"Discover alumni reunions, student clubs, and corporate forums organized by Strathmore or in collaboration. Reserve your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
-                    <motion.span
-                      key={i}
-                      className="inline-block mr-1"
-                      variants={{
-                        hidden: { opacity: 0, y: 10 },
-                        visible: { opacity: 1, y: 0 }
-                      }}
-                    >
-                      {word}
-                    </motion.span>
-                  ))}
-                </motion.p>
+                  Strathmore
+                </motion.span>
+                {"event experience.".split(" ").map((word, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block mr-2 text-[#0F172A]"
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0 }
+                    }}
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+              </motion.h1>
 
-                <motion.div
-                  className="flex flex-wrap gap-4"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3, type: 'spring' }}
-                >
-                  <Link to="/events">
-                    <CustomButton variant="primary" size="lg" rightIcon={ArrowRight}>
-                      Browse Events
-                    </CustomButton>
-                  </Link>
-                  <Link to="/create-event">
-                    <CustomButton variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-[#02338D]">
-                      Create an Event
-                    </CustomButton>
-                  </Link>
-                </motion.div>
+              <motion.p
+                className="text-sm md:text-base text-[#475569] max-w-xl"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.04, delayChildren: 0.4 }
+                  }
+                }}
+              >
+                {"Discover alumni reunions, student clubs, and corporate forums organized by Strathmore or in collaboration. Reserve your spot in seconds and keep all your tickets in one place.".split(" ").map((word, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block mr-1"
+                    variants={{
+                      hidden: { opacity: 0, y: 10 },
+                      visible: { opacity: 1, y: 0 }
+                    }}
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+              </motion.p>
 
-                <motion.div
-                  className="hidden sm:flex items-center gap-4 text-xs md:text-sm text-white/80"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
-                >
-                  <div className="flex -space-x-2">
-                    <span className="w-8 h-8 rounded-full bg-[#C8102E] border-2 border-white/80" />
-                    <span className="w-8 h-8 rounded-full bg-[#22c55e] border-2 border-white/80" />
-                    <span className="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white/80" />
-                  </div>
-                  <span>
-                    Join <span className="font-semibold text-[#C8102E]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Events Ticketing System.
-                  </span>
-                </motion.div>
-              </div>
+              <motion.div
+                className="flex flex-wrap gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3, type: 'spring' }}
+              >
+                <Link to="/events">
+                  <CustomButton variant="primary" size="lg" rightIcon={ArrowRight}>
+                    Browse Events
+                  </CustomButton>
+                </Link>
+                <Link to="/create-event">
+                  <CustomButton variant="outline" size="lg">
+                    Create an Event
+                  </CustomButton>
+                </Link>
+              </motion.div>
+
+              <motion.div
+                className="hidden sm:flex items-center gap-4 text-xs md:text-sm text-[#64748B]"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <div className="flex -space-x-2">
+                  <span className="w-8 h-8 rounded-full bg-[#f97316] border-2 border-white/80" />
+                  <span className="w-8 h-8 rounded-full bg-[#22c55e] border-2 border-white/80" />
+                  <span className="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white/80" />
+                </div>
+                <span>
+                  Join <span className="font-semibold text-[#f97316]">10,000+</span> students, alumni, and corporate guests using the Strathmore University Events Ticketing System.
+                </span>
+              </motion.div>
             </div>
+
+            {/* Right Image Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="mt-6 lg:mt-0"
+            >
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white bg-white">
+                <img
+                  src={heroImage}
+                  alt="Strathmore University event audience"
+                  className="w-full h-52 sm:h-60 md:h-72 lg:h-80 object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#02338D]/70 via-[#02338D]/35 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#02338D]/65 via-[#02338D]/30 to-transparent" />
+              </div>
+            </motion.div>
           </div>
 
           {/* Category Pills (visible on first landing view) */}
