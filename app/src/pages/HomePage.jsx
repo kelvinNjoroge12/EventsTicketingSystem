@@ -275,7 +275,7 @@ const HomePage = () => {
               {/* Left Content */}
               <div className="space-y-6 w-full lg:w-1/2 max-w-[560px]">
                 <motion.h1
-                  className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight"
+                  className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight whitespace-nowrap"
                   initial="hidden"
                   animate="visible"
                   variants={{
@@ -286,10 +286,10 @@ const HomePage = () => {
                     }
                   }}
                 >
-                  {"Reconect. Network. Inspire".split(" ").map((word, i) => (
+                  {["Reconect.", "Network.", "Inspire"].map((word, i) => (
                     <motion.span
                       key={i}
-                      className={`inline-block mr-2 ${i === 0 ? 'text-[#7A0019]' : ''}`}
+                      className={`inline-block ${i === 1 ? 'text-[#7A0019]' : 'text-white'}`}
                       variants={{
                         hidden: { opacity: 0, y: 20 },
                         visible: { opacity: 1, y: 0 }
