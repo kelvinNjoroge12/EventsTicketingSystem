@@ -34,7 +34,7 @@ const HostEventLandingPage = () => {
             <div className="bg-[#F8FAFC]">
                 {/* ── HERO SECTION ── */}
                 <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden bg-white">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-white to-white" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#EEF4FF] via-white to-white" />
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                             <motion.div
@@ -42,7 +42,7 @@ const HostEventLandingPage = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.6 }}
                             >
-                                <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-[#02338D] text-sm font-bold tracking-wider mb-6">
+                                <span className="inline-block px-4 py-1.5 rounded-full bg-[#E6EEFF] text-[#02338D] text-sm font-bold tracking-wider mb-6">
                                     Built for Alumni, Student & Corporate Events
                                 </span>
                                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#0F172A] leading-tight mb-6">
@@ -53,7 +53,7 @@ const HostEventLandingPage = () => {
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <Link to="/signup">
-                                        <CustomButton variant="primary" size="xl" className="w-full sm:w-auto shadow-lg shadow-blue-500/30">
+                                        <CustomButton variant="primary" size="xl" className="w-full sm:w-auto shadow-lg shadow-[#02338D]/30">
                                             Get started
                                         </CustomButton>
                                     </Link>
@@ -75,9 +75,9 @@ const HostEventLandingPage = () => {
                                 <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white">
                                     <div className="h-12 bg-gray-100 flex items-center px-4 border-b border-gray-200">
                                         <div className="flex gap-2">
-                                            <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                                            <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                                            <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                                            <div className="w-3 h-3 rounded-full bg-[#7A0019]"></div>
+                                            <div className="w-3 h-3 rounded-full bg-[#D4AF37]"></div>
+                                            <div className="w-3 h-3 rounded-full bg-[#02338D]"></div>
                                         </div>
                                     </div>
                                     <img
@@ -85,7 +85,7 @@ const HostEventLandingPage = () => {
                                         alt="People having fun at an event"
                                         className="w-full h-auto object-cover opacity-90"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent flex flex-col justify-end p-8">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#0B1C3A]/80 via-transparent to-transparent flex flex-col justify-end p-8">
                                         <h3 className="text-2xl font-bold text-white mb-2">Leadership & Innovation Forum</h3>
                                         <p className="text-white/80 flex items-center gap-2"><MapPin className="w-4 h-4" /> Strathmore University, Nairobi</p>
                                     </div>
@@ -97,8 +97,8 @@ const HostEventLandingPage = () => {
                                     transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                                     className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl flex items-center gap-4"
                                 >
-                                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                                        <Ticket className="w-6 h-6 text-green-600" />
+                                    <div className="w-12 h-12 rounded-full bg-[#E6EEFF] flex items-center justify-center">
+                                        <Ticket className="w-6 h-6 text-[#02338D]" />
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-500 font-medium">Tickets Issued</p>
@@ -129,48 +129,48 @@ const HostEventLandingPage = () => {
                         >
                             {/* Feature 1 */}
                             <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
-                                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
-                                    <Ticket className="w-7 h-7 text-indigo-600" />
+                                <div className="w-14 h-14 bg-[#E6EEFF] rounded-2xl flex items-center justify-center mb-6">
+                                    <Ticket className="w-7 h-7 text-[#02338D]" />
                                 </div>
                                 <h3 className="text-xl font-bold text-[#0F172A] mb-3">Official Ticketing</h3>
                                 <p className="text-[#64748B] mb-6">Issue tickets for Strathmore-organized or affiliated events with a seamless checkout experience.</p>
-                                <Link to="/signup" className="text-indigo-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                <Link to="/signup" className="text-[#02338D] font-medium flex items-center gap-1 hover:gap-2 transition-all">
                                     Explore ticketing tools <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
 
                             {/* Feature 2 */}
                             <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
-                                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-                                    <BarChart3 className="w-7 h-7 text-blue-600" />
+                                <div className="w-14 h-14 bg-[#E6EEFF] rounded-2xl flex items-center justify-center mb-6">
+                                    <BarChart3 className="w-7 h-7 text-[#02338D]" />
                                 </div>
                                 <h3 className="text-xl font-bold text-[#0F172A] mb-3">Attendance Insights</h3>
                                 <p className="text-[#64748B] mb-6">Track registrations and attendance across schools, departments, and units.</p>
-                                <Link to="/signup" className="text-blue-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                <Link to="/signup" className="text-[#02338D] font-medium flex items-center gap-1 hover:gap-2 transition-all">
                                     View insights <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
 
                             {/* Feature 3 */}
                             <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
-                                <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6">
-                                    <Smartphone className="w-7 h-7 text-purple-600" />
+                                <div className="w-14 h-14 bg-[#F2DCE2] rounded-2xl flex items-center justify-center mb-6">
+                                    <Smartphone className="w-7 h-7 text-[#7A0019]" />
                                 </div>
                                 <h3 className="text-xl font-bold text-[#0F172A] mb-3">Check-In Tools</h3>
                                 <p className="text-[#64748B] mb-6">Validate QR tickets, manage entry lines, and support on-site teams with ease.</p>
-                                <Link to="/signup" className="text-purple-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                <Link to="/signup" className="text-[#7A0019] font-medium flex items-center gap-1 hover:gap-2 transition-all">
                                     See check-in tools <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
 
                             {/* Feature 4 */}
                             <motion.div variants={itemVariant} className="bg-white p-8 rounded-3xl shadow-sm border border-[#E2E8F0] hover:shadow-lg transition-all">
-                                <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center mb-6">
-                                    <Megaphone className="w-7 h-7 text-pink-600" />
+                                <div className="w-14 h-14 bg-[#F6E9C8] rounded-2xl flex items-center justify-center mb-6">
+                                    <Megaphone className="w-7 h-7 text-[#D4AF37]" />
                                 </div>
                                 <h3 className="text-xl font-bold text-[#0F172A] mb-3">University Promotion</h3>
                                 <p className="text-[#64748B] mb-6">Share event pages through official channels and community networks.</p>
-                                <Link to="/signup" className="text-pink-600 font-medium flex items-center gap-1 hover:gap-2 transition-all">
+                                <Link to="/signup" className="text-[#D4AF37] font-medium flex items-center gap-1 hover:gap-2 transition-all">
                                     Promotion options <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </motion.div>
@@ -190,21 +190,21 @@ const HostEventLandingPage = () => {
                                     <div className="space-y-4 relative z-10">
                                         <div className="bg-white p-4 rounded-xl shadow-sm border border-[#E2E8F0] flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                                                    <Wallet className="w-5 h-5 text-green-600" />
+                                                <div className="w-10 h-10 rounded-full bg-[#E6EEFF] flex items-center justify-center">
+                                                    <Wallet className="w-5 h-5 text-[#02338D]" />
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 font-medium">Available Balance</p>
                                                     <p className="text-lg font-bold text-gray-900">$8,450.00</p>
                                                 </div>
                                             </div>
-                                            <button className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">Withdraw</button>
+                                            <button className="bg-[#02338D] text-white px-4 py-2 rounded-lg text-sm font-semibold">Withdraw</button>
                                         </div>
                                         <div className="bg-white p-4 rounded-xl shadow-sm border border-[#E2E8F0]">
                                             <p className="font-semibold text-gray-900 mb-2">Scheduled Payouts</p>
                                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2 border border-gray-100">
                                                 <span className="text-sm font-medium text-gray-700">Weekly</span>
-                                                <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                                                <CheckCircle2 className="w-5 h-5 text-[#02338D]" />
                                             </div>
                                             <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100">
                                                 <span className="text-sm font-medium text-gray-500">Twice a month</span>
@@ -216,7 +216,7 @@ const HostEventLandingPage = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-green-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#E6EEFF] rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                                 </div>
                             </motion.div>
 
@@ -231,8 +231,8 @@ const HostEventLandingPage = () => {
 
                                 <ul className="space-y-6">
                                     <li className="flex gap-4">
-                                        <div className="mt-1 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                        <div className="mt-1 w-6 h-6 rounded-full bg-[#E6EEFF] flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-4 h-4 text-[#02338D]" />
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-[#0F172A] text-lg">Secure Payment Processing</h4>
@@ -240,8 +240,8 @@ const HostEventLandingPage = () => {
                                         </div>
                                     </li>
                                     <li className="flex gap-4">
-                                        <div className="mt-1 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                            <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                                        <div className="mt-1 w-6 h-6 rounded-full bg-[#F6E9C8] flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-4 h-4 text-[#D4AF37]" />
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-[#0F172A] text-lg">Transparent fees</h4>
@@ -249,8 +249,8 @@ const HostEventLandingPage = () => {
                                         </div>
                                     </li>
                                     <li className="flex gap-4">
-                                        <div className="mt-1 w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-                                            <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                                        <div className="mt-1 w-6 h-6 rounded-full bg-[#F2DCE2] flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-4 h-4 text-[#7A0019]" />
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-[#0F172A] text-lg">Flexible payouts</h4>
@@ -271,7 +271,7 @@ const HostEventLandingPage = () => {
                 <section className="py-24 bg-[#02338D] text-white relative overflow-hidden">
                     {/* Decorative Background Elements */}
                     <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-                    <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-400/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
+                    <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#7A0019]/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
 
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}>
