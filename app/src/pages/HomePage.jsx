@@ -398,11 +398,13 @@ const HomePage = () => {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Category Pills (visible on first landing view) */}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+      {/* Category Pills */}
+      <section className="py-8 bg-white border-b border-[#E2E8F0] overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
-            className="bg-white/95 backdrop-blur rounded-2xl border border-white/20 shadow-lg px-4 py-4"
+            className="overflow-hidden cursor-grab active:cursor-grabbing"
             onWheel={handleWheel}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
