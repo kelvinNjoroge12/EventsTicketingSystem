@@ -396,8 +396,8 @@ const HomePage = () => {
                   className="w-full h-52 sm:h-60 md:h-72 lg:h-80 object-cover"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#02338D]/70 via-[#02338D]/35 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#02338D]/65 via-[#02338D]/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A]/45 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/40 via-transparent to-transparent" />
               </div>
             </motion.div>
           </div>
