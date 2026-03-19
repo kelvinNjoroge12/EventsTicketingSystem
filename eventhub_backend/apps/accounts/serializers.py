@@ -129,33 +129,28 @@ class UserProfileSerializer(serializers.ModelSerializer):
                 if event.id in seen:
                     continue
                 seen.add(event.id)
+                # Safely read date/time fields — use getattr to avoid AttributeError
+                # if the event model has incomplete data or future schema changes.
+                event_date = getattr(event, "start_date", None)
+                event_time = getattr(event, "start_time", None)
+
                 try:
-                    event_date = getattr(event, "start_date", None)
-                    if event_date is None:
-                        event_date = getattr(event, "date", None)
-                    event_time = getattr(event, "start_time", None)
-                    if event_time is None:
-                        event_time = getattr(event, "time", None)
-                    if event_time is not None and hasattr(event_time, "isoformat"):
-                        event_time_value = event_time.isoformat()
-                    else:
-                        event_time_value = str(event_time) if event_time else None
-                    details.append({
-                        "id": str(event.id),
-                        "slug": event.slug,
-                        "title": event.title,
-                        "date": event_date.isoformat() if event_date else None,
-                        "time": event_time_value,
-                    })
+                    date_value = event_date.isoformat() if event_date else None
                 except Exception:
-                    # Gracefully skip events that have data issues
-                    details.append({
-                        "id": str(event.id),
-                        "slug": getattr(event, "slug", ""),
-                        "title": getattr(event, "title", "Unknown Event"),
-                        "date": None,
-                        "time": None,
-                    })
+                    date_value = None
+
+                try:
+                    time_value = event_time.isoformat() if event_time else None
+                except Exception:
+                    time_value = str(event_time) if event_time else None
+
+                details.append({
+                    "id": str(event.id),
+                    "slug": getattr(event, "slug", ""),
+                    "title": getattr(event, "title", "Unknown Event"),
+                    "date": date_value,
+                    "time": time_value,
+                })
         return details
 
     def update(self, instance, validated_data):
