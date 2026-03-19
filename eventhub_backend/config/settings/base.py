@@ -12,6 +12,10 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, []),
 )
 
+env_file = BASE_DIR / ".env"
+if env_file.exists():
+    environ.Env.read_env(str(env_file))
+
 
 def _require(name: str) -> str:
     value = env(name, default=None)
