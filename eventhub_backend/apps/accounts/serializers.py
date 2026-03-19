@@ -130,8 +130,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
                     continue
                 seen.add(event.id)
                 try:
-                    event_date = event.start_date
-                    event_time = event.start_time
+                    event_date = getattr(event, "start_date", None)
+                    if event_date is None:
+                        event_date = getattr(event, "date", None)
+                    event_time = getattr(event, "start_time", None)
+                    if event_time is None:
+                        event_time = getattr(event, "time", None)
                     if event_time is not None and hasattr(event_time, "isoformat"):
                         event_time_value = event_time.isoformat()
                     else:
