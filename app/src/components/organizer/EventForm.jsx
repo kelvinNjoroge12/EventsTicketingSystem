@@ -562,8 +562,19 @@ export const SponsorsStep = ({ data, onChange }) => {
 // -- Step 7: Tickets -----------------------------------------------------------
 export const TicketsStep = ({ data, onChange, errors }) => {
   const categories = Array.isArray(data.registrationCategories) ? data.registrationCategories : [];
+  const tickets = Array.isArray(data.tickets) ? data.tickets : [];
   const enabledCategories = categories.filter((c) => c.is_active);
   const defaultCategoryType = enabledCategories[0]?.category || categories[0]?.category || 'guest';
+  const themeColor = data.themeColor || '#02338D';
+  const currency = data.currency || 'KES';
+  const withAlpha = (color, alpha, fallback) => {
+    if (typeof color === 'string' && color.startsWith('#') && color.length === 7) {
+      return `${color}${alpha}`;
+    }
+    return fallback ?? color;
+  };
+  const themeSoft = withAlpha(themeColor, '14', '#EFF6FF');
+  const themeBorder = withAlpha(themeColor, '40', themeColor);
   const [draggedCategoryIndex, setDraggedCategoryIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
 
@@ -619,15 +630,14 @@ export const TicketsStep = ({ data, onChange, errors }) => {
   };
 
   const addTicket = (categoryType = defaultCategoryType) =>
-    onChange('tickets', [...data.tickets, { type: 'Standard', price: 0, quantity: 100, description: '', category: categoryType }]);
-  const removeTicket = (i) => { if (data.tickets.length === 1) return; onChange('tickets', data.tickets.filter((_, idx) => idx !== i)); };
+    onChange('tickets', [...tickets, { type: 'Standard', price: 0, quantity: 100, description: '', category: categoryType }]);
+  const removeTicket = (i) => { if (tickets.length === 1) return; onChange('tickets', tickets.filter((_, idx) => idx !== i)); };
   const updateTicket = (i, field, value) => {
-    const arr = [...data.tickets];
+    const arr = [...tickets];
     arr[i] = { ...arr[i], [field]: value };
     onChange('tickets', arr);
   };
 
-  const typeIcons = { Standard: 'STD', VIP: 'VIP', 'Early Bird': 'EB', Free: 'FREE', Donation: 'DON' };
   const categoryStyles = {
     student: { accent: '#02338D', bg: '#EFF6FF' },
     alumni: { accent: '#7C3AED', bg: '#F5F3FF' },
@@ -643,7 +653,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
         {categories.map((cat, index) => {
           const label = cat.category === 'guest' ? (cat.label || 'Guest') : cat.category.charAt(0).toUpperCase() + cat.category.slice(1);
           const palette = categoryStyles[cat.category] || categoryStyles.guest;
-          const ticketsForCategory = data.tickets
+          const ticketsForCategory = tickets
             .map((ticket, ticketIndex) => ({ ticket, ticketIndex }))
             .filter(({ ticket }) => (ticket.category || defaultCategoryType) === cat.category);
 
@@ -728,221 +738,244 @@ export const TicketsStep = ({ data, onChange, errors }) => {
                 </div>
               </div>
 
-              <div className="p-4 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {cat.category === 'student' && (
-                    <>
+              <div className="p-4">
+                <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-5">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {cat.category === 'student' && (
+                        <>
+                          <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(cat.require_student_email)}
+                              onChange={(e) => updateCategory(index, 'require_student_email', e.target.checked)}
+                              className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                              disabled
+                            />
+                            Require student email (@strathmore.edu)
+                          </label>
+                          <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(cat.require_admission_number)}
+                              onChange={(e) => updateCategory(index, 'require_admission_number', e.target.checked)}
+                              className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                              disabled
+                            />
+                            Require admission number
+                          </label>
+                        </>
+                      )}
                       <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
                         <input
                           type="checkbox"
-                          checked={Boolean(cat.require_student_email)}
-                          onChange={(e) => updateCategory(index, 'require_student_email', e.target.checked)}
+                          checked={Boolean(cat.ask_graduation_year)}
+                          onChange={(e) => updateCategory(index, 'ask_graduation_year', e.target.checked)}
                           className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
-                          disabled
                         />
-                        Require student email (@strathmore.edu)
+                        Collect graduation year
                       </label>
                       <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
                         <input
                           type="checkbox"
-                          checked={Boolean(cat.require_admission_number)}
-                          onChange={(e) => updateCategory(index, 'require_admission_number', e.target.checked)}
+                          checked={Boolean(cat.ask_school)}
+                          onChange={(e) => updateCategory(index, 'ask_school', e.target.checked)}
                           className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
-                          disabled
                         />
-                        Require admission number
+                        Collect school
                       </label>
-                    </>
-                  )}
-                  <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(cat.ask_graduation_year)}
-                      onChange={(e) => updateCategory(index, 'ask_graduation_year', e.target.checked)}
-                      className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
-                    />
-                    Collect graduation year
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(cat.ask_school)}
-                      onChange={(e) => updateCategory(index, 'ask_school', e.target.checked)}
-                      className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
-                    />
-                    Collect school
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(cat.ask_course)}
-                      onChange={(e) => updateCategory(index, 'ask_course', e.target.checked)}
-                      className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
-                    />
-                    Collect course
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(cat.ask_location)}
-                      onChange={(e) => updateCategory(index, 'ask_location', e.target.checked)}
-                      className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
-                    />
-                    Collect location
-                  </label>
-                </div>
+                      <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(cat.ask_course)}
+                          onChange={(e) => updateCategory(index, 'ask_course', e.target.checked)}
+                          className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                        />
+                        Collect course
+                      </label>
+                      <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(cat.ask_location)}
+                          onChange={(e) => updateCategory(index, 'ask_location', e.target.checked)}
+                          className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                        />
+                        Collect location
+                      </label>
+                    </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-[#0F172A]">Custom Questions</p>
-                    <button type="button" onClick={() => addQuestion(index)} className="text-xs text-[#02338D] hover:underline">
-                      + Add Question
-                    </button>
-                  </div>
-
-                  {(cat.questions || []).map((q, qIndex) => (
-                    <div key={`${cat.category}-q-${qIndex}`} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
-                      <input
-                        type="text"
-                        placeholder="Question text"
-                        value={q.label}
-                        onChange={(e) => updateQuestion(index, qIndex, 'label', e.target.value)}
-                        className="sm:col-span-2 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
-                      />
-                      <select
-                        value={q.field_type}
-                        onChange={(e) => updateQuestion(index, qIndex, 'field_type', e.target.value)}
-                        className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
-                      >
-                        {['text', 'number', 'dropdown', 'email', 'phone', 'date'].map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-2 text-xs text-[#64748B]">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(q.is_required)}
-                            onChange={(e) => updateQuestion(index, qIndex, 'is_required', e.target.checked)}
-                            className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
-                          />
-                          Required
-                        </label>
-                        <button type="button" onClick={() => removeQuestion(index, qIndex)} className="p-1.5 text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg">
-                          <X className="w-4 h-4" />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-[#0F172A]">Custom Questions</p>
+                        <button type="button" onClick={() => addQuestion(index)} className="text-xs text-[#02338D] hover:underline">
+                          + Add Question
                         </button>
                       </div>
-                      {q.field_type === 'dropdown' && (
-                        <input
-                          type="text"
-                          placeholder="Options (comma separated)"
-                          value={(q.options || []).join(', ')}
-                          onChange={(e) => updateQuestion(index, qIndex, 'options', e.target.value.split(',').map((v) => v.trim()).filter(Boolean))}
-                          className="sm:col-span-4 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-[#0F172A]">Ticket Types</p>
-                    <button type="button" onClick={() => addTicket(cat.category)} className="text-xs text-[#02338D] hover:underline">
-                      + Add Ticket
-                    </button>
-                  </div>
-
-                  <AnimatePresence>
-                    {ticketsForCategory.map(({ ticket, ticketIndex }) => (
-                      <motion.div
-                        key={`${cat.category}-${ticketIndex}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-4"
-                      >
-                        <div className="flex items-center justify-between">
+                      {(cat.questions || []).map((q, qIndex) => (
+                        <div key={`${cat.category}-q-${qIndex}`} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Question text"
+                            value={q.label}
+                            onChange={(e) => updateQuestion(index, qIndex, 'label', e.target.value)}
+                            className="sm:col-span-2 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
+                          />
+                          <select
+                            value={q.field_type}
+                            onChange={(e) => updateQuestion(index, qIndex, 'field_type', e.target.value)}
+                            className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
+                          >
+                            {['text', 'number', 'dropdown', 'email', 'phone', 'date'].map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
                           <div className="flex items-center gap-2">
-                            <span className="text-xl">{typeIcons[ticket.type] || 'TKT'}</span>
-                            <h4 className="font-semibold text-[#0F172A]">{ticket.type || 'Ticket'}</h4>
-                          </div>
-                          {data.tickets.length > 1 && (
-                            <button type="button" onClick={() => removeTicket(ticketIndex)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+                            <label className="flex items-center gap-2 text-xs text-[#64748B]">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(q.is_required)}
+                                onChange={(e) => updateQuestion(index, qIndex, 'is_required', e.target.checked)}
+                                className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                              />
+                              Required
+                            </label>
+                            <button type="button" onClick={() => removeQuestion(index, qIndex)} className="p-1.5 text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg">
                               <X className="w-4 h-4" />
                             </button>
+                          </div>
+                          {q.field_type === 'dropdown' && (
+                            <input
+                              type="text"
+                              placeholder="Options (comma separated)"
+                              value={(q.options || []).join(', ')}
+                              onChange={(e) => updateQuestion(index, qIndex, 'options', e.target.value.split(',').map((v) => v.trim()).filter(Boolean))}
+                              className="sm:col-span-4 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
+                            />
                           )}
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-[#64748B] mb-1">Category</label>
-                            <select
-                              value={ticket.category || defaultCategoryType}
-                              onChange={(e) => updateTicket(ticketIndex, 'category', e.target.value)}
-                              className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
-                            >
-                              {categories.map((c) => (
-                                <option key={c.category} value={c.category}>
-                                  {c.category === 'guest' ? (c.label || 'Guest') : c.category.charAt(0).toUpperCase() + c.category.slice(1)}
-                                  {!c.is_active ? ' (Disabled)' : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Type</label>
-                            <select
-                              value={ticket.type}
-                              onChange={(e) => updateTicket(ticketIndex, 'type', e.target.value)}
-                              className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
-                            >
-                              {['Standard', 'VIP', 'Early Bird', 'Free', 'Donation'].map(t => <option key={t}>{t}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-[#64748B] mb-1">Price (KES)</label>
-                            <input
-                              type="number"
-                              placeholder="0"
-                              value={ticket.price}
-                              onChange={(e) => updateTicket(ticketIndex, 'price', parseInt(e.target.value) || 0)}
-                              disabled={ticket.type === 'Free'}
-                              className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] disabled:bg-[#F1F5F9] text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-[#64748B] mb-1">Quantity Available</label>
-                          <input
-                            type="number"
-                            placeholder="100"
-                            value={ticket.quantity}
-                            onChange={(e) => updateTicket(ticketIndex, 'quantity', parseInt(e.target.value) || 0)}
-                            className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Description (optional)</label>
-                          <textarea
-                            placeholder="What's included, access level, perks..."
-                            value={ticket.description}
-                            onChange={(e) => updateTicket(ticketIndex, 'description', e.target.value)}
-                            rows={2}
-                            className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm"
-                          />
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-
-                  {ticketsForCategory.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-[#E2E8F0] px-4 py-6 text-xs text-[#94A3B8] text-center">
-                      No tickets added for {label} yet.
+                      ))}
                     </div>
-                  )}
+                  </div>
+
+                  <div className="space-y-4 lg:border-l lg:border-[#E2E8F0] lg:pl-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold text-[#0F172A]">Ticket Types</p>
+                        <p className="text-[11px] text-[#94A3B8]">These cards mirror how tickets appear on the event page.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addTicket(cat.category)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E2E8F0] text-[#02338D] hover:bg-[#EFF6FF] hover:border-[#02338D]/40"
+                      >
+                        + Add Ticket
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {ticketsForCategory.map(({ ticket, ticketIndex }) => {
+                        const isFree = ticket.type === 'Free';
+                        const previewBorder = isFree ? '#E2E8F0' : themeBorder;
+                        const previewBg = isFree ? '#F8FAFC' : themeSoft;
+                        const priceLabel = isFree ? 'Free' : `${currency} ${(Number(ticket.price) || 0).toLocaleString()}`;
+                        const quantityLabel = ticket.quantity ? `${ticket.quantity} available` : 'Quantity not set';
+
+                        return (
+                          <motion.div
+                            key={`${cat.category}-${ticketIndex}`}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="rounded-xl border-2 p-4 transition-all hover:shadow-md hover:-translate-y-0.5"
+                            style={{ borderColor: previewBorder, backgroundColor: previewBg }}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] uppercase tracking-wide text-[#94A3B8]">Preview</p>
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                  <p className="font-semibold text-[#0F172A] break-words">{ticket.type || 'Ticket'}</p>
+                                  <span
+                                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                                    style={{ backgroundColor: palette.bg, color: palette.accent, borderColor: `${palette.accent}33` }}
+                                  >
+                                    {label}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-[#64748B] mt-1 break-words">
+                                  {quantityLabel}
+                                  {ticket.description ? ` · ${ticket.description}` : ''}
+                                </p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <div className="text-right">
+                                  <p className="text-[11px] uppercase tracking-wide text-[#94A3B8]">Price</p>
+                                  <p className="font-semibold" style={{ color: themeColor }}>{priceLabel}</p>
+                                </div>
+                                {tickets.length > 1 && (
+                                  <button type="button" onClick={() => removeTicket(ticketIndex)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 pt-3 border-t border-dashed border-[#E2E8F0]">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Type</label>
+                                  <select
+                                    value={ticket.type}
+                                    onChange={(e) => updateTicket(ticketIndex, 'type', e.target.value)}
+                                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                                  >
+                                    {['Standard', 'VIP', 'Early Bird', 'Free', 'Donation'].map((t) => <option key={t}>{t}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-[#64748B] mb-1">Price ({currency})</label>
+                                  <input
+                                    type="number"
+                                    placeholder="0"
+                                    value={ticket.price}
+                                    onChange={(e) => updateTicket(ticketIndex, 'price', parseInt(e.target.value) || 0)}
+                                    disabled={ticket.type === 'Free'}
+                                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] disabled:bg-[#F1F5F9] text-sm bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-[#64748B] mb-1">Quantity Available</label>
+                                  <input
+                                    type="number"
+                                    placeholder="100"
+                                    value={ticket.quantity}
+                                    onChange={(e) => updateTicket(ticketIndex, 'quantity', parseInt(e.target.value) || 0)}
+                                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                                  />
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Description (optional)</label>
+                                  <textarea
+                                    placeholder="What's included, access level, perks..."
+                                    value={ticket.description}
+                                    onChange={(e) => updateTicket(ticketIndex, 'description', e.target.value)}
+                                    rows={2}
+                                    className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm bg-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+
+                    {ticketsForCategory.length === 0 && (
+                      <div className="rounded-xl border border-dashed border-[#E2E8F0] px-4 py-6 text-xs text-[#94A3B8] text-center">
+                        No tickets added for {label} yet.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
