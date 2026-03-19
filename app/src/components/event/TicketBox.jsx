@@ -15,9 +15,10 @@ const TicketBox = ({
   const [quantities, setQuantities] = useState(() => {
     const initial = {};
     tickets.forEach(t => { initial[t.id] = 0; });
-    // Default: first ticket gets quantity 1
-    if (tickets.length > 0) {
-      initial[tickets[0].id] = 1;
+    // Default: first available ticket gets quantity 1
+    const firstAvailable = tickets.find(t => (t.remaining ?? 0) > 0);
+    if (firstAvailable) {
+      initial[firstAvailable.id] = 1;
     }
     return initial;
   });
@@ -152,51 +153,62 @@ const TicketBox = ({
             {tickets.length > 0 ? tickets.map((ticket) => {
               const qty = quantities[ticket.id] || 0;
               const isSelected = qty > 0;
+              const isSoldOut = (ticket.remaining ?? 0) <= 0;
               return (
                 <div
                   key={ticket.id}
                   className={`
                     p-4 rounded-xl border-2 transition-all
-                    ${isSelected
-                      ? 'border-[#02338D] bg-[#EFF6FF]'
-                      : 'border-[#E2E8F0] hover:border-[#02338D]/30'}
+                    ${isSoldOut
+                      ? 'border-[#F1F5F9] bg-[#F8FAFC]'
+                      : isSelected
+                        ? 'border-[#02338D] bg-[#EFF6FF]'
+                        : 'border-[#E2E8F0] hover:border-[#02338D]/30'}
                   `}
                 >
                   <div className="flex items-start justify-between mb-3 gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[#0F172A] break-words leading-tight mb-1">
+                      <p className={`font-medium break-words leading-tight mb-1 ${isSoldOut ? 'text-[#94A3B8] line-through decoration-[#94A3B8]/50' : 'text-[#0F172A]'}`}>
                         {ticket.type || ticket.name}
                       </p>
                       <p className="text-xs text-[#64748B] break-words">
-                        {ticket.remaining > 0 ? `${ticket.remaining} remaining` : 'Sold out'}
+                        {isSoldOut ? 'Sold out' : `${ticket.remaining} remaining`}
                         {ticket.description && ` · ${ticket.description}`}
                       </p>
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <p className="font-semibold text-[#02338D] whitespace-nowrap">
+                      <p className={`font-semibold whitespace-nowrap ${isSoldOut ? 'text-[#94A3B8]' : 'text-[#02338D]'}`}>
                         {ticket.price === 0 ? 'Free' : `${event.currency} ${ticket.price.toLocaleString()}`}
                       </p>
                     </div>
                   </div>
                   {/* Quantity controls */}
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => handleQuantityChange(ticket.id, -1)}
-                      disabled={qty <= 0}
-                      className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      aria-label={`Decrease ${ticket.type || ticket.name} quantity`}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-8 text-center font-semibold text-sm">{qty}</span>
-                    <button
-                      onClick={() => handleQuantityChange(ticket.id, 1)}
-                      disabled={qty >= Math.min(10, ticket.remaining) || ticket.remaining <= 0}
-                      className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      aria-label={`Increase ${ticket.type || ticket.name} quantity`}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                    {isSoldOut ? (
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#94A3B8] bg-[#F1F5F9] px-3 py-1.5 rounded-lg border border-[#E2E8F0]">
+                        Sold Out
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleQuantityChange(ticket.id, -1)}
+                          disabled={qty <= 0}
+                          className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          aria-label={`Decrease ${ticket.type || ticket.name} quantity`}
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-8 text-center font-semibold text-sm">{qty}</span>
+                        <button
+                          onClick={() => handleQuantityChange(ticket.id, 1)}
+                          disabled={qty >= Math.min(10, ticket.remaining)}
+                          className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          aria-label={`Increase ${ticket.type || ticket.name} quantity`}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
