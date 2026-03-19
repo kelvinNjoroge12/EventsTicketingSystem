@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Minus, Plus, ChevronDown, ChevronUp, Tag, Check, ShoppingCart } from 'lucide-react';
+import { Minus, Plus, Tag, Check, ShoppingCart } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
 import { api } from '@/lib/apiClient';
 
@@ -24,7 +24,6 @@ const TicketBox = ({
   });
 
   const [promoCode, setPromoCode] = useState('');
-  const [isPromoExpanded, setIsPromoExpanded] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
   const [appliedPromo, setAppliedPromo] = useState(null);
@@ -140,10 +139,10 @@ const TicketBox = ({
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col lg:max-h-[calc(90vh-6rem)]"
+      className="bg-white rounded-2xl shadow-lg flex flex-col"
       style={{ borderTop: `4px solid ${themeColor}` }}
     >
-      <div className="p-6 flex-1 min-h-0 lg:overflow-y-auto lg:pr-2 scrollbar-thin scrollbar-thumb-[#E2E8F0] scrollbar-track-transparent">
+      <div className="p-6 pb-16 lg:pb-24">
         {/* Ticket Type Selection with Quantities */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-[#0F172A] mb-3">
@@ -221,69 +220,57 @@ const TicketBox = ({
         </div>
 
         {/* Promo Code */}
-        <div className="mb-6">
-          <button
-            onClick={() => setIsPromoExpanded(!isPromoExpanded)}
-            className="flex items-center gap-2 text-sm text-[#02338D] hover:underline"
-          >
-            <Tag className="w-4 h-4" />
-            Have a promo code?
-            {isPromoExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+        <div className="mb-6 rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#0F172A]">
+            <Tag className="w-4 h-4 text-[#02338D]" />
+            Promo code
+            <span className="ml-auto text-[11px] font-medium text-[#15803D] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
+              Save with code
+            </span>
+          </div>
+          <p className="text-xs text-[#64748B] mt-1">Apply your discount before checkout.</p>
+          <div className="mt-3 flex gap-2">
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              placeholder="Enter promo code"
+              className={`
+                flex-1 px-3 py-2.5 bg-white border rounded-lg text-sm
+                focus:outline-none focus:ring-2 focus:ring-[#02338D]
+                ${promoError ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}
+              `}
+            />
+            <CustomButton
+              variant="outline"
+              size="sm"
+              onClick={handleApplyPromo}
+            >
+              Apply
+            </CustomButton>
+          </div>
 
           <AnimatePresence>
-            {isPromoExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
+            {promoError && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-2 text-sm text-[#DC2626]"
               >
-                <div className="pt-3 flex gap-2">
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder="Enter code"
-                    className={`
-                      flex-1 px-3 py-2 border rounded-lg text-sm
-                      focus:outline-none focus:ring-2 focus:ring-[#02338D]
-                      ${promoError ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}
-                    `}
-                  />
-                  <CustomButton
-                    variant="outline"
-                    size="sm"
-                    onClick={handleApplyPromo}
-                  >
-                    Apply
-                  </CustomButton>
-                </div>
-
-                <AnimatePresence>
-                  {promoError && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="mt-2 text-sm text-[#DC2626]"
-                    >
-                      {promoError}
-                    </motion.p>
-                  )}
-                  {promoSuccess && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="mt-2 text-sm text-[#16A34A] flex items-center gap-1"
-                    >
-                      <Check className="w-4 h-4" />
-                      {promoSuccess}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+                {promoError}
+              </motion.p>
+            )}
+            {promoSuccess && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-2 text-sm text-[#16A34A] flex items-center gap-1"
+              >
+                <Check className="w-4 h-4" />
+                {promoSuccess}
+              </motion.p>
             )}
           </AnimatePresence>
         </div>
@@ -403,7 +390,7 @@ const TicketBox = ({
 
       </div>
 
-      <div className="p-6 border-t border-[#E2E8F0] bg-white">
+      <div className="p-6 border-t border-[#E2E8F0] bg-white lg:sticky lg:bottom-0 lg:z-10">
         {/* CTA Button */}
         <CustomButton
           variant="primary"
