@@ -47,7 +47,7 @@ const FindTicketPage = () => {
 
     return (
         <PageWrapper>
-            <div className="min-h-[calc(100vh-64px)] bg-[#F8FAFC] py-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+            <div className="min-h-[calc(100vh-64px)] bg-[#F8FAFC] py-8 sm:py-10 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
                 <motion.div
                     className="max-w-md w-full"
                     initial={{ opacity: 0, y: 20 }}

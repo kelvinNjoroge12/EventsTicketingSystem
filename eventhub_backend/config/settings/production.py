@@ -4,7 +4,12 @@ from .base import *  # noqa: F403
 DEBUG = False
 
 # Render.com / Vercel domain allow-listing
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])  # noqa: F405
+ALLOWED_HOSTS = env.list(  # noqa: F405
+    "ALLOWED_HOSTS",
+    default=[
+        "eventsticketingsystem.onrender.com",
+    ],
+)
 
 # Use WhiteNoise for static files (CSS/JS)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
@@ -15,8 +20,22 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (  # noqa: F405
 )
 
 # CSRF and CORS security
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["https://*.onrender.com", "https://*.render.com", "https://*.vercel.app"])
-CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=True)
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "https://eventsticketingsystem.onrender.com",
+        "https://events-ticketing-system.vercel.app",
+    ],
+)
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=False)
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "https://events-ticketing-system.vercel.app",
+    ],
+)
+# Disable wildcard CORS regexes in production unless explicitly provided.
+CORS_ALLOWED_ORIGIN_REGEXES = env.list("CORS_ALLOWED_ORIGIN_REGEXES", default=[])
 ENABLE_SIMULATED_PAYMENTS = env.bool("ENABLE_SIMULATED_PAYMENTS", default=False)  # noqa: F405
 
 # Security headers

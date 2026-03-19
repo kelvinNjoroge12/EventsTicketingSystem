@@ -168,6 +168,7 @@ const AppRoutes = ({ onLocationKey }) => {
     /^\/organizer-dashboard\/?$/.test(location.pathname) ||
     /^\/login\/?$/.test(location.pathname) ||
     /^\/signup\/?$/.test(location.pathname) ||
+    /^\/find-ticket\/?$/.test(location.pathname) ||
     (Boolean(user) && !isPublicRoute);
 
   return (

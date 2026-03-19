@@ -276,7 +276,7 @@ const HostEventLandingPage = () => {
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariant}>
                             <h2 className="text-4xl md:text-5xl font-bold mb-6">Publish your Strathmore-affiliated events</h2>
-                            <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
+                            <p className="text-xl text-[#E6EEFF] mb-10 max-w-2xl mx-auto">
                                 Reach alumni, students, and corporate guests with official Strathmore University ticketing and check-in.
                             </p>
 
@@ -294,25 +294,25 @@ const HostEventLandingPage = () => {
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-left border-t border-white/20 pt-10">
-                                <div className="space-y-2 text-sm text-blue-100">
+                                <div className="space-y-2 text-sm text-[#E6EEFF]">
                                     <p className="font-bold text-white mb-4">Event Creation</p>
                                     <p>Event Page Builder</p>
                                     <p>Event Registration</p>
                                     <p>Sell Tickets Online</p>
                                 </div>
-                                <div className="space-y-2 text-sm text-blue-100">
+                                <div className="space-y-2 text-sm text-[#E6EEFF]">
                                     <p className="font-bold text-white mb-4">Event Promotion</p>
                                     <p>University Announcements</p>
                                     <p>Email & SMS Alerts</p>
                                     <p>Student Networks</p>
                                 </div>
-                                <div className="space-y-2 text-sm text-blue-100">
+                                <div className="space-y-2 text-sm text-[#E6EEFF]">
                                     <p className="font-bold text-white mb-4">Event Types</p>
                                     <p>Academic Talks</p>
                                     <p>Sports & Recreation</p>
                                     <p>Alumni Gatherings</p>
                                 </div>
-                                <div className="space-y-2 text-sm text-blue-100">
+                                <div className="space-y-2 text-sm text-[#E6EEFF]">
                                     <p className="font-bold text-white mb-4">Event Hosting</p>
                                     <p>Ticket Scanning</p>
                                     <p>Check-In App</p>
