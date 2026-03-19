@@ -172,6 +172,7 @@ const EventDetailPage = () => {
   const [linkCopied, setLinkCopied] = useState(false);
 
   const contentStartRef = useRef(null);
+  const tabsRef = useRef(null);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -183,11 +184,12 @@ const EventDetailPage = () => {
       if (contentStartRef.current) {
         const top = contentStartRef.current.getBoundingClientRect().top;
         // 112px is the height of the main top Navbar (h-28 spacer).
-        // If the top of our content is hiding above the Navbar, auto-scroll it back.
-        if (top < 112) {
-          const y = top + window.scrollY - 112;
-          // Subtly offset by 5px so the sticky tab bar sits perfectly flush under Navbar
-          window.scrollTo({ top: y - 5, behavior: 'smooth' });
+        const tabsHeight = tabsRef.current?.offsetHeight ?? 56;
+        const offset = 112 + tabsHeight + 8;
+        // If the top of our content is hiding above the sticky tab bar, auto-scroll it back.
+        if (top < offset) {
+          const y = top + window.scrollY - offset;
+          window.scrollTo({ top: y, behavior: 'smooth' });
         }
       }
     }, 250);
@@ -539,14 +541,14 @@ const EventDetailPage = () => {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full" style={{ overflowX: 'hidden' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-10 w-full" style={{ overflowX: 'hidden' }}>
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
-          <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden" ref={contentStartRef}>
+          <div className="lg:col-span-2 space-y-6 min-w-0 overflow-hidden" ref={contentStartRef}>
 
             {/* ── TABS ── */}
-            <div className="sticky top-[7rem] z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
+            <div ref={tabsRef} className="sticky top-[7rem] z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
               <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full flex-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
                 {tabs.map((tab) => (
                   <button
@@ -569,7 +571,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── TAB CONTENT ── */}
-            <div className="min-h-[50vh] pt-6">
+            <div className="min-h-[50vh] pt-8">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
