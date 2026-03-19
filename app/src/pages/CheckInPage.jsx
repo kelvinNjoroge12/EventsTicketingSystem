@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   QrCode,
@@ -14,6 +14,7 @@ import {
   Camera,
   Zap,
   AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -391,7 +392,18 @@ const CheckInPage = () => {
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <QrCode className="w-7 h-7 text-[#7C3AED]" /> Event Check-in
                 </h1>
-                <p className="text-white/60 text-sm mt-1">{event?.title || 'Scan tickets or manually check in guests'}</p>
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <p className="text-white/60 text-sm">{event?.title || 'Scan tickets or manually check in guests'}</p>
+                  {event?.slug && (
+                    <Link
+                      to={`/events/${event.slug}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7C3AED] bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 border border-[#7C3AED]/30 px-2.5 py-1 rounded-full transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View Event
+                    </Link>
+                  )}
+                </div>
               </div>
               <div className="flex gap-3 flex-wrap">
                 {[

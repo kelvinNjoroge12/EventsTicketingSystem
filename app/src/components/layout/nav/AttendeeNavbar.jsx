@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Menu, X, User, Plus, LogOut, Settings, LayoutDashboard,
-  Home, Ticket
+  Home, Ticket, TicketCheck
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
   const profileRef = useRef(null);
 
   const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
+  const isCheckInStaff = user?.role === 'checkin' || user?.role === 'staff';
 
   useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
 
@@ -69,6 +70,9 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
     ...(isAuthenticated ?
       [{ name: 'My Tickets', path: '/my-tickets', icon: Ticket }] :
       [{ name: 'Search for My Ticket', path: '/find-ticket', icon: Search }]),
+    ...(isAuthenticated && isCheckInStaff
+      ? [{ name: 'Check-In', path: '/organizer-checkin', icon: TicketCheck }]
+      : []),
   ];
 
   return (

@@ -99,15 +99,15 @@ const CheckInStaffGate = () => {
     if (user.must_reset_password) return;
     const isStaff = user.role === 'checkin' || user.role === 'staff';
     if (!isStaff) return;
-    const allowed = [
-      /^\/organizer-checkin\/?$/,
-      /^\/organizer\/events\/[^/]+\/checkin\/?$/,
-      /^\/force-password-reset\/?$/,
-      /^\/settings\/?$/,
+    // Check-in staff should behave like normal attendees, except they
+    // should not access organizer-only routes.
+    const organizerOnly = [
+      /^\/organizer-dashboard\/?$/,
+      /^\/create-event\/?$/,
+      /^\/edit-event\/[^/]+\/?$/,
     ];
-    const isAllowed = allowed.some((regex) => regex.test(location.pathname));
-    if (!isAllowed) {
-      navigate('/organizer-checkin', { replace: true });
+    if (organizerOnly.some((regex) => regex.test(location.pathname))) {
+      navigate('/', { replace: true });
     }
   }, [user, location.pathname, navigate]);
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, TicketCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Calendar, ExternalLink, MapPin, TicketCheck } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import CheckInStaffHeader from '../components/organizer/CheckInStaffHeader';
 import { useAuth } from '../context/AuthContext';
@@ -59,14 +59,13 @@ const OrganizerCheckInLanding = () => {
           ) : (
             <div className="grid gap-4">
               {assignedEvents.map((event) => (
-                <button
+                <div
                   key={event.id}
-                  onClick={() => navigate(`/organizer/events/${event.slug}/checkin`)}
-                  className="pressable-card text-left bg-white rounded-2xl border border-[#E2E8F0] p-5"
+                  className="bg-white rounded-2xl border border-[#E2E8F0] p-5 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-[#0F172A]">{event.title}</h2>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-lg font-semibold text-[#0F172A] truncate">{event.title}</h2>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B] mt-2">
                         {event.date && (
                           <span className="inline-flex items-center gap-1">
@@ -82,9 +81,23 @@ const OrganizerCheckInLanding = () => {
                         )}
                       </div>
                     </div>
-                    <span className="text-xs font-semibold text-[#02338D]">Open Check-In</span>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => navigate(`/organizer/events/${event.slug}/checkin`)}
+                        className="text-xs font-semibold text-white bg-[#02338D] hover:bg-[#022A78] px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Open Check-In
+                      </button>
+                      <Link
+                        to={`/events/${event.slug}`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#64748B] hover:text-[#02338D] transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        View Event
+                      </Link>
+                    </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
