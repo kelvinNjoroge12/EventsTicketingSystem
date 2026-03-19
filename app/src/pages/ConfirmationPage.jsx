@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useLocation, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useLocation, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Calendar,
-  Share2,
   Check,
-  ArrowRight,
-  Mail,
-  Loader2,
-  AlertCircle
+  ArrowRight
 } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
-import QRTicket from '../components/checkout/QRTicket';
 import CustomButton from '../components/ui/CustomButton';
 import { useCart } from '../context/CartContext';
 import { api } from '../lib/apiClient';
@@ -19,15 +14,12 @@ import { api } from '../lib/apiClient';
 const ConfirmationPage = () => {
   const { orderId } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { clearCart } = useCart();
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [order, setOrder] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const [isResending, setIsResending] = useState(false);
-  const [resendStatus, setResendStatus] = useState({ text: '', type: '' });
 
   const stateData = location.state;
   const emailParam = searchParams.get('email');
@@ -141,29 +133,6 @@ END:VCALENDAR`;
     window.open(shareUrls[platform], '_blank');
   };
 
-  const currentRawEmail =
-    stateData?.attendeeData?.email ||
-    emailParam ||
-    (finalOrder?.attendee_email_masked ? null : finalOrder?.attendee_email);
-
-  const handleResendEmail = async () => {
-    if (!currentRawEmail) return;
-    setIsResending(true);
-    setResendStatus({ text: '', type: '' });
-
-    try {
-      const res = await api.post(`/api/orders/${orderId}/resend-email/`, { email: currentRawEmail });
-      setResendStatus({ text: res?.message || 'Email sent successfully!', type: 'success' });
-    } catch (err) {
-      setResendStatus({
-        text: err?.response?.error?.message || err?.message || 'Failed to resend email.',
-        type: 'error'
-      });
-    } finally {
-      setIsResending(false);
-    }
-  };
-
   if (loadError && !isHydrated) {
     return (
       <PageWrapper>
@@ -204,12 +173,12 @@ END:VCALENDAR`;
 
   return (
     <PageWrapper>
-      <div className="min-h-[calc(100vh-112px)] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-6">
+      <div className="min-h-[calc(100vh-112px)] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-4">
         <div className="w-full max-w-2xl">
         {/* Success Animation */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-4">
           <motion.div
-            className="w-24 h-24 mx-auto mb-6 relative"
+            className="w-20 h-20 mx-auto mb-4 relative"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 15 }}
@@ -233,14 +202,14 @@ END:VCALENDAR`;
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5, type: 'spring' }}
             >
-              <div className="w-16 h-16 bg-[#16A34A] rounded-full flex items-center justify-center">
-                <Check className="w-10 h-10 text-white" />
+              <div className="w-12 h-12 bg-[#16A34A] rounded-full flex items-center justify-center">
+                <Check className="w-7 h-7 text-white" />
               </div>
             </motion.div>
           </motion.div>
 
           <motion.h1
-            className="text-3xl font-bold text-[#0F172A] mb-2"
+            className="text-2xl font-bold text-[#0F172A] mb-1.5"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
@@ -249,7 +218,7 @@ END:VCALENDAR`;
           </motion.h1>
 
           <motion.p
-            className="text-[#64748B]"
+            className="text-sm text-[#64748B]"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
@@ -263,68 +232,45 @@ END:VCALENDAR`;
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="mb-6 p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-center"
+          className="mb-4 p-4 sm:p-5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-center"
         >
-          <div className="w-12 h-12 bg-[#EFF6FF] text-[#02338D] rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-10 h-10 bg-[#EFF6FF] text-[#02338D] rounded-full flex items-center justify-center mx-auto mb-3">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2"></path>
               <path d="m22 6-10 7L2 6"></path>
               <path d="M22 18c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2"></path>
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Check your inbox</h3>
-          <p className="text-[#64748B] mb-3">
+          <h3 className="text-base font-semibold text-[#0F172A] mb-1.5">Check your inbox</h3>
+          <p className="text-sm text-[#64748B] mb-1">
             We've sent your official tickets to <span className="font-medium text-[#0F172A]">
               {emailDisplay}
             </span>. Please check your inbox (and spam folder) to download or print your tickets.
           </p>
-
-          {currentRawEmail && (
-            <div className="mt-4 flex flex-col items-center">
-              <button
-                onClick={handleResendEmail}
-                disabled={isResending || resendStatus.type === 'success'}
-                className="inline-flex items-center gap-2 text-sm font-medium text-[#02338D] hover:text-[#1E4DB7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isResending ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
-                ) : resendStatus.type === 'success' ? (
-                  <><Check className="w-4 h-4 text-[#16A34A]" /> Sent</>
-                ) : (
-                  <><Mail className="w-4 h-4" /> Resend email</>
-                )}
-              </button>
-              
-              {resendStatus.text && (
-                <div className={`mt-2 flex items-center gap-1.5 text-sm ${resendStatus.type === 'error' ? 'text-red-600' : 'text-[#16A34A]'}`}>
-                  {resendStatus.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : null}
-                  <span>{resendStatus.text}</span>
-                </div>
-              )}
-            </div>
-          )}
         </motion.div>
 
         {/* Calendar Buttons */}
         <motion.div
-          className="flex flex-wrap items-center justify-center gap-3 mb-6"
+          className="flex flex-wrap items-center justify-center gap-2.5 mb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9 }}
         >
           <CustomButton
             variant="outline"
+            size="sm"
             leftIcon={Calendar}
             onClick={() => handleAddToCalendar('google')}
-            className="min-w-[140px]"
+            className="min-w-[120px]"
           >
             Google
           </CustomButton>
           <CustomButton
             variant="outline"
+            size="sm"
             leftIcon={Calendar}
             onClick={() => handleAddToCalendar('apple')}
-            className="min-w-[140px]"
+            className="min-w-[120px]"
           >
             Apple
           </CustomButton>
@@ -332,18 +278,18 @@ END:VCALENDAR`;
 
         {/* Share Section */}
         <motion.div
-          className="text-center mb-6"
+          className="text-center mb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
         >
-          <p className="text-sm text-[#64748B] mb-4">Share this event</p>
-          <div className="flex justify-center gap-3">
+          <p className="text-xs text-[#64748B] mb-3">Share this event</p>
+          <div className="flex justify-center gap-2.5">
             {['whatsapp', 'twitter', 'linkedin', 'facebook'].map((platform) => (
               <button
                 key={platform}
                 onClick={() => handleShare(platform)}
-                className="p-3 rounded-full bg-[#F1F5F9] hover:bg-[#E2E8F0] transition-colors capitalize text-sm"
+                className="p-2.5 rounded-full bg-[#F1F5F9] hover:bg-[#E2E8F0] transition-colors capitalize text-xs"
               >
                 {platform}
               </button>

@@ -47,26 +47,26 @@ const FindTicketPage = () => {
 
     return (
         <PageWrapper>
-            <div className="min-h-[calc(100vh-64px)] bg-[#F8FAFC] py-8 sm:py-10 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+            <div className="min-h-[calc(100vh-64px)] bg-[#F8FAFC] py-4 sm:py-6 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
                 <motion.div
                     className="max-w-md w-full"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
                 >
-                    <div className="text-center mb-10">
-                        <div className="w-16 h-16 bg-[#EFF6FF] text-[#02338D] rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-12 shadow-sm border border-blue-100">
-                            <Ticket className="w-8 h-8" />
+                    <div className="text-center mb-6">
+                        <div className="w-14 h-14 bg-[#EFF6FF] text-[#02338D] rounded-2xl flex items-center justify-center mx-auto mb-4 transform rotate-12 shadow-sm border border-blue-100">
+                            <Ticket className="w-7 h-7" />
                         </div>
-                        <h1 className="text-3xl font-bold text-[#0F172A] mb-3">Find Your Ticket</h1>
-                        <p className="text-[#64748B]">
+                        <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Find Your Ticket</h1>
+                        <p className="text-sm text-[#64748B]">
                             Enter your order number and the email address you used during purchase to retrieve your ticket.
                         </p>
                     </div>
 
                     <div className="bg-white rounded-3xl shadow-xl border border-[#E2E8F0] overflow-hidden">
-                        <div className="h-1.5 bg-gradient-to-r from-[#16A34A] to-[#22C55E]" />
-                        <div className="p-8">
+                        <div className="h-1 bg-gradient-to-r from-[#16A34A] to-[#22C55E]" />
+                        <div className="p-6 sm:p-7">
                             {error && (
                                 <motion.div
                                     initial={{ opacity: 0, height: 0 }}
@@ -78,7 +78,7 @@ const FindTicketPage = () => {
                                 </motion.div>
                             )}
 
-                            <form onSubmit={handleSubmit} className="space-y-5">
+                            <form onSubmit={handleSubmit} className="space-y-4">
                                 <CustomInput
                                     label="Order Number"
                                     id="orderNumber"
@@ -88,6 +88,8 @@ const FindTicketPage = () => {
                                     onChange={(e) => setFormData({ ...formData, orderNumber: e.target.value })}
                                     required
                                     icon={Search}
+                                    labelClassName="text-xs"
+                                    inputClassName="py-2 text-sm"
                                 />
 
                                 <CustomInput
@@ -99,14 +101,16 @@ const FindTicketPage = () => {
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     required
                                     icon={Mail}
+                                    labelClassName="text-xs"
+                                    inputClassName="py-2 text-sm"
                                 />
 
                                 <CustomButton
                                     type="submit"
                                     variant="primary"
                                     fullWidth
-                                    size="lg"
-                                    className="mt-8 bg-[#16A34A] hover:bg-[#15803d]"
+                                    size="md"
+                                    className="mt-6 bg-[#16A34A] hover:bg-[#15803d]"
                                     isLoading={isLoading}
                                     leftIcon={Search}
                                 >
@@ -116,7 +120,7 @@ const FindTicketPage = () => {
                         </div>
                     </div>
 
-                    <p className="text-center mt-8 text-sm text-[#64748B]">
+                    <p className="text-center mt-5 text-xs sm:text-sm text-[#64748B]">
                         Can't find your order number? Check the confirmation email we sent you when you purchased the ticket.
                     </p>
                 </motion.div>
