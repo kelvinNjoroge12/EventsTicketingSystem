@@ -1,13 +1,16 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, TicketCheck } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import CheckInStaffHeader from '../components/organizer/CheckInStaffHeader';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/apiClient';
 
 const OrganizerCheckInLanding = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshAttempted, setRefreshAttempted] = useState(false);
 
   const assignedEvents = useMemo(() => {
     const details = user?.assigned_event_details || user?.assignedEventDetails || [];
@@ -21,6 +24,17 @@ const OrganizerCheckInLanding = () => {
       navigate(`/organizer/events/${assignedEvents[0].slug}/checkin`, { replace: true });
     }
   }, [user, assignedEvents, navigate]);
+
+  useEffect(() => {
+    if (!user || isRefreshing || refreshAttempted) return;
+    if (assignedEvents.length > 0) return;
+    setIsRefreshing(true);
+    setRefreshAttempted(true);
+    api.get('/api/auth/profile/')
+      .then((profile) => updateUser(profile))
+      .catch(() => {})
+      .finally(() => setIsRefreshing(false));
+  }, [user, assignedEvents.length, updateUser, isRefreshing, refreshAttempted]);
 
   return (
     <PageWrapper className="bg-[#F8FAFC]">

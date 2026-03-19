@@ -12,6 +12,7 @@ from common.validators import validate_upload_image
 from common.tokens import verify_secure_token, email_verification_token_generator
 from django.contrib.auth.tokens import default_token_generator
 from .models import OrganizerProfile, OrganizerTeamMember
+from apps.events.models import Event
 
 User = get_user_model()
 
@@ -116,7 +117,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
         memberships = self._get_memberships(obj)
         event_ids = set()
         for membership in memberships:
-            for event in membership.assigned_events.all():
+            events = list(membership.assigned_events.all())
+            if not events:
+                events = list(
+                    Event.objects.filter(
+                        organizer=membership.organizer,
+                        status__in=["published", "completed"],
+                    )
+                )
+            for event in events:
                 event_ids.add(str(event.id))
         return list(event_ids)
 
@@ -125,7 +134,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
         details = []
         seen = set()
         for membership in memberships:
-            for event in membership.assigned_events.all():
+            events = list(membership.assigned_events.all())
+            if not events:
+                events = list(
+                    Event.objects.filter(
+                        organizer=membership.organizer,
+                        status__in=["published", "completed"],
+                    )
+                )
+            for event in events:
                 if event.id in seen:
                     continue
                 seen.add(event.id)
@@ -346,3 +363,5 @@ class UserSessionSerializer(serializers.Serializer):
 
 class SecuritySettingsSerializer(serializers.Serializer):
     two_factor_enabled = serializers.BooleanField()
+
+
