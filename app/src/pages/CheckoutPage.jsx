@@ -282,18 +282,10 @@ const CheckoutPage = () => {
 
   return (
     <PageWrapper>
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ overflowX: 'hidden' }}>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A] mb-1">
-            Secure Checkout
-          </h1>
-          <p className="text-[#64748B]">Completing purchase for <span className="font-medium text-[#0F172A]">{event.title}</span></p>
-        </div>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8" style={{ overflowX: 'hidden' }}>
 
         {/* Step Indicator */}
-        <div className="mb-8">
+        <div className="mb-6">
           <StepIndicator steps={steps} currentStep={currentStep} themeColor={themeColor} />
         </div>
 
