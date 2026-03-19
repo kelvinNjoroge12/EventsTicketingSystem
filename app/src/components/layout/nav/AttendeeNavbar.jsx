@@ -319,7 +319,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
           )}
         </AnimatePresence>
       </header>
-      <div className="h-28" />
+      <div className="h-[6.5rem]" />
     </>
   );
 };
