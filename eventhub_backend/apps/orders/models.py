@@ -135,3 +135,37 @@ class Ticket(TimeStampedModel):
             models.Index(fields=["event", "status"]),
         ]
 
+
+class OrderRegistration(TimeStampedModel):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="registration")
+    registration_category = models.ForeignKey(
+        "tickets.RegistrationCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="registrations",
+    )
+    category = models.CharField(max_length=20, blank=True)
+    category_label = models.CharField(max_length=100, blank=True)
+    graduation_year = models.PositiveIntegerField(null=True, blank=True)
+    course = models.ForeignKey("tickets.Course", null=True, blank=True, on_delete=models.SET_NULL)
+    school = models.ForeignKey("tickets.School", null=True, blank=True, on_delete=models.SET_NULL)
+    admission_number = models.CharField(max_length=100, blank=True)
+    student_email = models.EmailField(blank=True)
+    location_text = models.CharField(max_length=255, blank=True)
+    location_city = models.CharField(max_length=100, blank=True)
+    location_country = models.CharField(max_length=100, blank=True)
+    location_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"Registration({self.order.order_number})"
+
+
+class OrderAnswer(TimeStampedModel):
+    registration = models.ForeignKey(OrderRegistration, on_delete=models.CASCADE, related_name="answers")
+    question = models.ForeignKey("tickets.RegistrationQuestion", null=True, blank=True, on_delete=models.SET_NULL)
+    value = models.TextField(blank=True)
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"Answer({self.question_id})"

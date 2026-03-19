@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Palette } from 'lucide-react';
+import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Palette, ChevronUp, ChevronDown } from 'lucide-react';
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
+import { api } from '../../lib/apiClient';
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -91,7 +92,6 @@ const ImageUploader = ({ label, preview, onFile, size = 'md', hint }) => {
         )}
         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
       </div>
-      {error && <p className="mt-2 text-xs text-[#DC2626]">{error}</p>}
     </div>
   );
 };
@@ -562,7 +562,59 @@ export const SponsorsStep = ({ data, onChange }) => {
 
 // ── Step 7: Tickets ────────────────────────────────────────────────────────
 export const TicketsStep = ({ data, onChange, errors }) => {
-  const addTicket = () => onChange('tickets', [...data.tickets, { type: 'Standard', price: 0, quantity: 100, description: '' }]);
+  const [uploadStatus, setUploadStatus] = useState({ school: '', course: '', error: '' });
+  const categories = Array.isArray(data.registrationCategories) ? data.registrationCategories : [];
+  const enabledCategories = categories.filter((c) => c.is_active);
+  const defaultCategoryType = enabledCategories[0]?.category || categories[0]?.category || 'guest';
+
+  const updateCategories = (next) => onChange('registrationCategories', next);
+  const updateCategory = (index, field, value) => {
+    const next = [...categories];
+    const current = next[index] || {};
+    const updated = { ...current, [field]: value };
+
+    if (current.category === 'student') {
+      updated.label = 'Student';
+      updated.require_student_email = true;
+      updated.require_admission_number = true;
+    } else if (current.category === 'alumni') {
+      updated.label = 'Alumni';
+    }
+
+    next[index] = updated;
+    updateCategories(next);
+  };
+  const moveCategory = (index, direction) => {
+    const next = [...categories];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= next.length) return;
+    const temp = next[index];
+    next[index] = next[newIndex];
+    next[newIndex] = temp;
+    updateCategories(next);
+  };
+  const addQuestion = (catIndex) => {
+    const next = [...categories];
+    const questions = Array.isArray(next[catIndex].questions) ? next[catIndex].questions : [];
+    questions.push({ label: '', field_type: 'text', is_required: false, options: [] });
+    next[catIndex] = { ...next[catIndex], questions };
+    updateCategories(next);
+  };
+  const updateQuestion = (catIndex, qIndex, field, value) => {
+    const next = [...categories];
+    const questions = Array.isArray(next[catIndex].questions) ? [...next[catIndex].questions] : [];
+    questions[qIndex] = { ...questions[qIndex], [field]: value };
+    next[catIndex] = { ...next[catIndex], questions };
+    updateCategories(next);
+  };
+  const removeQuestion = (catIndex, qIndex) => {
+    const next = [...categories];
+    const questions = Array.isArray(next[catIndex].questions) ? next[catIndex].questions.filter((_, idx) => idx !== qIndex) : [];
+    next[catIndex] = { ...next[catIndex], questions };
+    updateCategories(next);
+  };
+
+  const addTicket = () => onChange('tickets', [...data.tickets, { type: 'Standard', price: 0, quantity: 100, description: '', category: defaultCategoryType }]);
   const removeTicket = (i) => { if (data.tickets.length === 1) return; onChange('tickets', data.tickets.filter((_, idx) => idx !== i)); };
   const updateTicket = (i, field, value) => {
     const arr = [...data.tickets];
@@ -572,10 +624,205 @@ export const TicketsStep = ({ data, onChange, errors }) => {
 
   const typeIcons = { Standard: '🎟', VIP: '⭐', 'Early Bird': '🐦', Free: '🎁', Donation: '❤️' };
 
+  const handleUpload = async (kind, file) => {
+    if (!file) return;
+    setUploadStatus({ school: '', course: '', error: '' });
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const endpoint = kind === 'school' ? '/api/academics/schools/upload/' : '/api/academics/courses/upload/';
+      await api.postForm(endpoint, fd);
+      setUploadStatus((prev) => ({ ...prev, [kind]: 'Upload successful.' }));
+    } catch (err) {
+      setUploadStatus((prev) => ({ ...prev, error: err?.message || 'Upload failed.' }));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-[#64748B]">Add at least one ticket type for your event</p>
       {errors.tickets && <p className="text-sm text-[#DC2626]">{errors.tickets}</p>}
+
+      {/* Registration Categories */}
+      <div className="p-5 bg-white rounded-2xl border border-[#E2E8F0] space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-[#0F172A]">Registration Categories</h3>
+          <p className="text-xs text-[#64748B]">Enable who this event is for and define their questions.</p>
+        </div>
+
+        <div className="space-y-4">
+          {categories.map((cat, index) => (
+            <div key={cat.category} className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#0F172A] capitalize">{cat.category}</p>
+                  {cat.category === 'guest' && (
+                    <input
+                      type="text"
+                      value={cat.label || ''}
+                      onChange={(e) => updateCategory(index, 'label', e.target.value)}
+                      placeholder="Guest label (e.g. Friend of Strathmore)"
+                      className="mt-2 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm w-full"
+                    />
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => moveCategory(index, -1)} disabled={index === 0} className="p-1.5 rounded-lg border border-[#E2E8F0] text-[#64748B] disabled:opacity-40">
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <button type="button" onClick={() => moveCategory(index, 1)} disabled={index === categories.length - 1} className="p-1.5 rounded-lg border border-[#E2E8F0] text-[#64748B] disabled:opacity-40">
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(cat.is_active)}
+                      onChange={(e) => updateCategory(index, 'is_active', e.target.checked)}
+                      className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                    />
+                    Enabled
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {cat.category === 'student' && (
+                  <>
+                    <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(cat.require_student_email)}
+                        onChange={(e) => updateCategory(index, 'require_student_email', e.target.checked)}
+                        className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                        disabled
+                      />
+                      Require student email (@strathmore.edu)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(cat.require_admission_number)}
+                        onChange={(e) => updateCategory(index, 'require_admission_number', e.target.checked)}
+                        className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                        disabled
+                      />
+                      Require admission number
+                    </label>
+                  </>
+                )}
+                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(cat.ask_graduation_year)}
+                    onChange={(e) => updateCategory(index, 'ask_graduation_year', e.target.checked)}
+                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                  />
+                  Collect graduation year
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(cat.ask_school)}
+                    onChange={(e) => updateCategory(index, 'ask_school', e.target.checked)}
+                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                  />
+                  Collect school
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(cat.ask_course)}
+                    onChange={(e) => updateCategory(index, 'ask_course', e.target.checked)}
+                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                  />
+                  Collect course
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(cat.ask_location)}
+                    onChange={(e) => updateCategory(index, 'ask_location', e.target.checked)}
+                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                  />
+                  Collect location
+                </label>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-[#0F172A]">Custom Questions</p>
+                  <button type="button" onClick={() => addQuestion(index)} className="text-xs text-[#02338D] hover:underline">
+                    + Add Question
+                  </button>
+                </div>
+
+                {(cat.questions || []).map((q, qIndex) => (
+                  <div key={`${cat.category}-q-${qIndex}`} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="Question text"
+                      value={q.label}
+                      onChange={(e) => updateQuestion(index, qIndex, 'label', e.target.value)}
+                      className="sm:col-span-2 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
+                    />
+                    <select
+                      value={q.field_type}
+                      onChange={(e) => updateQuestion(index, qIndex, 'field_type', e.target.value)}
+                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
+                    >
+                      {['text', 'number', 'dropdown', 'email', 'phone', 'date'].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 text-xs text-[#64748B]">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(q.is_required)}
+                          onChange={(e) => updateQuestion(index, qIndex, 'is_required', e.target.checked)}
+                          className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                        />
+                        Required
+                      </label>
+                      <button type="button" onClick={() => removeQuestion(index, qIndex)} className="p-1.5 text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {q.field_type === 'dropdown' && (
+                      <input
+                        type="text"
+                        placeholder="Options (comma separated)"
+                        value={(q.options || []).join(', ')}
+                        onChange={(e) => updateQuestion(index, qIndex, 'options', e.target.value.split(',').map((v) => v.trim()).filter(Boolean))}
+                        className="sm:col-span-4 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Upload Courses & Schools */}
+      <div className="p-5 bg-white rounded-2xl border border-[#E2E8F0] space-y-3">
+        <p className="text-sm font-semibold text-[#0F172A]">Courses & Schools Upload</p>
+        <p className="text-xs text-[#64748B]">Upload Excel/CSV files to populate school and course dropdowns.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-[#64748B] mb-1">Schools file</label>
+            <input type="file" accept=".csv,.xlsx" onChange={(e) => handleUpload('school', e.target.files?.[0])} />
+            {uploadStatus.school && <p className="text-xs text-[#16A34A] mt-1">{uploadStatus.school}</p>}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748B] mb-1">Courses file</label>
+            <input type="file" accept=".csv,.xlsx" onChange={(e) => handleUpload('course', e.target.files?.[0])} />
+            {uploadStatus.course && <p className="text-xs text-[#16A34A] mt-1">{uploadStatus.course}</p>}
+          </div>
+        </div>
+        {uploadStatus.error && <p className="text-xs text-[#DC2626]">{uploadStatus.error}</p>}
+      </div>
 
       <AnimatePresence>
         {data.tickets.map((ticket, index) => (
@@ -594,7 +841,20 @@ export const TicketsStep = ({ data, onChange, errors }) => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[#64748B] mb-1">Category</label>
+                <select value={ticket.category || defaultCategoryType} onChange={(e) => updateTicket(index, 'category', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
+                >
+                  {categories.map((c) => (
+                    <option key={c.category} value={c.category}>
+                      {c.category === 'guest' ? (c.label || 'Guest') : c.category.charAt(0).toUpperCase() + c.category.slice(1)}
+                      {!c.is_active ? ' (Disabled)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Type</label>
                 <select value={ticket.type} onChange={(e) => updateTicket(index, 'type', e.target.value)}
@@ -682,7 +942,6 @@ export const TicketsStep = ({ data, onChange, errors }) => {
           />
         </div>
       </div>
-      {error && <p className="mt-2 text-xs text-[#DC2626]">{error}</p>}
     </div>
   );
 };

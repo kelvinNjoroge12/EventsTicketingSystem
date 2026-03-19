@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, Tag, Check, ShoppingCart } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
@@ -10,18 +10,54 @@ const TicketBox = ({
   themeColor,
 }) => {
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
+  const registrationCategories = Array.isArray(event.registrationCategories)
+    ? event.registrationCategories
+    : Array.isArray(event.registration_categories)
+      ? event.registration_categories
+      : [];
+
+  const activeCategories = registrationCategories.filter((cat) => cat && cat.is_active !== false);
+  const hasCategoryTickets = activeCategories.length > 0 && tickets.some((t) => t.registration_category);
+  const categoryOptions = hasCategoryTickets
+    ? activeCategories
+      .filter((cat) => tickets.some((t) => String(t.registration_category) === String(cat.id)))
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    : [];
+
+  const getCategoryLabel = (cat) => {
+    if (!cat) return '';
+    if (cat.category === 'guest') return cat.label || 'Guest';
+    if (cat.category === 'student') return 'Student';
+    if (cat.category === 'alumni') return 'Alumni';
+    return cat.label || cat.category;
+  };
+
+  const defaultCategoryId = categoryOptions[0]?.id || null;
 
   // Track quantity per ticket type: { [ticketId]: quantity }
-  const [quantities, setQuantities] = useState(() => {
+  const buildQuantitiesForCategory = (categoryId) => {
     const initial = {};
     tickets.forEach(t => { initial[t.id] = 0; });
-    // Default: first available ticket gets quantity 1
-    const firstAvailable = tickets.find(t => (t.remaining ?? 0) > 0);
+    const scopedTickets = categoryId
+      ? tickets.filter((t) => String(t.registration_category) === String(categoryId))
+      : tickets;
+    const firstAvailable = scopedTickets.find(t => (t.remaining ?? 0) > 0);
     if (firstAvailable) {
       initial[firstAvailable.id] = 1;
     }
     return initial;
-  });
+  };
+
+  const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategoryId);
+  const [quantities, setQuantities] = useState(() => buildQuantitiesForCategory(defaultCategoryId));
+
+  useEffect(() => {
+    if (hasCategoryTickets && categoryOptions.length > 0 && !selectedCategoryId) {
+      const nextId = categoryOptions[0].id;
+      setSelectedCategoryId(nextId);
+      setQuantities(buildQuantitiesForCategory(nextId));
+    }
+  }, [hasCategoryTickets, categoryOptions, selectedCategoryId]);
 
   const [promoCode, setPromoCode] = useState('');
   const [promoError, setPromoError] = useState('');
@@ -44,6 +80,11 @@ const TicketBox = ({
     });
   };
 
+  const handleCategoryChange = (categoryId) => {
+    setSelectedCategoryId(categoryId);
+    setQuantities(buildQuantitiesForCategory(categoryId));
+  };
+
   const handleApplyPromo = () => {
     setPromoError('');
     setPromoSuccess('');
@@ -64,7 +105,10 @@ const TicketBox = ({
   };
 
   // Get selected tickets (quantity > 0)
-  const selectedTickets = tickets.filter(t => (quantities[t.id] || 0) > 0);
+  const displayedTickets = hasCategoryTickets && selectedCategoryId
+    ? tickets.filter((t) => String(t.registration_category) === String(selectedCategoryId))
+    : tickets;
+  const selectedTickets = displayedTickets.filter(t => (quantities[t.id] || 0) > 0);
   const totalQuantity = selectedTickets.reduce((sum, t) => sum + quantities[t.id], 0);
 
   const calculatePrice = () => {
@@ -92,7 +136,7 @@ const TicketBox = ({
   };
 
   const { subtotal, discount, serviceFee, total } = calculatePrice();
-  const allSoldOut = tickets.length > 0 ? tickets.every((ticket) => (ticket.remaining ?? 0) <= 0) : true;
+  const allSoldOut = displayedTickets.length > 0 ? displayedTickets.every((ticket) => (ticket.remaining ?? 0) <= 0) : true;
   const waitlistAllowed = allSoldOut && (event.enableWaitlist ?? event.enable_waitlist) && event.slug;
 
   const handleWaitlistSubmit = async () => {
@@ -121,6 +165,22 @@ const TicketBox = ({
   };
 
   const handleGetTickets = () => {
+    const selectedCategory = categoryOptions.find((cat) => String(cat.id) === String(selectedCategoryId));
+    const registration = selectedCategory ? {
+      categoryId: selectedCategory.id,
+      categoryType: selectedCategory.category,
+      categoryLabel: getCategoryLabel(selectedCategory),
+      fixedFields: {
+        requireStudentEmail: Boolean(selectedCategory.require_student_email),
+        requireAdmissionNumber: Boolean(selectedCategory.require_admission_number),
+        askGraduationYear: Boolean(selectedCategory.ask_graduation_year),
+        askCourse: Boolean(selectedCategory.ask_course),
+        askSchool: Boolean(selectedCategory.ask_school),
+        askLocation: Boolean(selectedCategory.ask_location),
+      },
+      questions: Array.isArray(selectedCategory.questions) ? selectedCategory.questions : [],
+    } : null;
+
     const items = selectedTickets.map(t => ({
       ticketTypeId: t.id,
       ticketType: t.type || t.name,
@@ -134,6 +194,7 @@ const TicketBox = ({
       discount,
       serviceFee,
       total,
+      registration,
     });
   };
 
@@ -143,13 +204,38 @@ const TicketBox = ({
       style={{ borderTop: `4px solid ${themeColor}` }}
     >
       <div className="p-6 pb-16 lg:pb-24">
+        {/* Ticket Category Selector */}
+        {hasCategoryTickets && categoryOptions.length > 0 && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-[#0F172A] mb-3">
+              Choose your category
+            </label>
+            <div className="flex items-center gap-2 bg-[#F1F5F9] p-1 rounded-xl">
+              {categoryOptions.map((cat) => {
+                const active = String(cat.id) === String(selectedCategoryId);
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                      active ? 'bg-white shadow text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'
+                    }`}
+                  >
+                    {getCategoryLabel(cat)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Ticket Type Selection with Quantities */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-[#0F172A] mb-3">
             Select Tickets
           </label>
           <div className="space-y-3">
-            {tickets.length > 0 ? tickets.map((ticket) => {
+            {displayedTickets.length > 0 ? displayedTickets.map((ticket) => {
               const qty = quantities[ticket.id] || 0;
               const isSelected = qty > 0;
               const isSoldOut = (ticket.remaining ?? 0) <= 0;

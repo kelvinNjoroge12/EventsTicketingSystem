@@ -23,6 +23,57 @@ import {
   TicketsStep
 } from '../components/organizer/EventForm';
 
+const DEFAULT_REGISTRATION_CATEGORIES = [
+  {
+    id: null,
+    category: 'student',
+    label: 'Student',
+    is_active: true,
+    sort_order: 0,
+    require_student_email: true,
+    require_admission_number: true,
+    ask_graduation_year: true,
+    ask_course: true,
+    ask_school: true,
+    ask_location: true,
+    questions: [],
+  },
+  {
+    id: null,
+    category: 'alumni',
+    label: 'Alumni',
+    is_active: true,
+    sort_order: 1,
+    require_student_email: false,
+    require_admission_number: false,
+    ask_graduation_year: true,
+    ask_course: true,
+    ask_school: true,
+    ask_location: true,
+    questions: [],
+  },
+  {
+    id: null,
+    category: 'guest',
+    label: 'Guest',
+    is_active: true,
+    sort_order: 2,
+    require_student_email: false,
+    require_admission_number: false,
+    ask_graduation_year: false,
+    ask_course: false,
+    ask_school: false,
+    ask_location: true,
+    questions: [],
+  },
+];
+
+const createDefaultRegistrationCategories = () =>
+  DEFAULT_REGISTRATION_CATEGORIES.map((cat) => ({
+    ...cat,
+    questions: Array.isArray(cat.questions) ? [...cat.questions] : [],
+  }));
+
 const CreateEventPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -68,6 +119,46 @@ const CreateEventPage = () => {
 
         if (eventData) {
           const unmapRefundPolicy = (val) => ({ 'no_refund': 'No Refund', '48_hours': '48 Hours', '7_days': '7 Days', 'custom': 'Custom' }[val] || 'No Refund');
+          const normalizeCategory = (cat) => {
+            const def = DEFAULT_REGISTRATION_CATEGORIES.find((d) => d.category === cat.category) || {};
+            const merged = {
+              ...def,
+              ...cat,
+              questions: Array.isArray(cat.questions) ? cat.questions : [],
+            };
+
+            if (merged.category === 'student') {
+              merged.label = 'Student';
+              merged.require_student_email = true;
+              merged.require_admission_number = true;
+            } else if (merged.category === 'alumni') {
+              merged.label = 'Alumni';
+            }
+
+            return merged;
+          };
+
+          const mergeCategories = (existing = []) => {
+            const byType = new Map((existing || []).map((c) => [c.category, c]));
+            const orderedExisting = [...(existing || [])].sort(
+              (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+            );
+            const mergedExisting = orderedExisting.map(normalizeCategory);
+            const missing = DEFAULT_REGISTRATION_CATEGORIES
+              .filter((def) => !byType.has(def.category))
+              .map(normalizeCategory);
+            return [...mergedExisting, ...missing];
+          };
+
+          let registrationCategories = createDefaultRegistrationCategories();
+          try {
+            const regData = await api.get(`/api/events/${eventData.slug || slug}/registration/setup/`);
+            if (Array.isArray(regData?.categories) && regData.categories.length > 0) {
+              registrationCategories = mergeCategories(regData.categories);
+            }
+          } catch {
+            registrationCategories = createDefaultRegistrationCategories();
+          }
 
           // Map fetched event data to form data
           setFormData({
@@ -125,9 +216,12 @@ const CreateEventPage = () => {
                 type: t.type,
                 price: t.price,
                 quantity: t.quantity || 100,
-                description: t.description || ''
+                description: t.description || '',
+                category: t.registration_category_type || 'guest',
+                registrationCategoryId: t.registration_category || null,
               }))
-              : [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
+              : [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
+            registrationCategories,
             refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
             customRefundPolicy: eventData.customRefundPolicy || '',
             enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
@@ -180,7 +274,8 @@ const CreateEventPage = () => {
     mcPhotoPreview: '',
     schedule: [],
     sponsors: [],
-    tickets: [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
+    tickets: [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
+    registrationCategories: createDefaultRegistrationCategories(),
     refundPolicy: 'No Refund',
     customRefundPolicy: '',
     enableWaitlist: false,
@@ -225,6 +320,13 @@ const CreateEventPage = () => {
     }
     if (step === 6) {
       if (formData.tickets.length === 0) newErrors.tickets = 'At least one ticket type is required';
+      const enabledCategories = (formData.registrationCategories || []).filter((cat) => cat.is_active);
+      enabledCategories.forEach((cat) => {
+        const hasTicket = formData.tickets.some((t) => t.category === cat.category);
+        if (!hasTicket) {
+          newErrors.tickets = `Add at least one ${cat.label || cat.category} ticket`;
+        }
+      });
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -324,15 +426,60 @@ const CreateEventPage = () => {
 
     const tasks = [];
 
+    // Registration categories + questions
+    let registrationMap = new Map();
+    if (Array.isArray(formData.registrationCategories) && formData.registrationCategories.length > 0) {
+      const categoriesPayload = formData.registrationCategories.map((cat, idx) => {
+        const isStudent = cat.category === 'student';
+        const isAlumni = cat.category === 'alumni';
+        const label = isStudent ? 'Student' : isAlumni ? 'Alumni' : cat.label;
+
+        return {
+          id: cat.id,
+          category: cat.category,
+          label,
+          is_active: Boolean(cat.is_active),
+          sort_order: idx,
+          require_student_email: isStudent ? true : Boolean(cat.require_student_email),
+          require_admission_number: isStudent ? true : Boolean(cat.require_admission_number),
+          ask_graduation_year: Boolean(cat.ask_graduation_year),
+          ask_course: Boolean(cat.ask_course),
+          ask_school: Boolean(cat.ask_school),
+          ask_location: Boolean(cat.ask_location),
+          questions: (cat.questions || [])
+            .filter((q) => String(q.label || '').trim())
+            .map((q, qIdx) => ({
+              id: q.id,
+              label: q.label,
+              field_type: q.field_type,
+              is_required: Boolean(q.is_required),
+              options: Array.isArray(q.options) ? q.options : [],
+              sort_order: qIdx,
+            })),
+        };
+      });
+      try {
+        const regResp = await api.post(`/api/events/${eventSlug}/registration/setup/`, { categories: categoriesPayload });
+        const saved = regResp?.categories || [];
+        registrationMap = new Map(saved.map((c) => [c.category, c]));
+      } catch (err) {
+        console.warn('Registration setup failed:', err);
+      }
+    }
+
     // Tickets (create or update)
     if (formData.tickets.length > 0) {
       formData.tickets.forEach((ticket) => {
+        const categoryType = ticket.category || 'guest';
+        const categoryEntry = registrationMap.get(categoryType);
+        const registrationCategoryId = categoryEntry?.id || ticket.registrationCategoryId || null;
         const payloadData = {
           name: ticket.type,
           ticket_class: ticketClassMap[ticket.type] || 'paid',
           price: ticket.type === 'Free' ? 0 : ticket.price,
           quantity: ticket.quantity,
           description: ticket.description || '',
+          registration_category: registrationCategoryId,
         };
         if (ticket.id) {
           tasks.push(

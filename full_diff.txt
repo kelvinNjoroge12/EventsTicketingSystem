@@ -1,0 +1,2116 @@
+﻿diff --git a/app/src/components/checkout/AttendeeForm.jsx b/app/src/components/checkout/AttendeeForm.jsx
+index 776d3e7..93e7afe 100644
+--- a/app/src/components/checkout/AttendeeForm.jsx
++++ b/app/src/components/checkout/AttendeeForm.jsx
+@@ -1,8 +1,9 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import { motion } from 'framer-motion';
+ import { ChevronDown, ChevronUp, User } from 'lucide-react';
+ import CustomInput from '../ui/CustomInput';
+ import CustomButton from '../ui/CustomButton';
++import { api } from '../../lib/apiClient';
+ 
+ const AttendeeForm = ({
+   event,
+@@ -25,6 +26,28 @@ const AttendeeForm = ({
+   );
+   const [showAdditional, setShowAdditional] = useState(true);
+   const [errors, setErrors] = useState({});
++  const registration = cart?.registration || null;
++  const fixedFields = registration?.fixedFields || {};
++  const questions = Array.isArray(registration?.questions) ? registration.questions : [];
++
++  const [registrationData, setRegistrationData] = useState({
++    graduationYear: '',
++    courseId: '',
++    schoolId: '',
++    admissionNumber: '',
++    studentEmail: '',
++    locationText: '',
++    locationCity: '',
++    locationCountry: '',
++    locationLat: null,
++    locationLng: null,
++    answers: {},
++  });
++
++  const [schools, setSchools] = useState([]);
++  const [courses, setCourses] = useState([]);
++  const [locationSuggestions, setLocationSuggestions] = useState([]);
++  const [isLocationLoading, setIsLocationLoading] = useState(false);
+ 
+   const handleChange = (field, value) => {
+     setFormData(prev => ({ ...prev, [field]: value }));
+@@ -44,6 +67,43 @@ const AttendeeForm = ({
+     }
+   };
+ 
++  useEffect(() => {
++    if (!fixedFields.askSchool) return;
++    api.get('/api/academics/schools/')
++      .then((data) => setSchools(Array.isArray(data) ? data : []))
++      .catch(() => setSchools([]));
++  }, [fixedFields.askSchool]);
++
++  useEffect(() => {
++    if (!fixedFields.askCourse) return;
++    const query = registrationData.schoolId ? `?school=${registrationData.schoolId}` : '';
++    api.get(`/api/academics/courses/${query}`)
++      .then((data) => setCourses(Array.isArray(data) ? data : []))
++      .catch(() => setCourses([]));
++  }, [fixedFields.askCourse, registrationData.schoolId]);
++
++  useEffect(() => {
++    if (!fixedFields.askLocation) return;
++    const q = registrationData.locationText.trim();
++    if (!q) {
++      setLocationSuggestions([]);
++      return;
++    }
++    const handle = setTimeout(async () => {
++      setIsLocationLoading(true);
++      try {
++        const res = await api.get(`/api/locations/search/?q=${encodeURIComponent(q)}`);
++        const results = res?.results || res || [];
++        setLocationSuggestions(Array.isArray(results) ? results : []);
++      } catch {
++        setLocationSuggestions([]);
++      } finally {
++        setIsLocationLoading(false);
++      }
++    }, 400);
++    return () => clearTimeout(handle);
++  }, [fixedFields.askLocation, registrationData.locationText]);
++
+   const validate = () => {
+     const newErrors = {};
+ 
+@@ -62,6 +122,36 @@ const AttendeeForm = ({
+       newErrors.phone = 'Phone number is required';
+     }
+ 
++    if (registration) {
++      if (fixedFields.requireStudentEmail) {
++        if (!registrationData.studentEmail.trim()) {
++          newErrors.studentEmail = 'Student email is required';
++        } else if (!registrationData.studentEmail.toLowerCase().endsWith('@strathmore.edu')) {
++          newErrors.studentEmail = 'Student email must be a @strathmore.edu address';
++        }
++      }
++      if (fixedFields.requireAdmissionNumber && !registrationData.admissionNumber.trim()) {
++        newErrors.admissionNumber = 'Admission number is required';
++      }
++      if (fixedFields.askGraduationYear && !registrationData.graduationYear) {
++        newErrors.graduationYear = 'Graduation year is required';
++      }
++      if (fixedFields.askSchool && !registrationData.schoolId) {
++        newErrors.schoolId = 'School is required';
++      }
++      if (fixedFields.askCourse && !registrationData.courseId) {
++        newErrors.courseId = 'Course is required';
++      }
++      if (fixedFields.askLocation && !registrationData.locationText.trim()) {
++        newErrors.locationText = 'Location is required';
++      }
++      questions.forEach((q) => {
++        if (q.is_required && !registrationData.answers[q.id]) {
++          newErrors[`question_${q.id}`] = `${q.label} is required`;
++        }
++      });
++    }
++
+     additionalAttendees.forEach((attendee, index) => {
+       if (!attendee.firstName.trim()) {
+         newErrors[`additional_${index}_firstName`] = 'First name is required';
+@@ -86,6 +176,25 @@ const AttendeeForm = ({
+       onSubmit({
+         ...formData,
+         additionalAttendees: cart.quantity > 1 ? additionalAttendees : [],
++        registration: registration ? {
++          category_id: registration.categoryId ?? registration.category_id ?? null,
++          category_type: registration.categoryType ?? registration.category_type ?? '',
++          category_label: registration.categoryLabel ?? registration.category_label ?? '',
++          graduation_year: registrationData.graduationYear || null,
++          course_id: registrationData.courseId || null,
++          school_id: registrationData.schoolId || null,
++          admission_number: registrationData.admissionNumber || '',
++          student_email: registrationData.studentEmail || '',
++          location_text: registrationData.locationText || '',
++          location_city: registrationData.locationCity || '',
++          location_country: registrationData.locationCountry || '',
++          location_lat: registrationData.locationLat,
++          location_lng: registrationData.locationLng,
++          answers: questions.map((q) => ({
++            question_id: q.id,
++            value: registrationData.answers[q.id] || '',
++          })),
++        } : null,
+       });
+     }
+   };
+@@ -146,6 +255,165 @@ const AttendeeForm = ({
+         />
+       </div>
+ 
++      {/* Category-Specific Registration */}
++      {registration && (
++        <div className="space-y-4 p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
++          <div className="flex items-center justify-between">
++            <p className="text-sm font-semibold text-[#0F172A]">Registration Details</p>
++            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white border border-[#E2E8F0] text-[#64748B]">
++              {registration.categoryLabel || registration.category_label}
++            </span>
++          </div>
++
++          {fixedFields.requireStudentEmail && (
++            <CustomInput
++              label="Student Email"
++              type="email"
++              value={registrationData.studentEmail}
++              onChange={(e) => setRegistrationData((prev) => ({ ...prev, studentEmail: e.target.value }))}
++              error={errors.studentEmail}
++              placeholder="name@strathmore.edu"
++              required
++            />
++          )}
++
++          {fixedFields.requireAdmissionNumber && (
++            <CustomInput
++              label="Admission Number"
++              value={registrationData.admissionNumber}
++              onChange={(e) => setRegistrationData((prev) => ({ ...prev, admissionNumber: e.target.value }))}
++              error={errors.admissionNumber}
++              required
++            />
++          )}
++
++          {fixedFields.askGraduationYear && (
++            <CustomInput
++              label="Graduation Year"
++              type="number"
++              value={registrationData.graduationYear}
++              onChange={(e) => setRegistrationData((prev) => ({ ...prev, graduationYear: e.target.value }))}
++              error={errors.graduationYear}
++              placeholder="e.g. 2026"
++              required
++            />
++          )}
++
++          {fixedFields.askSchool && (
++            <div>
++              <label className="block text-sm font-medium text-[#0F172A] mb-2">School</label>
++              <select
++                value={registrationData.schoolId}
++                onChange={(e) => setRegistrationData((prev) => ({ ...prev, schoolId: e.target.value }))}
++                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.schoolId ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
++              >
++                <option value="">Select a school</option>
++                {schools.map((s) => (
++                  <option key={s.id} value={s.id}>{s.name}</option>
++                ))}
++              </select>
++              {errors.schoolId && <p className="mt-1.5 text-sm text-[#DC2626]">{errors.schoolId}</p>}
++            </div>
++          )}
++
++          {fixedFields.askCourse && (
++            <div>
++              <label className="block text-sm font-medium text-[#0F172A] mb-2">Course</label>
++              <select
++                value={registrationData.courseId}
++                onChange={(e) => setRegistrationData((prev) => ({ ...prev, courseId: e.target.value }))}
++                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.courseId ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
++              >
++                <option value="">Select a course</option>
++                {courses.map((c) => (
++                  <option key={c.id} value={c.id}>{c.name}</option>
++                ))}
++              </select>
++              {errors.courseId && <p className="mt-1.5 text-sm text-[#DC2626]">{errors.courseId}</p>}
++            </div>
++          )}
++
++          {fixedFields.askLocation && (
++            <div className="relative">
++              <CustomInput
++                label="Location"
++                value={registrationData.locationText}
++                onChange={(e) => setRegistrationData((prev) => ({ ...prev, locationText: e.target.value }))}
++                error={errors.locationText}
++                placeholder="Start typing your location..."
++                required
++              />
++              {locationSuggestions.length > 0 && (
++                <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E2E8F0] rounded-lg shadow-lg z-10 max-h-48 overflow-auto">
++                  {locationSuggestions.map((item, idx) => (
++                    <button
++                      type="button"
++                      key={`${item.label}-${idx}`}
++                      onClick={() => {
++                        setRegistrationData((prev) => ({
++                          ...prev,
++                          locationText: item.label || '',
++                          locationCity: item.city || '',
++                          locationCountry: item.country || '',
++                          locationLat: item.lat ?? null,
++                          locationLng: item.lng ?? null,
++                        }));
++                        setLocationSuggestions([]);
++                      }}
++                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#F8FAFC]"
++                    >
++                      {item.label}
++                    </button>
++                  ))}
++                </div>
++              )}
++              {isLocationLoading && (
++                <p className="text-xs text-[#94A3B8] mt-1">Searching locations...</p>
++              )}
++            </div>
++          )}
++
++          {questions.length > 0 && (
++            <div className="space-y-4">
++              <p className="text-sm font-semibold text-[#0F172A]">Additional Questions</p>
++              {questions.map((q) => (
++                <div key={q.id}>
++                  <label className="block text-sm font-medium text-[#0F172A] mb-2">{q.label}</label>
++                  {q.field_type === 'dropdown' ? (
++                    <select
++                      value={registrationData.answers[q.id] || ''}
++                      onChange={(e) => setRegistrationData((prev) => ({
++                        ...prev,
++                        answers: { ...prev.answers, [q.id]: e.target.value },
++                      }))}
++                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors[`question_${q.id}`] ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
++                    >
++                      <option value="">Select an option</option>
++                      {(q.options || []).map((opt, idx) => (
++                        <option key={`${q.id}-${idx}`} value={opt}>{opt}</option>
++                      ))}
++                    </select>
++                  ) : (
++                    <input
++                      type={q.field_type === 'number' ? 'number' : q.field_type === 'email' ? 'email' : q.field_type === 'phone' ? 'tel' : q.field_type === 'date' ? 'date' : 'text'}
++                      value={registrationData.answers[q.id] || ''}
++                      onChange={(e) => setRegistrationData((prev) => ({
++                        ...prev,
++                        answers: { ...prev.answers, [q.id]: e.target.value },
++                      }))}
++                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors[`question_${q.id}`] ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
++                    />
++                  )}
++                  {errors[`question_${q.id}`] && (
++                    <p className="mt-1.5 text-sm text-[#DC2626]">{errors[`question_${q.id}`]}</p>
++                  )}
++                </div>
++              ))}
++            </div>
++          )}
++        </div>
++      )}
++
+       {/* Additional Attendees */}
+       {cart.quantity > 1 && (
+         <div className="space-y-4">
+diff --git a/app/src/components/event/TicketBox.jsx b/app/src/components/event/TicketBox.jsx
+index 8aef4dd..ab3b730 100644
+--- a/app/src/components/event/TicketBox.jsx
++++ b/app/src/components/event/TicketBox.jsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+ import { Minus, Plus, Tag, Check, ShoppingCart } from 'lucide-react';
+ import CustomButton from '../ui/CustomButton';
+@@ -10,18 +10,54 @@ const TicketBox = ({
+   themeColor,
+ }) => {
+   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
++  const registrationCategories = Array.isArray(event.registrationCategories)
++    ? event.registrationCategories
++    : Array.isArray(event.registration_categories)
++      ? event.registration_categories
++      : [];
++
++  const activeCategories = registrationCategories.filter((cat) => cat && cat.is_active !== false);
++  const hasCategoryTickets = activeCategories.length > 0 && tickets.some((t) => t.registration_category);
++  const categoryOptions = hasCategoryTickets
++    ? activeCategories
++      .filter((cat) => tickets.some((t) => String(t.registration_category) === String(cat.id)))
++      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
++    : [];
++
++  const getCategoryLabel = (cat) => {
++    if (!cat) return '';
++    if (cat.category === 'guest') return cat.label || 'Guest';
++    if (cat.category === 'student') return 'Student';
++    if (cat.category === 'alumni') return 'Alumni';
++    return cat.label || cat.category;
++  };
++
++  const defaultCategoryId = categoryOptions[0]?.id || null;
+ 
+   // Track quantity per ticket type: { [ticketId]: quantity }
+-  const [quantities, setQuantities] = useState(() => {
++  const buildQuantitiesForCategory = (categoryId) => {
+     const initial = {};
+     tickets.forEach(t => { initial[t.id] = 0; });
+-    // Default: first available ticket gets quantity 1
+-    const firstAvailable = tickets.find(t => (t.remaining ?? 0) > 0);
++    const scopedTickets = categoryId
++      ? tickets.filter((t) => String(t.registration_category) === String(categoryId))
++      : tickets;
++    const firstAvailable = scopedTickets.find(t => (t.remaining ?? 0) > 0);
+     if (firstAvailable) {
+       initial[firstAvailable.id] = 1;
+     }
+     return initial;
+-  });
++  };
++
++  const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategoryId);
++  const [quantities, setQuantities] = useState(() => buildQuantitiesForCategory(defaultCategoryId));
++
++  useEffect(() => {
++    if (hasCategoryTickets && categoryOptions.length > 0 && !selectedCategoryId) {
++      const nextId = categoryOptions[0].id;
++      setSelectedCategoryId(nextId);
++      setQuantities(buildQuantitiesForCategory(nextId));
++    }
++  }, [hasCategoryTickets, categoryOptions, selectedCategoryId]);
+ 
+   const [promoCode, setPromoCode] = useState('');
+   const [promoError, setPromoError] = useState('');
+@@ -44,6 +80,11 @@ const TicketBox = ({
+     });
+   };
+ 
++  const handleCategoryChange = (categoryId) => {
++    setSelectedCategoryId(categoryId);
++    setQuantities(buildQuantitiesForCategory(categoryId));
++  };
++
+   const handleApplyPromo = () => {
+     setPromoError('');
+     setPromoSuccess('');
+@@ -64,7 +105,10 @@ const TicketBox = ({
+   };
+ 
+   // Get selected tickets (quantity > 0)
+-  const selectedTickets = tickets.filter(t => (quantities[t.id] || 0) > 0);
++  const displayedTickets = hasCategoryTickets && selectedCategoryId
++    ? tickets.filter((t) => String(t.registration_category) === String(selectedCategoryId))
++    : tickets;
++  const selectedTickets = displayedTickets.filter(t => (quantities[t.id] || 0) > 0);
+   const totalQuantity = selectedTickets.reduce((sum, t) => sum + quantities[t.id], 0);
+ 
+   const calculatePrice = () => {
+@@ -92,7 +136,7 @@ const TicketBox = ({
+   };
+ 
+   const { subtotal, discount, serviceFee, total } = calculatePrice();
+-  const allSoldOut = tickets.length > 0 ? tickets.every((ticket) => (ticket.remaining ?? 0) <= 0) : true;
++  const allSoldOut = displayedTickets.length > 0 ? displayedTickets.every((ticket) => (ticket.remaining ?? 0) <= 0) : true;
+   const waitlistAllowed = allSoldOut && (event.enableWaitlist ?? event.enable_waitlist) && event.slug;
+ 
+   const handleWaitlistSubmit = async () => {
+@@ -121,6 +165,22 @@ const TicketBox = ({
+   };
+ 
+   const handleGetTickets = () => {
++    const selectedCategory = categoryOptions.find((cat) => String(cat.id) === String(selectedCategoryId));
++    const registration = selectedCategory ? {
++      categoryId: selectedCategory.id,
++      categoryType: selectedCategory.category,
++      categoryLabel: getCategoryLabel(selectedCategory),
++      fixedFields: {
++        requireStudentEmail: Boolean(selectedCategory.require_student_email),
++        requireAdmissionNumber: Boolean(selectedCategory.require_admission_number),
++        askGraduationYear: Boolean(selectedCategory.ask_graduation_year),
++        askCourse: Boolean(selectedCategory.ask_course),
++        askSchool: Boolean(selectedCategory.ask_school),
++        askLocation: Boolean(selectedCategory.ask_location),
++      },
++      questions: Array.isArray(selectedCategory.questions) ? selectedCategory.questions : [],
++    } : null;
++
+     const items = selectedTickets.map(t => ({
+       ticketTypeId: t.id,
+       ticketType: t.type || t.name,
+@@ -134,6 +194,7 @@ const TicketBox = ({
+       discount,
+       serviceFee,
+       total,
++      registration,
+     });
+   };
+ 
+@@ -143,13 +204,38 @@ const TicketBox = ({
+       style={{ borderTop: `4px solid ${themeColor}` }}
+     >
+       <div className="p-6 pb-16 lg:pb-24">
++        {/* Ticket Category Selector */}
++        {hasCategoryTickets && categoryOptions.length > 0 && (
++          <div className="mb-6">
++            <label className="block text-sm font-medium text-[#0F172A] mb-3">
++              Choose your category
++            </label>
++            <div className="flex items-center gap-2 bg-[#F1F5F9] p-1 rounded-xl">
++              {categoryOptions.map((cat) => {
++                const active = String(cat.id) === String(selectedCategoryId);
++                return (
++                  <button
++                    key={cat.id}
++                    onClick={() => handleCategoryChange(cat.id)}
++                    className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
++                      active ? 'bg-white shadow text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'
++                    }`}
++                  >
++                    {getCategoryLabel(cat)}
++                  </button>
++                );
++              })}
++            </div>
++          </div>
++        )}
++
+         {/* Ticket Type Selection with Quantities */}
+         <div className="mb-6">
+           <label className="block text-sm font-medium text-[#0F172A] mb-3">
+             Select Tickets
+           </label>
+           <div className="space-y-3">
+-            {tickets.length > 0 ? tickets.map((ticket) => {
++            {displayedTickets.length > 0 ? displayedTickets.map((ticket) => {
+               const qty = quantities[ticket.id] || 0;
+               const isSelected = qty > 0;
+               const isSoldOut = (ticket.remaining ?? 0) <= 0;
+diff --git a/app/src/components/organizer/EventForm.jsx b/app/src/components/organizer/EventForm.jsx
+index 7df16d9..9df6ad1 100644
+--- a/app/src/components/organizer/EventForm.jsx
++++ b/app/src/components/organizer/EventForm.jsx
+@@ -1,8 +1,9 @@
+ import React, { useState, useRef } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+-import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Palette } from 'lucide-react';
++import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Palette, ChevronUp, ChevronDown } from 'lucide-react';
+ import CustomInput from '../ui/CustomInput';
+ import CustomButton from '../ui/CustomButton';
++import { api } from '../../lib/apiClient';
+ 
+ const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+ 
+@@ -91,7 +92,6 @@ const ImageUploader = ({ label, preview, onFile, size = 'md', hint }) => {
+         )}
+         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+       </div>
+-      {error && <p className="mt-2 text-xs text-[#DC2626]">{error}</p>}
+     </div>
+   );
+ };
+@@ -562,7 +562,59 @@ export const SponsorsStep = ({ data, onChange }) => {
+ 
+ // ΓöÇΓöÇ Step 7: Tickets ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ export const TicketsStep = ({ data, onChange, errors }) => {
+-  const addTicket = () => onChange('tickets', [...data.tickets, { type: 'Standard', price: 0, quantity: 100, description: '' }]);
++  const [uploadStatus, setUploadStatus] = useState({ school: '', course: '', error: '' });
++  const categories = Array.isArray(data.registrationCategories) ? data.registrationCategories : [];
++  const enabledCategories = categories.filter((c) => c.is_active);
++  const defaultCategoryType = enabledCategories[0]?.category || categories[0]?.category || 'guest';
++
++  const updateCategories = (next) => onChange('registrationCategories', next);
++  const updateCategory = (index, field, value) => {
++    const next = [...categories];
++    const current = next[index] || {};
++    const updated = { ...current, [field]: value };
++
++    if (current.category === 'student') {
++      updated.label = 'Student';
++      updated.require_student_email = true;
++      updated.require_admission_number = true;
++    } else if (current.category === 'alumni') {
++      updated.label = 'Alumni';
++    }
++
++    next[index] = updated;
++    updateCategories(next);
++  };
++  const moveCategory = (index, direction) => {
++    const next = [...categories];
++    const newIndex = index + direction;
++    if (newIndex < 0 || newIndex >= next.length) return;
++    const temp = next[index];
++    next[index] = next[newIndex];
++    next[newIndex] = temp;
++    updateCategories(next);
++  };
++  const addQuestion = (catIndex) => {
++    const next = [...categories];
++    const questions = Array.isArray(next[catIndex].questions) ? next[catIndex].questions : [];
++    questions.push({ label: '', field_type: 'text', is_required: false, options: [] });
++    next[catIndex] = { ...next[catIndex], questions };
++    updateCategories(next);
++  };
++  const updateQuestion = (catIndex, qIndex, field, value) => {
++    const next = [...categories];
++    const questions = Array.isArray(next[catIndex].questions) ? [...next[catIndex].questions] : [];
++    questions[qIndex] = { ...questions[qIndex], [field]: value };
++    next[catIndex] = { ...next[catIndex], questions };
++    updateCategories(next);
++  };
++  const removeQuestion = (catIndex, qIndex) => {
++    const next = [...categories];
++    const questions = Array.isArray(next[catIndex].questions) ? next[catIndex].questions.filter((_, idx) => idx !== qIndex) : [];
++    next[catIndex] = { ...next[catIndex], questions };
++    updateCategories(next);
++  };
++
++  const addTicket = () => onChange('tickets', [...data.tickets, { type: 'Standard', price: 0, quantity: 100, description: '', category: defaultCategoryType }]);
+   const removeTicket = (i) => { if (data.tickets.length === 1) return; onChange('tickets', data.tickets.filter((_, idx) => idx !== i)); };
+   const updateTicket = (i, field, value) => {
+     const arr = [...data.tickets];
+@@ -572,11 +624,206 @@ export const TicketsStep = ({ data, onChange, errors }) => {
+ 
+   const typeIcons = { Standard: '≡ƒÄƒ', VIP: 'Γ¡É', 'Early Bird': '≡ƒÉª', Free: '≡ƒÄü', Donation: 'Γ¥ñ∩╕Å' };
+ 
++  const handleUpload = async (kind, file) => {
++    if (!file) return;
++    setUploadStatus({ school: '', course: '', error: '' });
++    try {
++      const fd = new FormData();
++      fd.append('file', file);
++      const endpoint = kind === 'school' ? '/api/academics/schools/upload/' : '/api/academics/courses/upload/';
++      await api.postForm(endpoint, fd);
++      setUploadStatus((prev) => ({ ...prev, [kind]: 'Upload successful.' }));
++    } catch (err) {
++      setUploadStatus((prev) => ({ ...prev, error: err?.message || 'Upload failed.' }));
++    }
++  };
++
+   return (
+     <div className="space-y-6">
+       <p className="text-sm text-[#64748B]">Add at least one ticket type for your event</p>
+       {errors.tickets && <p className="text-sm text-[#DC2626]">{errors.tickets}</p>}
+ 
++      {/* Registration Categories */}
++      <div className="p-5 bg-white rounded-2xl border border-[#E2E8F0] space-y-4">
++        <div>
++          <h3 className="text-sm font-semibold text-[#0F172A]">Registration Categories</h3>
++          <p className="text-xs text-[#64748B]">Enable who this event is for and define their questions.</p>
++        </div>
++
++        <div className="space-y-4">
++          {categories.map((cat, index) => (
++            <div key={cat.category} className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] space-y-4">
++              <div className="flex items-start justify-between gap-3">
++                <div>
++                  <p className="text-sm font-semibold text-[#0F172A] capitalize">{cat.category}</p>
++                  {cat.category === 'guest' && (
++                    <input
++                      type="text"
++                      value={cat.label || ''}
++                      onChange={(e) => updateCategory(index, 'label', e.target.value)}
++                      placeholder="Guest label (e.g. Friend of Strathmore)"
++                      className="mt-2 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm w-full"
++                    />
++                  )}
++                </div>
++                <div className="flex items-center gap-2">
++                  <button type="button" onClick={() => moveCategory(index, -1)} disabled={index === 0} className="p-1.5 rounded-lg border border-[#E2E8F0] text-[#64748B] disabled:opacity-40">
++                    <ChevronUp className="w-4 h-4" />
++                  </button>
++                  <button type="button" onClick={() => moveCategory(index, 1)} disabled={index === categories.length - 1} className="p-1.5 rounded-lg border border-[#E2E8F0] text-[#64748B] disabled:opacity-40">
++                    <ChevronDown className="w-4 h-4" />
++                  </button>
++                  <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
++                    <input
++                      type="checkbox"
++                      checked={Boolean(cat.is_active)}
++                      onChange={(e) => updateCategory(index, 'is_active', e.target.checked)}
++                      className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                    />
++                    Enabled
++                  </label>
++                </div>
++              </div>
++
++              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++                {cat.category === 'student' && (
++                  <>
++                    <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
++                      <input
++                        type="checkbox"
++                        checked={Boolean(cat.require_student_email)}
++                        onChange={(e) => updateCategory(index, 'require_student_email', e.target.checked)}
++                        className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                        disabled
++                      />
++                      Require student email (@strathmore.edu)
++                    </label>
++                    <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
++                      <input
++                        type="checkbox"
++                        checked={Boolean(cat.require_admission_number)}
++                        onChange={(e) => updateCategory(index, 'require_admission_number', e.target.checked)}
++                        className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                        disabled
++                      />
++                      Require admission number
++                    </label>
++                  </>
++                )}
++                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
++                  <input
++                    type="checkbox"
++                    checked={Boolean(cat.ask_graduation_year)}
++                    onChange={(e) => updateCategory(index, 'ask_graduation_year', e.target.checked)}
++                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                  />
++                  Collect graduation year
++                </label>
++                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
++                  <input
++                    type="checkbox"
++                    checked={Boolean(cat.ask_school)}
++                    onChange={(e) => updateCategory(index, 'ask_school', e.target.checked)}
++                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                  />
++                  Collect school
++                </label>
++                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
++                  <input
++                    type="checkbox"
++                    checked={Boolean(cat.ask_course)}
++                    onChange={(e) => updateCategory(index, 'ask_course', e.target.checked)}
++                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                  />
++                  Collect course
++                </label>
++                <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
++                  <input
++                    type="checkbox"
++                    checked={Boolean(cat.ask_location)}
++                    onChange={(e) => updateCategory(index, 'ask_location', e.target.checked)}
++                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                  />
++                  Collect location
++                </label>
++              </div>
++
++              <div className="space-y-3">
++                <div className="flex items-center justify-between">
++                  <p className="text-xs font-semibold text-[#0F172A]">Custom Questions</p>
++                  <button type="button" onClick={() => addQuestion(index)} className="text-xs text-[#02338D] hover:underline">
++                    + Add Question
++                  </button>
++                </div>
++
++                {(cat.questions || []).map((q, qIndex) => (
++                  <div key={`${cat.category}-q-${qIndex}`} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
++                    <input
++                      type="text"
++                      placeholder="Question text"
++                      value={q.label}
++                      onChange={(e) => updateQuestion(index, qIndex, 'label', e.target.value)}
++                      className="sm:col-span-2 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
++                    />
++                    <select
++                      value={q.field_type}
++                      onChange={(e) => updateQuestion(index, qIndex, 'field_type', e.target.value)}
++                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
++                    >
++                      {['text', 'number', 'dropdown', 'email', 'phone', 'date'].map((t) => (
++                        <option key={t} value={t}>{t}</option>
++                      ))}
++                    </select>
++                    <div className="flex items-center gap-2">
++                      <label className="flex items-center gap-2 text-xs text-[#64748B]">
++                        <input
++                          type="checkbox"
++                          checked={Boolean(q.is_required)}
++                          onChange={(e) => updateQuestion(index, qIndex, 'is_required', e.target.checked)}
++                          className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
++                        />
++                        Required
++                      </label>
++                      <button type="button" onClick={() => removeQuestion(index, qIndex)} className="p-1.5 text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg">
++                        <X className="w-4 h-4" />
++                      </button>
++                    </div>
++                    {q.field_type === 'dropdown' && (
++                      <input
++                        type="text"
++                        placeholder="Options (comma separated)"
++                        value={(q.options || []).join(', ')}
++                        onChange={(e) => updateQuestion(index, qIndex, 'options', e.target.value.split(',').map((v) => v.trim()).filter(Boolean))}
++                        className="sm:col-span-4 px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm"
++                      />
++                    )}
++                  </div>
++                ))}
++              </div>
++            </div>
++          ))}
++        </div>
++      </div>
++
++      {/* Upload Courses & Schools */}
++      <div className="p-5 bg-white rounded-2xl border border-[#E2E8F0] space-y-3">
++        <p className="text-sm font-semibold text-[#0F172A]">Courses & Schools Upload</p>
++        <p className="text-xs text-[#64748B]">Upload Excel/CSV files to populate school and course dropdowns.</p>
++        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++          <div>
++            <label className="block text-xs font-medium text-[#64748B] mb-1">Schools file</label>
++            <input type="file" accept=".csv,.xlsx" onChange={(e) => handleUpload('school', e.target.files?.[0])} />
++            {uploadStatus.school && <p className="text-xs text-[#16A34A] mt-1">{uploadStatus.school}</p>}
++          </div>
++          <div>
++            <label className="block text-xs font-medium text-[#64748B] mb-1">Courses file</label>
++            <input type="file" accept=".csv,.xlsx" onChange={(e) => handleUpload('course', e.target.files?.[0])} />
++            {uploadStatus.course && <p className="text-xs text-[#16A34A] mt-1">{uploadStatus.course}</p>}
++          </div>
++        </div>
++        {uploadStatus.error && <p className="text-xs text-[#DC2626]">{uploadStatus.error}</p>}
++      </div>
++
+       <AnimatePresence>
+         {data.tickets.map((ticket, index) => (
+           <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+@@ -594,7 +841,20 @@ export const TicketsStep = ({ data, onChange, errors }) => {
+               )}
+             </div>
+ 
+-            <div className="grid grid-cols-2 gap-4">
++            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
++              <div>
++                <label className="block text-xs font-medium text-[#64748B] mb-1">Category</label>
++                <select value={ticket.category || defaultCategoryType} onChange={(e) => updateTicket(index, 'category', e.target.value)}
++                  className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
++                >
++                  {categories.map((c) => (
++                    <option key={c.category} value={c.category}>
++                      {c.category === 'guest' ? (c.label || 'Guest') : c.category.charAt(0).toUpperCase() + c.category.slice(1)}
++                      {!c.is_active ? ' (Disabled)' : ''}
++                    </option>
++                  ))}
++                </select>
++              </div>
+               <div>
+                 <label className="block text-xs font-medium text-[#64748B] mb-1">Ticket Type</label>
+                 <select value={ticket.type} onChange={(e) => updateTicket(index, 'type', e.target.value)}
+@@ -682,7 +942,6 @@ export const TicketsStep = ({ data, onChange, errors }) => {
+           />
+         </div>
+       </div>
+-      {error && <p className="mt-2 text-xs text-[#DC2626]">{error}</p>}
+     </div>
+   );
+ };
+diff --git a/app/src/context/CartContext.jsx b/app/src/context/CartContext.jsx
+index a83dbd5..185580a 100644
+--- a/app/src/context/CartContext.jsx
++++ b/app/src/context/CartContext.jsx
+@@ -48,7 +48,7 @@ export const CartProvider = ({ children }) => {
+     setCart(prev => {
+       // If cart is for a different event, start fresh
+       if (prev && prev.eventSlug !== item.eventSlug) {
+-        return buildCart(item.eventSlug, item.eventTitle, item.themeColor, item.accentColor, [item]);
++        return buildCart(item.eventSlug, item.eventTitle, item.themeColor, item.accentColor, [item], null, 0, null, {});
+       }
+ 
+       // Existing cart for same event ΓÇö merge items
+@@ -68,7 +68,11 @@ export const CartProvider = ({ children }) => {
+         item.eventTitle,
+         item.themeColor || prev?.themeColor,
+         item.accentColor || prev?.accentColor,
+-        existingItems
++        existingItems,
++        prev?.promoCode,
++        prev?.promoDiscountValue ?? 0,
++        prev?.promoDiscountType ?? null,
++        { registration: prev?.registration || null }
+       );
+     });
+   }, []);
+@@ -76,8 +80,8 @@ export const CartProvider = ({ children }) => {
+   /**
+    * addMultipleToCart replaces all items at once (used by the new TicketBox).
+    */
+-  const addMultipleToCart = useCallback((eventSlug, eventTitle, themeColor, accentColor, items) => {
+-    setCart(buildCart(eventSlug, eventTitle, themeColor, accentColor, items));
++  const addMultipleToCart = useCallback((eventSlug, eventTitle, themeColor, accentColor, items, meta = {}) => {
++    setCart(buildCart(eventSlug, eventTitle, themeColor, accentColor, items, null, 0, null, meta));
+   }, []);
+ 
+   const clearCart = useCallback(() => {
+@@ -95,7 +99,7 @@ export const CartProvider = ({ children }) => {
+       // Store the promo parameters so buildCart can recalculate on quantity changes
+       return buildCart(
+         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+-        prev.items, code, discountValue, discountType
++        prev.items, code, discountValue, discountType, { registration: prev.registration || null }
+       );
+     });
+   }, []);
+@@ -105,7 +109,7 @@ export const CartProvider = ({ children }) => {
+       if (!prev) return null;
+       return buildCart(
+         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+-        prev.items, null, 0, null
++        prev.items, null, 0, null, { registration: prev.registration || null }
+       );
+     });
+   }, []);
+@@ -117,7 +121,7 @@ export const CartProvider = ({ children }) => {
+       if (newItems.length === 0) return null;
+       return buildCart(
+         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+-        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null
++        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null, { registration: prev.registration || null }
+       );
+     });
+   }, []);
+@@ -130,7 +134,7 @@ export const CartProvider = ({ children }) => {
+       );
+       return buildCart(
+         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
+-        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null
++        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null, { registration: prev.registration || null }
+       );
+     });
+   }, []);
+@@ -170,7 +174,7 @@ export const CartProvider = ({ children }) => {
+ /**
+  * Build a normalized cart object from items array.
+  */
+-function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoCode = null, promoDiscountValue = 0, promoDiscountType = null) {
++function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoCode = null, promoDiscountValue = 0, promoDiscountType = null, meta = {}) {
+   const subtotalCents = items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
+ 
+   // Recalculate discount from original promo parameters (not a stale flat amount)
+@@ -190,6 +194,7 @@ function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoC
+     themeColor,
+     accentColor,
+     items, // Array of { ticketTypeId, ticketType, quantity, unitPrice }
++    registration: meta.registration || null,
+     promoCode,
+     promoDiscountValue,   // Store original value so recalculation works on quantity change
+     promoDiscountType,    // 'percent' | 'fixed' | null
+diff --git a/app/src/lib/eventsApi.js b/app/src/lib/eventsApi.js
+index 99c5e94..e88e2b0 100644
+--- a/app/src/lib/eventsApi.js
++++ b/app/src/lib/eventsApi.js
+@@ -164,6 +164,9 @@ export const mapDetailEvent = (e) => {
+         ticket_class: t.ticket_class,
+         isSoldOut: t.is_sold_out || false,
+         isAlmostSoldOut: t.is_almost_sold_out || false,
++        registration_category: t.registration_category || null,
++        registration_category_type: t.registration_category_type || null,
++        registration_category_label: t.registration_category_label || null,
+       })) || [],
+     promoCodes: e.promo_codes || [],
+     enableWaitlist: e.enable_waitlist ?? false,
+@@ -190,6 +193,11 @@ export const mapDetailEvent = (e) => {
+       totalAttendees: e.organizer?.total_attendees || 0,
+       bio: e.organizer?.organization_name || e.organizer?.bio || "",
+     },
++    registrationCategories: Array.isArray(e.registration_categories)
++      ? e.registration_categories
++      : Array.isArray(e.registrationCategories)
++        ? e.registrationCategories
++        : [],
+   };
+ };
+ 
+diff --git a/app/src/pages/CheckoutPage.jsx b/app/src/pages/CheckoutPage.jsx
+index 5896ebc..a89b70f 100644
+--- a/app/src/pages/CheckoutPage.jsx
++++ b/app/src/pages/CheckoutPage.jsx
+@@ -129,6 +129,7 @@ const CheckoutPage = () => {
+           attendee_last_name: attendeeData.lastName,
+           attendee_email: attendeeData.email,
+           attendee_phone: attendeeData.phone,
++          registration: attendeeData.registration || null,
+         };
+ 
+         const order = await api.post('/api/orders/create/', payload);
+diff --git a/app/src/pages/CreateEventPage.jsx b/app/src/pages/CreateEventPage.jsx
+index b05a7de..3552d12 100644
+--- a/app/src/pages/CreateEventPage.jsx
++++ b/app/src/pages/CreateEventPage.jsx
+@@ -23,6 +23,57 @@ import {
+   TicketsStep
+ } from '../components/organizer/EventForm';
+ 
++const DEFAULT_REGISTRATION_CATEGORIES = [
++  {
++    id: null,
++    category: 'student',
++    label: 'Student',
++    is_active: true,
++    sort_order: 0,
++    require_student_email: true,
++    require_admission_number: true,
++    ask_graduation_year: true,
++    ask_course: true,
++    ask_school: true,
++    ask_location: true,
++    questions: [],
++  },
++  {
++    id: null,
++    category: 'alumni',
++    label: 'Alumni',
++    is_active: true,
++    sort_order: 1,
++    require_student_email: false,
++    require_admission_number: false,
++    ask_graduation_year: true,
++    ask_course: true,
++    ask_school: true,
++    ask_location: true,
++    questions: [],
++  },
++  {
++    id: null,
++    category: 'guest',
++    label: 'Guest',
++    is_active: true,
++    sort_order: 2,
++    require_student_email: false,
++    require_admission_number: false,
++    ask_graduation_year: false,
++    ask_course: false,
++    ask_school: false,
++    ask_location: true,
++    questions: [],
++  },
++];
++
++const createDefaultRegistrationCategories = () =>
++  DEFAULT_REGISTRATION_CATEGORIES.map((cat) => ({
++    ...cat,
++    questions: Array.isArray(cat.questions) ? [...cat.questions] : [],
++  }));
++
+ const CreateEventPage = () => {
+   const { slug } = useParams();
+   const navigate = useNavigate();
+@@ -68,6 +119,46 @@ const CreateEventPage = () => {
+ 
+         if (eventData) {
+           const unmapRefundPolicy = (val) => ({ 'no_refund': 'No Refund', '48_hours': '48 Hours', '7_days': '7 Days', 'custom': 'Custom' }[val] || 'No Refund');
++          const normalizeCategory = (cat) => {
++            const def = DEFAULT_REGISTRATION_CATEGORIES.find((d) => d.category === cat.category) || {};
++            const merged = {
++              ...def,
++              ...cat,
++              questions: Array.isArray(cat.questions) ? cat.questions : [],
++            };
++
++            if (merged.category === 'student') {
++              merged.label = 'Student';
++              merged.require_student_email = true;
++              merged.require_admission_number = true;
++            } else if (merged.category === 'alumni') {
++              merged.label = 'Alumni';
++            }
++
++            return merged;
++          };
++
++          const mergeCategories = (existing = []) => {
++            const byType = new Map((existing || []).map((c) => [c.category, c]));
++            const orderedExisting = [...(existing || [])].sort(
++              (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
++            );
++            const mergedExisting = orderedExisting.map(normalizeCategory);
++            const missing = DEFAULT_REGISTRATION_CATEGORIES
++              .filter((def) => !byType.has(def.category))
++              .map(normalizeCategory);
++            return [...mergedExisting, ...missing];
++          };
++
++          let registrationCategories = createDefaultRegistrationCategories();
++          try {
++            const regData = await api.get(`/api/events/${eventData.slug || slug}/registration/setup/`);
++            if (Array.isArray(regData?.categories) && regData.categories.length > 0) {
++              registrationCategories = mergeCategories(regData.categories);
++            }
++          } catch {
++            registrationCategories = createDefaultRegistrationCategories();
++          }
+ 
+           // Map fetched event data to form data
+           setFormData({
+@@ -125,9 +216,12 @@ const CreateEventPage = () => {
+                 type: t.type,
+                 price: t.price,
+                 quantity: t.quantity || 100,
+-                description: t.description || ''
++                description: t.description || '',
++                category: t.registration_category_type || 'guest',
++                registrationCategoryId: t.registration_category || null,
+               }))
+-              : [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
++              : [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
++            registrationCategories,
+             refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
+             customRefundPolicy: eventData.customRefundPolicy || '',
+             enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
+@@ -180,7 +274,8 @@ const CreateEventPage = () => {
+     mcPhotoPreview: '',
+     schedule: [],
+     sponsors: [],
+-    tickets: [{ type: 'Standard', price: 0, quantity: 100, description: '' }],
++    tickets: [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
++    registrationCategories: createDefaultRegistrationCategories(),
+     refundPolicy: 'No Refund',
+     customRefundPolicy: '',
+     enableWaitlist: false,
+@@ -225,6 +320,13 @@ const CreateEventPage = () => {
+     }
+     if (step === 6) {
+       if (formData.tickets.length === 0) newErrors.tickets = 'At least one ticket type is required';
++      const enabledCategories = (formData.registrationCategories || []).filter((cat) => cat.is_active);
++      enabledCategories.forEach((cat) => {
++        const hasTicket = formData.tickets.some((t) => t.category === cat.category);
++        if (!hasTicket) {
++          newErrors.tickets = `Add at least one ${cat.label || cat.category} ticket`;
++        }
++      });
+     }
+     setErrors(newErrors);
+     return Object.keys(newErrors).length === 0;
+@@ -324,15 +426,60 @@ const CreateEventPage = () => {
+ 
+     const tasks = [];
+ 
++    // Registration categories + questions
++    let registrationMap = new Map();
++    if (Array.isArray(formData.registrationCategories) && formData.registrationCategories.length > 0) {
++      const categoriesPayload = formData.registrationCategories.map((cat, idx) => {
++        const isStudent = cat.category === 'student';
++        const isAlumni = cat.category === 'alumni';
++        const label = isStudent ? 'Student' : isAlumni ? 'Alumni' : cat.label;
++
++        return {
++          id: cat.id,
++          category: cat.category,
++          label,
++          is_active: Boolean(cat.is_active),
++          sort_order: idx,
++          require_student_email: isStudent ? true : Boolean(cat.require_student_email),
++          require_admission_number: isStudent ? true : Boolean(cat.require_admission_number),
++          ask_graduation_year: Boolean(cat.ask_graduation_year),
++          ask_course: Boolean(cat.ask_course),
++          ask_school: Boolean(cat.ask_school),
++          ask_location: Boolean(cat.ask_location),
++          questions: (cat.questions || [])
++            .filter((q) => String(q.label || '').trim())
++            .map((q, qIdx) => ({
++              id: q.id,
++              label: q.label,
++              field_type: q.field_type,
++              is_required: Boolean(q.is_required),
++              options: Array.isArray(q.options) ? q.options : [],
++              sort_order: qIdx,
++            })),
++        };
++      });
++      try {
++        const regResp = await api.post(`/api/events/${eventSlug}/registration/setup/`, { categories: categoriesPayload });
++        const saved = regResp?.categories || [];
++        registrationMap = new Map(saved.map((c) => [c.category, c]));
++      } catch (err) {
++        console.warn('Registration setup failed:', err);
++      }
++    }
++
+     // Tickets (create or update)
+     if (formData.tickets.length > 0) {
+       formData.tickets.forEach((ticket) => {
++        const categoryType = ticket.category || 'guest';
++        const categoryEntry = registrationMap.get(categoryType);
++        const registrationCategoryId = categoryEntry?.id || ticket.registrationCategoryId || null;
+         const payloadData = {
+           name: ticket.type,
+           ticket_class: ticketClassMap[ticket.type] || 'paid',
+           price: ticket.type === 'Free' ? 0 : ticket.price,
+           quantity: ticket.quantity,
+           description: ticket.description || '',
++          registration_category: registrationCategoryId,
+         };
+         if (ticket.id) {
+           tasks.push(
+diff --git a/app/src/pages/EventDetailPage.jsx b/app/src/pages/EventDetailPage.jsx
+index 861214a..0bf0d10 100644
+--- a/app/src/pages/EventDetailPage.jsx
++++ b/app/src/pages/EventDetailPage.jsx
+@@ -328,7 +328,8 @@ const EventDetailPage = () => {
+       event.title,
+       event.themeColor,
+       event.accentColor,
+-      ticketData.items
++      ticketData.items,
++      { registration: ticketData.registration || null }
+     );
+     navigate(`/checkout/${event.slug}`);
+   };
+diff --git a/eventhub_backend/.env.example b/eventhub_backend/.env.example
+index 1e0cdcb..89364bf 100644
+--- a/eventhub_backend/.env.example
++++ b/eventhub_backend/.env.example
+@@ -20,6 +20,9 @@ STRIPE_SECRET_KEY=sk_test_...
+ STRIPE_WEBHOOK_SECRET=whsec_...
+ STRIPE_SERVICE_FEE_PERCENT=3.0
+ 
++# Location autocomplete
++MAPBOX_ACCESS_TOKEN=
++
+ # M-Pesa Daraja
+ MPESA_CONSUMER_KEY=...
+ MPESA_CONSUMER_SECRET=...
+diff --git a/eventhub_backend/apps/events/serializers.py b/eventhub_backend/apps/events/serializers.py
+index 81b4e23..f1603d8 100644
+--- a/eventhub_backend/apps/events/serializers.py
++++ b/eventhub_backend/apps/events/serializers.py
+@@ -7,6 +7,7 @@ from rest_framework import serializers
+ 
+ from apps.accounts.models import OrganizerProfile, User
+ from apps.tickets.models import TicketType
++from apps.tickets.serializers import RegistrationCategorySerializer
+ from apps.speakers.serializers import SpeakerSerializer
+ from apps.schedules.serializers import ScheduleItemSerializer
+ from apps.sponsors.serializers import SponsorSerializer
+@@ -176,6 +177,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
+     speakers = serializers.SerializerMethodField()
+     schedule = serializers.SerializerMethodField()
+     sponsors = serializers.SerializerMethodField()
++    registration_categories = serializers.SerializerMethodField()
+     speakers_count = serializers.IntegerField(read_only=True)
+     schedule_count = serializers.IntegerField(read_only=True)
+     sponsors_count = serializers.IntegerField(read_only=True)
+@@ -231,6 +233,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
+             "speakers",
+             "schedule",
+             "sponsors",
++            "registration_categories",
+             "speakers_count",
+             "schedule_count",
+             "sponsors_count",
+@@ -253,6 +256,13 @@ class EventDetailSerializer(serializers.ModelSerializer):
+                 "ticket_class": t.ticket_class,
+                 "is_sold_out": t.is_sold_out,
+                 "is_almost_sold_out": t.is_almost_sold_out,
++                "registration_category": str(t.registration_category_id) if t.registration_category_id else None,
++                "registration_category_type": t.registration_category.category if t.registration_category else None,
++                "registration_category_label": (
++                    t.registration_category.label
++                    if t.registration_category and t.registration_category.category == "guest" and t.registration_category.label
++                    else (t.registration_category.get_category_display() if t.registration_category else None)
++                ),
+             }
+             for t in qs
+         ]
+@@ -303,6 +313,10 @@ class EventDetailSerializer(serializers.ModelSerializer):
+         qs = prefetched if prefetched is not None else obj.event_sponsors.order_by("tier", "sort_order", "name")
+         return SponsorSerializer(qs, many=True, context=self.context).data
+ 
++    def get_registration_categories(self, obj: Event):
++        qs = obj.registration_categories.filter(is_active=True).prefetch_related("questions").order_by("sort_order")
++        return RegistrationCategorySerializer(qs, many=True).data
++
+ 
+ class EventCreateSerializer(serializers.ModelSerializer):
+ 
+diff --git a/eventhub_backend/apps/orders/models.py b/eventhub_backend/apps/orders/models.py
+index 4b35f45..bf79fc4 100644
+--- a/eventhub_backend/apps/orders/models.py
++++ b/eventhub_backend/apps/orders/models.py
+@@ -135,3 +135,37 @@ class Ticket(TimeStampedModel):
+             models.Index(fields=["event", "status"]),
+         ]
+ 
++
++class OrderRegistration(TimeStampedModel):
++    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="registration")
++    registration_category = models.ForeignKey(
++        "tickets.RegistrationCategory",
++        null=True,
++        blank=True,
++        on_delete=models.SET_NULL,
++        related_name="registrations",
++    )
++    category = models.CharField(max_length=20, blank=True)
++    category_label = models.CharField(max_length=100, blank=True)
++    graduation_year = models.PositiveIntegerField(null=True, blank=True)
++    course = models.ForeignKey("tickets.Course", null=True, blank=True, on_delete=models.SET_NULL)
++    school = models.ForeignKey("tickets.School", null=True, blank=True, on_delete=models.SET_NULL)
++    admission_number = models.CharField(max_length=100, blank=True)
++    student_email = models.EmailField(blank=True)
++    location_text = models.CharField(max_length=255, blank=True)
++    location_city = models.CharField(max_length=100, blank=True)
++    location_country = models.CharField(max_length=100, blank=True)
++    location_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
++    location_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
++
++    def __str__(self) -> str:  # pragma: no cover
++        return f"Registration({self.order.order_number})"
++
++
++class OrderAnswer(TimeStampedModel):
++    registration = models.ForeignKey(OrderRegistration, on_delete=models.CASCADE, related_name="answers")
++    question = models.ForeignKey("tickets.RegistrationQuestion", null=True, blank=True, on_delete=models.SET_NULL)
++    value = models.TextField(blank=True)
++
++    def __str__(self) -> str:  # pragma: no cover
++        return f"Answer({self.question_id})"
+diff --git a/eventhub_backend/apps/orders/serializers.py b/eventhub_backend/apps/orders/serializers.py
+index 0aa4ec2..34bc531 100644
+--- a/eventhub_backend/apps/orders/serializers.py
++++ b/eventhub_backend/apps/orders/serializers.py
+@@ -9,8 +9,8 @@ from rest_framework import serializers
+ 
+ from apps.events.models import Event
+ from apps.payments.simulation import issue_simulation_token
+-from apps.tickets.models import PromoCode, TicketType
+-from .models import Order, OrderItem, Ticket
++from apps.tickets.models import PromoCode, TicketType, RegistrationCategory, RegistrationQuestion, School, Course
++from .models import Order, OrderItem, Ticket, OrderRegistration, OrderAnswer
+ # send_ticket_email imported in view to decouple from transaction.atomic()
+ 
+ 
+@@ -21,6 +21,28 @@ class OrderItemInputSerializer(serializers.Serializer):
+     attendee_email = serializers.EmailField()
+ 
+ 
++class RegistrationAnswerInputSerializer(serializers.Serializer):
++    question_id = serializers.UUIDField()
++    value = serializers.CharField(allow_blank=True, required=False)
++
++
++class OrderRegistrationInputSerializer(serializers.Serializer):
++    category_id = serializers.UUIDField(required=False, allow_null=True)
++    category_type = serializers.CharField(required=False, allow_blank=True)
++    category_label = serializers.CharField(required=False, allow_blank=True)
++    graduation_year = serializers.IntegerField(required=False, allow_null=True)
++    course_id = serializers.UUIDField(required=False, allow_null=True)
++    school_id = serializers.UUIDField(required=False, allow_null=True)
++    admission_number = serializers.CharField(required=False, allow_blank=True)
++    student_email = serializers.EmailField(required=False, allow_blank=True)
++    location_text = serializers.CharField(required=False, allow_blank=True)
++    location_city = serializers.CharField(required=False, allow_blank=True)
++    location_country = serializers.CharField(required=False, allow_blank=True)
++    location_lat = serializers.DecimalField(required=False, allow_null=True, max_digits=9, decimal_places=6)
++    location_lng = serializers.DecimalField(required=False, allow_null=True, max_digits=9, decimal_places=6)
++    answers = RegistrationAnswerInputSerializer(many=True, required=False)
++
++
+ class OrderCreateSerializer(serializers.Serializer):
+     event_slug = serializers.SlugField()
+     items = OrderItemInputSerializer(many=True)
+@@ -30,6 +52,7 @@ class OrderCreateSerializer(serializers.Serializer):
+     attendee_last_name = serializers.CharField(max_length=150)
+     attendee_email = serializers.EmailField()
+     attendee_phone = serializers.CharField(max_length=20, allow_blank=True, required=False)
++    registration = OrderRegistrationInputSerializer(required=False)
+ 
+     def validate(self, attrs):
+         event = get_object_or_404(Event, slug=attrs["event_slug"], status="published")
+@@ -88,7 +111,70 @@ class OrderCreateSerializer(serializers.Serializer):
+ 
+         attrs["promo_obj"] = promo_obj
+         attrs["discount_amount"] = discount_amount
+-        
++
++        # Registration validation
++        registration_data = attrs.get("registration") or {}
++        registration_category = None
++        category_from_items = None
++        categories = set()
++        for item in items:
++            ticket = tickets_by_id[str(item["ticket_type_id"])]
++            if ticket.registration_category_id:
++                categories.add(str(ticket.registration_category_id))
++                category_from_items = ticket.registration_category
++
++        if categories:
++            if len(categories) > 1:
++                raise serializers.ValidationError({"items": "Please select tickets from a single category per order."})
++            registration_category = category_from_items
++
++        if registration_category:
++            # If payload provided category_id, ensure it matches
++            payload_category_id = registration_data.get("category_id")
++            if payload_category_id and str(payload_category_id) != str(registration_category.id):
++                raise serializers.ValidationError({"registration": "Selected category does not match tickets."})
++
++            # Validate required fixed fields
++            if registration_category.require_student_email:
++                student_email = (registration_data.get("student_email") or "").strip().lower()
++                if not student_email:
++                    raise serializers.ValidationError({"registration": "Student email is required."})
++                if not student_email.endswith("@strathmore.edu"):
++                    raise serializers.ValidationError({"registration": "Student email must be a @strathmore.edu address."})
++
++            if registration_category.require_admission_number:
++                admission_number = (registration_data.get("admission_number") or "").strip()
++                if not admission_number:
++                    raise serializers.ValidationError({"registration": "Admission number is required."})
++
++            if registration_category.ask_graduation_year and not registration_data.get("graduation_year"):
++                raise serializers.ValidationError({"registration": "Graduation year is required."})
++            if registration_category.ask_course:
++                course_id = registration_data.get("course_id")
++                if not course_id:
++                    raise serializers.ValidationError({"registration": "Course is required."})
++                if not Course.objects.filter(id=course_id).exists():
++                    raise serializers.ValidationError({"registration": "Selected course is invalid."})
++            if registration_category.ask_school:
++                school_id = registration_data.get("school_id")
++                if not school_id:
++                    raise serializers.ValidationError({"registration": "School is required."})
++                if not School.objects.filter(id=school_id).exists():
++                    raise serializers.ValidationError({"registration": "Selected school is invalid."})
++            if registration_category.ask_location and not registration_data.get("location_text"):
++                raise serializers.ValidationError({"registration": "Location is required."})
++
++            # Validate custom questions
++            answers = registration_data.get("answers") or []
++            answers_map = {str(a.get("question_id")): a.get("value") for a in answers}
++            questions = RegistrationQuestion.objects.filter(category=registration_category)
++            for q in questions:
++                if q.is_required and not answers_map.get(str(q.id)):
++                    raise serializers.ValidationError({"registration": f"{q.label} is required."})
++
++        attrs["registration_category"] = registration_category
++        attrs["registration_data"] = registration_data
++
+         # Verify free payment method genuinely applies to free orders
+         if attrs.get("payment_method") == "free" and (subtotal - discount_amount) > 0:
+             raise serializers.ValidationError(
+@@ -105,6 +191,8 @@ class OrderCreateSerializer(serializers.Serializer):
+         subtotal: Decimal = validated_data["subtotal"]
+         discount_amount: Decimal = validated_data["discount_amount"]
+         promo_obj: PromoCode | None = validated_data["promo_obj"]
++        registration_category: RegistrationCategory | None = validated_data.get("registration_category")
++        registration_data = validated_data.get("registration_data") or {}
+ 
+         net_amount = subtotal - discount_amount
+         is_free_order = net_amount == Decimal("0") or validated_data.get("payment_method") == "free"
+@@ -197,6 +285,37 @@ class OrderCreateSerializer(serializers.Serializer):
+                         attendee_email=order.attendee_email,
+                     )
+ 
++        # Store registration data if present
++        if registration_category:
++            category_label = registration_category.label if registration_category.category == "guest" and registration_category.label else registration_category.get_category_display()
++            reg = OrderRegistration.objects.create(
++                order=order,
++                registration_category=registration_category,
++                category=registration_category.category,
++                category_label=category_label,
++                graduation_year=registration_data.get("graduation_year") or None,
++                course=Course.objects.filter(id=registration_data.get("course_id")).first() if registration_data.get("course_id") else None,
++                school=School.objects.filter(id=registration_data.get("school_id")).first() if registration_data.get("school_id") else None,
++                admission_number=registration_data.get("admission_number", "") or "",
++                student_email=registration_data.get("student_email", "") or "",
++                location_text=registration_data.get("location_text", "") or "",
++                location_city=registration_data.get("location_city", "") or "",
++                location_country=registration_data.get("location_country", "") or "",
++                location_lat=registration_data.get("location_lat"),
++                location_lng=registration_data.get("location_lng"),
++            )
++
++            answers = registration_data.get("answers") or []
++            for answer in answers:
++                q = RegistrationQuestion.objects.filter(id=answer.get("question_id"), category=registration_category).first()
++                if not q:
++                    continue
++                OrderAnswer.objects.create(
++                    registration=reg,
++                    question=q,
++                    value=answer.get("value", "") or "",
++                )
++
+         return order
+ 
+ 
+diff --git a/eventhub_backend/apps/tickets/models.py b/eventhub_backend/apps/tickets/models.py
+index 108fb36..f724db0 100644
+--- a/eventhub_backend/apps/tickets/models.py
++++ b/eventhub_backend/apps/tickets/models.py
+@@ -7,6 +7,87 @@ from common.models import TimeStampedModel
+ from apps.events.models import Event
+ 
+ 
++class RegistrationCategory(TimeStampedModel):
++    CATEGORY_CHOICES = (
++        ("student", "Student"),
++        ("alumni", "Alumni"),
++        ("guest", "Guest"),
++    )
++
++    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="registration_categories")
++    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
++    label = models.CharField(max_length=100, blank=True)
++    is_active = models.BooleanField(default=True)
++    sort_order = models.PositiveIntegerField(default=0)
++
++    # Fixed field toggles
++    require_student_email = models.BooleanField(default=False)
++    require_admission_number = models.BooleanField(default=False)
++    ask_graduation_year = models.BooleanField(default=False)
++    ask_course = models.BooleanField(default=False)
++    ask_school = models.BooleanField(default=False)
++    ask_location = models.BooleanField(default=False)
++
++    class Meta:
++        unique_together = ("event", "category")
++        ordering = ["sort_order", "category"]
++
++    def __str__(self) -> str:  # pragma: no cover
++        return f"{self.get_category_display()} ({self.event.title})"
++
++
++class RegistrationQuestion(TimeStampedModel):
++    FIELD_TYPE_CHOICES = (
++        ("text", "Text"),
++        ("number", "Number"),
++        ("dropdown", "Dropdown"),
++        ("email", "Email"),
++        ("phone", "Phone"),
++        ("date", "Date"),
++    )
++
++    category = models.ForeignKey(RegistrationCategory, on_delete=models.CASCADE, related_name="questions")
++    label = models.CharField(max_length=255)
++    field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES)
++    is_required = models.BooleanField(default=False)
++    options = models.JSONField(default=list, blank=True)
++    sort_order = models.PositiveIntegerField(default=0)
++
++    class Meta:
++        ordering = ["sort_order", "created_at"]
++
++    def __str__(self) -> str:  # pragma: no cover
++        return f"{self.label} ({self.category.get_category_display()})"
++
++
++class School(TimeStampedModel):
++    name = models.CharField(max_length=200, unique=True)
++    code = models.CharField(max_length=50, blank=True)
++    is_active = models.BooleanField(default=True)
++    sort_order = models.PositiveIntegerField(default=0)
++
++    class Meta:
++        ordering = ["sort_order", "name"]
++
++    def __str__(self) -> str:  # pragma: no cover
++        return self.name
++
++
++class Course(TimeStampedModel):
++    school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name="courses")
++    name = models.CharField(max_length=200)
++    code = models.CharField(max_length=50, blank=True)
++    is_active = models.BooleanField(default=True)
++    sort_order = models.PositiveIntegerField(default=0)
++
++    class Meta:
++        unique_together = ("school", "name")
++        ordering = ["sort_order", "name"]
++
++    def __str__(self) -> str:  # pragma: no cover
++        return self.name
++
++
+ class TicketType(TimeStampedModel):
+     TICKET_CLASS_CHOICES = (
+         ("free", "Free"),
+@@ -17,6 +98,13 @@ class TicketType(TimeStampedModel):
+     )
+ 
+     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="ticket_types")
++    registration_category = models.ForeignKey(
++        RegistrationCategory,
++        on_delete=models.SET_NULL,
++        null=True,
++        blank=True,
++        related_name="ticket_types",
++    )
+     name = models.CharField(max_length=100)
+     ticket_class = models.CharField(max_length=20, choices=TICKET_CLASS_CHOICES)
+     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+@@ -96,4 +184,3 @@ class PromoCode(TimeStampedModel):
+ 
+     def __str__(self) -> str:  # pragma: no cover
+         return f"{self.code} ({self.event.title})"
+-
+diff --git a/eventhub_backend/apps/tickets/serializers.py b/eventhub_backend/apps/tickets/serializers.py
+index 0a428cc..629bdf0 100644
+--- a/eventhub_backend/apps/tickets/serializers.py
++++ b/eventhub_backend/apps/tickets/serializers.py
+@@ -4,7 +4,14 @@ from decimal import Decimal
+ 
+ from rest_framework import serializers
+ 
+-from .models import PromoCode, TicketType
++from .models import (
++    PromoCode,
++    TicketType,
++    RegistrationCategory,
++    RegistrationQuestion,
++    School,
++    Course,
++)
+ 
+ 
+ class TicketTypeCreateSerializer(serializers.ModelSerializer):
+@@ -25,6 +32,7 @@ class TicketTypeCreateSerializer(serializers.ModelSerializer):
+             "max_per_order",
+             "is_active",
+             "sort_order",
++            "registration_category",
+         ]
+         read_only_fields = ["id", "event"]
+ 
+@@ -34,6 +42,8 @@ class TicketTypeSerializer(serializers.ModelSerializer):
+     is_sold_out = serializers.BooleanField(read_only=True)
+     is_almost_sold_out = serializers.BooleanField(read_only=True)
+     is_on_sale = serializers.BooleanField(read_only=True)
++    registration_category_type = serializers.SerializerMethodField()
++    registration_category_label = serializers.SerializerMethodField()
+ 
+     class Meta:
+         model = TicketType
+@@ -54,6 +64,9 @@ class TicketTypeSerializer(serializers.ModelSerializer):
+             "max_per_order",
+             "is_active",
+             "sort_order",
++            "registration_category",
++            "registration_category_type",
++            "registration_category_label",
+             "quantity_available",
+             "is_sold_out",
+             "is_almost_sold_out",
+@@ -68,6 +81,100 @@ class TicketTypeSerializer(serializers.ModelSerializer):
+             "is_on_sale",
+         ]
+ 
++    def get_registration_category_type(self, obj):
++        return obj.registration_category.category if obj.registration_category else None
++
++    def get_registration_category_label(self, obj):
++        if not obj.registration_category:
++            return None
++        if obj.registration_category.category == "guest" and obj.registration_category.label:
++            return obj.registration_category.label
++        return obj.registration_category.get_category_display()
++
++
++class RegistrationQuestionSerializer(serializers.ModelSerializer):
++    class Meta:
++        model = RegistrationQuestion
++        fields = [
++            "id",
++            "label",
++            "field_type",
++            "is_required",
++            "options",
++            "sort_order",
++        ]
++
++
++class RegistrationQuestionWriteSerializer(serializers.ModelSerializer):
++    id = serializers.UUIDField(required=False, allow_null=True)
++
++    class Meta:
++        model = RegistrationQuestion
++        fields = [
++            "id",
++            "label",
++            "field_type",
++            "is_required",
++            "options",
++            "sort_order",
++        ]
++
++
++class RegistrationCategorySerializer(serializers.ModelSerializer):
++    questions = RegistrationQuestionSerializer(many=True, read_only=True)
++
++    class Meta:
++        model = RegistrationCategory
++        fields = [
++            "id",
++            "category",
++            "label",
++            "is_active",
++            "sort_order",
++            "require_student_email",
++            "require_admission_number",
++            "ask_graduation_year",
++            "ask_course",
++            "ask_school",
++            "ask_location",
++            "questions",
++        ]
++
++
++class RegistrationCategoryWriteSerializer(serializers.ModelSerializer):
++    questions = RegistrationQuestionWriteSerializer(many=True, required=False)
++
++    class Meta:
++        model = RegistrationCategory
++        fields = [
++            "id",
++            "category",
++            "label",
++            "is_active",
++            "sort_order",
++            "require_student_email",
++            "require_admission_number",
++            "ask_graduation_year",
++            "ask_course",
++            "ask_school",
++            "ask_location",
++            "questions",
++        ]
++
++
++class SchoolSerializer(serializers.ModelSerializer):
++    class Meta:
++        model = School
++        fields = ["id", "name", "code", "is_active", "sort_order"]
++
++
++class CourseSerializer(serializers.ModelSerializer):
++    school_name = serializers.CharField(source="school.name", read_only=True)
++
++    class Meta:
++        model = Course
++        fields = ["id", "name", "code", "school", "school_name", "is_active", "sort_order"]
++
+ 
+ class PromoCodeSerializer(serializers.ModelSerializer):
+     class Meta:
+@@ -103,4 +210,3 @@ class PromoCodeValidateSerializer(serializers.Serializer):
+         attrs["promo"] = promo
+         attrs["discount_amount"] = discount_amount
+         return attrs
+-
+diff --git a/eventhub_backend/apps/tickets/urls.py b/eventhub_backend/apps/tickets/urls.py
+index ab24b95..3b1e427 100644
+--- a/eventhub_backend/apps/tickets/urls.py
++++ b/eventhub_backend/apps/tickets/urls.py
+@@ -9,6 +9,13 @@ from .views import (
+     PromoCodeValidateView,
+     TicketTypeCreateView,
+     TicketTypeUpdateView,
++    EventRegistrationSetupView,
++    EventRegistrationPublicView,
++    SchoolListView,
++    CourseListView,
++    SchoolUploadView,
++    CourseUploadView,
++    LocationSearchView,
+ )
+ 
+ urlpatterns = [
+@@ -19,6 +26,8 @@ urlpatterns = [
+         TicketTypeUpdateView.as_view(),
+         name="tickettype-detail",
+     ),
++    path("events/<slug:slug>/registration/", EventRegistrationPublicView.as_view(), name="event-registration-public"),
++    path("events/<slug:slug>/registration/setup/", EventRegistrationSetupView.as_view(), name="event-registration-setup"),
+     path("events/<slug:slug>/promo-codes/", PromoCodeManageView.as_view(), name="promo-list-create"),
+     path(
+         "events/<slug:slug>/promo-codes/<uuid:promo_id>/",
+@@ -26,5 +35,9 @@ urlpatterns = [
+         name="promo-detail",
+     ),
+     path("events/<slug:slug>/validate-promo/", PromoCodeValidateView.as_view(), name="promo-validate"),
++    path("academics/schools/", SchoolListView.as_view(), name="schools-list"),
++    path("academics/courses/", CourseListView.as_view(), name="courses-list"),
++    path("academics/schools/upload/", SchoolUploadView.as_view(), name="schools-upload"),
++    path("academics/courses/upload/", CourseUploadView.as_view(), name="courses-upload"),
++    path("locations/search/", LocationSearchView.as_view(), name="location-search"),
+ ]
+-
+diff --git a/eventhub_backend/apps/tickets/views.py b/eventhub_backend/apps/tickets/views.py
+index 3048570..2848c8e 100644
+--- a/eventhub_backend/apps/tickets/views.py
++++ b/eventhub_backend/apps/tickets/views.py
+@@ -5,17 +5,28 @@ from decimal import Decimal
+ from django_ratelimit.decorators import ratelimit
+ from django.shortcuts import get_object_or_404
+ from rest_framework import generics, permissions, status
++from rest_framework.views import APIView
++from rest_framework.exceptions import ValidationError
+ from rest_framework.response import Response
+ 
+ from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
+ from apps.events.models import Event
+-from .models import PromoCode, TicketType
++from django.conf import settings
++from django.db import transaction
++from .models import PromoCode, TicketType, RegistrationCategory, RegistrationQuestion, School, Course
+ from .serializers import (
+     PromoCodeSerializer,
+     PromoCodeValidateSerializer,
+     TicketTypeCreateSerializer,
+     TicketTypeSerializer,
++    RegistrationCategorySerializer,
++    RegistrationCategoryWriteSerializer,
++    SchoolSerializer,
++    CourseSerializer,
+ )
++import csv
++import io
++import requests
+ 
+ 
+ class EventTicketTypesView(generics.ListAPIView):
+@@ -34,6 +45,9 @@ class TicketTypeCreateView(generics.CreateAPIView):
+ 
+     def perform_create(self, serializer):
+         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
++        reg_category = serializer.validated_data.get("registration_category")
++        if reg_category and reg_category.event_id != event.id:
++            raise ValidationError({"registration_category": "Category does not belong to this event."})
+         serializer.save(event=event)
+ 
+ 
+@@ -47,6 +61,298 @@ class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
+         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+         return event.ticket_types.all()
+ 
++    def perform_update(self, serializer):
++        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
++        reg_category = serializer.validated_data.get("registration_category")
++        if reg_category and reg_category.event_id != event.id:
++            raise ValidationError({"registration_category": "Category does not belong to this event."})
++        serializer.save()
++
++
++class EventRegistrationSetupView(APIView):
++    """
++    Organizer-only: configure registration categories + questions for an event.
++    GET returns all categories (active + inactive) with questions.
++    POST upserts categories + nested questions.
++    """
++    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
++
++    def get(self, request, slug):
++        event = get_object_or_404(Event, slug=slug, organizer=request.user)
++        categories = event.registration_categories.prefetch_related("questions").all().order_by("sort_order")
++        data = RegistrationCategorySerializer(categories, many=True).data
++        return Response({"categories": data}, status=status.HTTP_200_OK)
++
++    def post(self, request, slug):
++        event = get_object_or_404(Event, slug=slug, organizer=request.user)
++        payload = request.data or {}
++        categories_data = payload.get("categories", [])
++        if not isinstance(categories_data, list):
++            raise ValidationError({"categories": "Expected a list of categories."})
++
++        # Map existing categories by id and by type for upsert
++        existing = {str(c.id): c for c in event.registration_categories.all()}
++        existing_by_type = {c.category: c for c in event.registration_categories.all()}
++
++        saved = []
++        with transaction.atomic():
++            for cat in categories_data:
++                serializer = RegistrationCategoryWriteSerializer(data=cat)
++                serializer.is_valid(raise_exception=True)
++                validated = serializer.validated_data
++
++                category_type = validated.get("category")
++                if not category_type:
++                    raise ValidationError({"category": "Category type is required."})
++
++                # Force label for student/alumni to default values
++                if category_type in ["student", "alumni"]:
++                    validated["label"] = "Student" if category_type == "student" else "Alumni"
++                    if category_type == "student":
++                        validated["require_student_email"] = True
++                        validated["require_admission_number"] = True
++                else:
++                    # Guest label fallback
++                    if not validated.get("label"):
++                        validated["label"] = "Guest"
++
++                category_id = cat.get("id")
++                instance = existing.get(str(category_id)) if category_id else existing_by_type.get(category_type)
++                if instance:
++                    for field, value in validated.items():
++                        if field == "questions":
++                            continue
++                        setattr(instance, field, value)
++                    instance.event = event
++                    instance.save()
++                else:
++                    instance = RegistrationCategory.objects.create(event=event, **{
++                        k: v for k, v in validated.items() if k != "questions"
++                    })
++
++                # Upsert questions
++                questions_data = validated.get("questions", [])
++                existing_questions = {str(q.id): q for q in instance.questions.all()}
++                incoming_ids = {str(q.get("id")) for q in questions_data if q.get("id")}
++                for q in questions_data:
++                    q_id = q.get("id")
++                    q_instance = existing_questions.get(str(q_id)) if q_id else None
++                    if q_instance:
++                        for field, value in q.items():
++                            if field == "id":
++                                continue
++                            setattr(q_instance, field, value)
++                        q_instance.save()
++                    else:
++                        RegistrationQuestion.objects.create(
++                            category=instance,
++                            label=q.get("label", ""),
++                            field_type=q.get("field_type", "text"),
++                            is_required=bool(q.get("is_required", False)),
++                            options=q.get("options") or [],
++                            sort_order=int(q.get("sort_order") or 0),
++                        )
++
++                # Delete removed questions
++                if questions_data is not None:
++                    if incoming_ids:
++                        for qid, qobj in existing_questions.items():
++                            if qid not in incoming_ids:
++                                qobj.delete()
++                    else:
++                        # If no questions sent, remove all existing
++                        for qobj in existing_questions.values():
++                            qobj.delete()
++
++                saved.append(instance)
++
++        data = RegistrationCategorySerializer(saved, many=True).data
++        return Response({"categories": data}, status=status.HTTP_200_OK)
++
++
++class EventRegistrationPublicView(generics.ListAPIView):
++    permission_classes = [permissions.AllowAny]
++    serializer_class = RegistrationCategorySerializer
++
++    def get_queryset(self):
++        slug = self.kwargs["slug"]
++        event = get_object_or_404(Event, slug=slug, status="published")
++        return event.registration_categories.filter(is_active=True).prefetch_related("questions").order_by("sort_order")
++
++
++class SchoolListView(generics.ListCreateAPIView):
++    serializer_class = SchoolSerializer
++    queryset = School.objects.all().order_by("sort_order", "name")
++
++    def get_permissions(self):
++        if self.request.method == "GET":
++            return [permissions.AllowAny()]
++        return [permissions.IsAuthenticated(), IsOrganizerRole()]
++
++
++class CourseListView(generics.ListCreateAPIView):
++    serializer_class = CourseSerializer
++
++    def get_queryset(self):
++        qs = Course.objects.select_related("school").all().order_by("sort_order", "name")
++        school_id = self.request.query_params.get("school")
++        if school_id:
++            qs = qs.filter(school_id=school_id)
++        return qs
++
++    def get_permissions(self):
++        if self.request.method == "GET":
++            return [permissions.AllowAny()]
++        return [permissions.IsAuthenticated(), IsOrganizerRole()]
++
++
++class SchoolUploadView(APIView):
++    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
++
++    def post(self, request):
++        file = request.FILES.get("file")
++        if not file:
++            raise ValidationError({"file": "Upload file is required."})
++
++        name_map = {}
++        created = 0
++
++        # CSV fallback
++        if file.name.lower().endswith(".csv"):
++            content = file.read().decode("utf-8")
++            reader = csv.DictReader(io.StringIO(content))
++            for row in reader:
++                name = (row.get("name") or row.get("Name") or "").strip()
++                if not name:
++                    continue
++                code = (row.get("code") or row.get("Code") or "").strip()
++                name_map[name.lower()] = code
++        else:
++            # XLSX (requires openpyxl)
++            try:
++                import openpyxl
++            except Exception:
++                raise ValidationError({"file": "Excel upload requires openpyxl."})
++            wb = openpyxl.load_workbook(file)
++            ws = wb.active
++            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
++            for row in ws.iter_rows(min_row=2):
++                data = {headers[i].lower(): (row[i].value or "") for i in range(len(headers))}
++                name = str(data.get("name", "")).strip()
++                if not name:
++                    continue
++                code = str(data.get("code", "")).strip()
++                name_map[name.lower()] = code
++
++        for name_lower, code in name_map.items():
++            name = name_lower.title()
++            obj = School.objects.filter(name__iexact=name).first()
++            if not obj:
++                obj = School.objects.create(name=name, code=code)
++                created += 1
++            elif code and not obj.code:
++                obj.code = code
++                obj.save(update_fields=["code"])
++
++        return Response({"created": created, "total": len(name_map)}, status=status.HTTP_200_OK)
++
++
++class CourseUploadView(APIView):
++    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
++
++    def post(self, request):
++        file = request.FILES.get("file")
++        if not file:
++            raise ValidationError({"file": "Upload file is required."})
++
++        rows = []
++
++        if file.name.lower().endswith(".csv"):
++            content = file.read().decode("utf-8")
++            reader = csv.DictReader(io.StringIO(content))
++            rows = list(reader)
++        else:
++            try:
++                import openpyxl
++            except Exception:
++                raise ValidationError({"file": "Excel upload requires openpyxl."})
++            wb = openpyxl.load_workbook(file)
++            ws = wb.active
++            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
++            for row in ws.iter_rows(min_row=2):
++                data = {headers[i].lower(): (row[i].value or "") for i in range(len(headers))}
++                rows.append(data)
++
++        created = 0
++        for row in rows:
++            name = str(row.get("name") or row.get("Name") or "").strip()
++            if not name:
++                continue
++            code = str(row.get("code") or row.get("Code") or "").strip()
++            school_name = str(row.get("school") or row.get("School") or "").strip()
++            school = None
++            if school_name:
++                school = School.objects.filter(name__iexact=school_name).first()
++                if not school:
++                    school = School.objects.create(name=school_name)
++            obj = Course.objects.filter(school=school, name__iexact=name).first()
++            if not obj:
++                obj = Course.objects.create(name=name, code=code, school=school)
++                created += 1
++            elif code and not obj.code:
++                obj.code = code
++                obj.save(update_fields=["code"])
++
++        return Response({"created": created, "total": len(rows)}, status=status.HTTP_200_OK)
++
++
++class LocationSearchView(APIView):
++    permission_classes = [permissions.AllowAny]
++
++    def get(self, request):
++        query = (request.query_params.get("q") or "").strip()
++        if not query:
++            return Response({"results": []}, status=status.HTTP_200_OK)
++
++        token = getattr(settings, "MAPBOX_ACCESS_TOKEN", "") or getattr(settings, "LOCATIONIQ_TOKEN", "")
++        if not token:
++            return Response({"results": []}, status=status.HTTP_200_OK)
++
++        # Default to Mapbox if token present
++        try:
++            url = "https://api.mapbox.com/geocoding/v5/mapbox.places/{q}.json".format(q=requests.utils.quote(query))
++            params = {
++                "access_token": token,
++                "autocomplete": "true",
++                "limit": 5,
++                "types": "place,locality,neighborhood,address",
++            }
++            resp = requests.get(url, params=params, timeout=6)
++            resp.raise_for_status()
++            data = resp.json()
++            results = []
++            for feat in data.get("features", []):
++                place = feat.get("place_name", "")
++                center = feat.get("center") or []
++                ctx = feat.get("context", []) or []
++                city = ""
++                country = ""
++                for item in ctx:
++                    if item.get("id", "").startswith("place"):
++                        city = item.get("text", "")
++                    if item.get("id", "").startswith("country"):
++                        country = item.get("text", "")
++                results.append({
++                    "label": place,
++                    "city": city,
++                    "country": country,
++                    "lat": center[1] if len(center) > 1 else None,
++                    "lng": center[0] if len(center) > 0 else None,
++                })
++            return Response({"results": results}, status=status.HTTP_200_OK)
++        except Exception:
++            return Response({"results": []}, status=status.HTTP_200_OK)
++
+ 
+ class PromoCodeManageView(generics.ListCreateAPIView):
+     serializer_class = PromoCodeSerializer
+@@ -93,4 +399,3 @@ class PromoCodeValidateView(generics.GenericAPIView):
+             },
+             status=status.HTTP_200_OK,
+         )
+-
+diff --git a/eventhub_backend/requirements.in b/eventhub_backend/requirements.in
+index 71c2d93..dfe45da 100644
+--- a/eventhub_backend/requirements.in
++++ b/eventhub_backend/requirements.in
+@@ -17,6 +17,7 @@ Pillow==11.1.0
+ 
+ stripe==11.5.0
+ requests==2.32.3
++openpyxl==3.1.5
+ 
+ django-ratelimit==4.1.0
+ django-filter==24.3
+diff --git a/eventhub_backend/requirements.txt b/eventhub_backend/requirements.txt
+index dd12346..925e39e 100644
+--- a/eventhub_backend/requirements.txt
++++ b/eventhub_backend/requirements.txt
+@@ -34,6 +34,7 @@ jmespath==1.1.0
+ jsonschema==4.26.0
+ jsonschema-specifications==2025.9.1
+ kombu==5.6.2
++openpyxl==3.1.5
+ packaging==26.0
+ pillow==11.1.0
+ pluggy==1.6.0

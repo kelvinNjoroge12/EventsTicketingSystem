@@ -129,6 +129,7 @@ const CheckoutPage = () => {
           attendee_last_name: attendeeData.lastName,
           attendee_email: attendeeData.email,
           attendee_phone: attendeeData.phone,
+          registration: attendeeData.registration || null,
         };
 
         const order = await api.post('/api/orders/create/', payload);

@@ -9,8 +9,8 @@ from rest_framework import serializers
 
 from apps.events.models import Event
 from apps.payments.simulation import issue_simulation_token
-from apps.tickets.models import PromoCode, TicketType
-from .models import Order, OrderItem, Ticket
+from apps.tickets.models import PromoCode, TicketType, RegistrationCategory, RegistrationQuestion, School, Course
+from .models import Order, OrderItem, Ticket, OrderRegistration, OrderAnswer
 # send_ticket_email imported in view to decouple from transaction.atomic()
 
 
@@ -19,6 +19,28 @@ class OrderItemInputSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
     attendee_name = serializers.CharField(max_length=300)
     attendee_email = serializers.EmailField()
+
+
+class RegistrationAnswerInputSerializer(serializers.Serializer):
+    question_id = serializers.UUIDField()
+    value = serializers.CharField(allow_blank=True, required=False)
+
+
+class OrderRegistrationInputSerializer(serializers.Serializer):
+    category_id = serializers.UUIDField(required=False, allow_null=True)
+    category_type = serializers.CharField(required=False, allow_blank=True)
+    category_label = serializers.CharField(required=False, allow_blank=True)
+    graduation_year = serializers.IntegerField(required=False, allow_null=True)
+    course_id = serializers.UUIDField(required=False, allow_null=True)
+    school_id = serializers.UUIDField(required=False, allow_null=True)
+    admission_number = serializers.CharField(required=False, allow_blank=True)
+    student_email = serializers.EmailField(required=False, allow_blank=True)
+    location_text = serializers.CharField(required=False, allow_blank=True)
+    location_city = serializers.CharField(required=False, allow_blank=True)
+    location_country = serializers.CharField(required=False, allow_blank=True)
+    location_lat = serializers.DecimalField(required=False, allow_null=True, max_digits=9, decimal_places=6)
+    location_lng = serializers.DecimalField(required=False, allow_null=True, max_digits=9, decimal_places=6)
+    answers = RegistrationAnswerInputSerializer(many=True, required=False)
 
 
 class OrderCreateSerializer(serializers.Serializer):
@@ -30,6 +52,7 @@ class OrderCreateSerializer(serializers.Serializer):
     attendee_last_name = serializers.CharField(max_length=150)
     attendee_email = serializers.EmailField()
     attendee_phone = serializers.CharField(max_length=20, allow_blank=True, required=False)
+    registration = OrderRegistrationInputSerializer(required=False)
 
     def validate(self, attrs):
         event = get_object_or_404(Event, slug=attrs["event_slug"], status="published")
@@ -88,7 +111,70 @@ class OrderCreateSerializer(serializers.Serializer):
 
         attrs["promo_obj"] = promo_obj
         attrs["discount_amount"] = discount_amount
-        
+
+        # Registration validation
+        registration_data = attrs.get("registration") or {}
+        registration_category = None
+        category_from_items = None
+        categories = set()
+        for item in items:
+            ticket = tickets_by_id[str(item["ticket_type_id"])]
+            if ticket.registration_category_id:
+                categories.add(str(ticket.registration_category_id))
+                category_from_items = ticket.registration_category
+
+        if categories:
+            if len(categories) > 1:
+                raise serializers.ValidationError({"items": "Please select tickets from a single category per order."})
+            registration_category = category_from_items
+
+        if registration_category:
+            # If payload provided category_id, ensure it matches
+            payload_category_id = registration_data.get("category_id")
+            if payload_category_id and str(payload_category_id) != str(registration_category.id):
+                raise serializers.ValidationError({"registration": "Selected category does not match tickets."})
+
+            # Validate required fixed fields
+            if registration_category.require_student_email:
+                student_email = (registration_data.get("student_email") or "").strip().lower()
+                if not student_email:
+                    raise serializers.ValidationError({"registration": "Student email is required."})
+                if not student_email.endswith("@strathmore.edu"):
+                    raise serializers.ValidationError({"registration": "Student email must be a @strathmore.edu address."})
+
+            if registration_category.require_admission_number:
+                admission_number = (registration_data.get("admission_number") or "").strip()
+                if not admission_number:
+                    raise serializers.ValidationError({"registration": "Admission number is required."})
+
+            if registration_category.ask_graduation_year and not registration_data.get("graduation_year"):
+                raise serializers.ValidationError({"registration": "Graduation year is required."})
+            if registration_category.ask_course:
+                course_id = registration_data.get("course_id")
+                if not course_id:
+                    raise serializers.ValidationError({"registration": "Course is required."})
+                if not Course.objects.filter(id=course_id).exists():
+                    raise serializers.ValidationError({"registration": "Selected course is invalid."})
+            if registration_category.ask_school:
+                school_id = registration_data.get("school_id")
+                if not school_id:
+                    raise serializers.ValidationError({"registration": "School is required."})
+                if not School.objects.filter(id=school_id).exists():
+                    raise serializers.ValidationError({"registration": "Selected school is invalid."})
+            if registration_category.ask_location and not registration_data.get("location_text"):
+                raise serializers.ValidationError({"registration": "Location is required."})
+
+            # Validate custom questions
+            answers = registration_data.get("answers") or []
+            answers_map = {str(a.get("question_id")): a.get("value") for a in answers}
+            questions = RegistrationQuestion.objects.filter(category=registration_category)
+            for q in questions:
+                if q.is_required and not answers_map.get(str(q.id)):
+                    raise serializers.ValidationError({"registration": f"{q.label} is required."})
+
+        attrs["registration_category"] = registration_category
+        attrs["registration_data"] = registration_data
+
         # Verify free payment method genuinely applies to free orders
         if attrs.get("payment_method") == "free" and (subtotal - discount_amount) > 0:
             raise serializers.ValidationError(
@@ -105,6 +191,8 @@ class OrderCreateSerializer(serializers.Serializer):
         subtotal: Decimal = validated_data["subtotal"]
         discount_amount: Decimal = validated_data["discount_amount"]
         promo_obj: PromoCode | None = validated_data["promo_obj"]
+        registration_category: RegistrationCategory | None = validated_data.get("registration_category")
+        registration_data = validated_data.get("registration_data") or {}
 
         net_amount = subtotal - discount_amount
         is_free_order = net_amount == Decimal("0") or validated_data.get("payment_method") == "free"
@@ -196,6 +284,37 @@ class OrderCreateSerializer(serializers.Serializer):
                         attendee_name=f"{order.attendee_first_name} {order.attendee_last_name}",
                         attendee_email=order.attendee_email,
                     )
+
+        # Store registration data if present
+        if registration_category:
+            category_label = registration_category.label if registration_category.category == "guest" and registration_category.label else registration_category.get_category_display()
+            reg = OrderRegistration.objects.create(
+                order=order,
+                registration_category=registration_category,
+                category=registration_category.category,
+                category_label=category_label,
+                graduation_year=registration_data.get("graduation_year") or None,
+                course=Course.objects.filter(id=registration_data.get("course_id")).first() if registration_data.get("course_id") else None,
+                school=School.objects.filter(id=registration_data.get("school_id")).first() if registration_data.get("school_id") else None,
+                admission_number=registration_data.get("admission_number", "") or "",
+                student_email=registration_data.get("student_email", "") or "",
+                location_text=registration_data.get("location_text", "") or "",
+                location_city=registration_data.get("location_city", "") or "",
+                location_country=registration_data.get("location_country", "") or "",
+                location_lat=registration_data.get("location_lat"),
+                location_lng=registration_data.get("location_lng"),
+            )
+
+            answers = registration_data.get("answers") or []
+            for answer in answers:
+                q = RegistrationQuestion.objects.filter(id=answer.get("question_id"), category=registration_category).first()
+                if not q:
+                    continue
+                OrderAnswer.objects.create(
+                    registration=reg,
+                    question=q,
+                    value=answer.get("value", "") or "",
+                )
 
         return order
 

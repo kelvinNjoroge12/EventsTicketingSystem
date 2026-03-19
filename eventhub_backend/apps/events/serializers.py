@@ -7,6 +7,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import OrganizerProfile, User
 from apps.tickets.models import TicketType
+from apps.tickets.serializers import RegistrationCategorySerializer
 from apps.speakers.serializers import SpeakerSerializer
 from apps.schedules.serializers import ScheduleItemSerializer
 from apps.sponsors.serializers import SponsorSerializer
@@ -176,6 +177,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
     speakers = serializers.SerializerMethodField()
     schedule = serializers.SerializerMethodField()
     sponsors = serializers.SerializerMethodField()
+    registration_categories = serializers.SerializerMethodField()
     speakers_count = serializers.IntegerField(read_only=True)
     schedule_count = serializers.IntegerField(read_only=True)
     sponsors_count = serializers.IntegerField(read_only=True)
@@ -231,6 +233,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "speakers",
             "schedule",
             "sponsors",
+            "registration_categories",
             "speakers_count",
             "schedule_count",
             "sponsors_count",
@@ -253,6 +256,13 @@ class EventDetailSerializer(serializers.ModelSerializer):
                 "ticket_class": t.ticket_class,
                 "is_sold_out": t.is_sold_out,
                 "is_almost_sold_out": t.is_almost_sold_out,
+                "registration_category": str(t.registration_category_id) if t.registration_category_id else None,
+                "registration_category_type": t.registration_category.category if t.registration_category else None,
+                "registration_category_label": (
+                    t.registration_category.label
+                    if t.registration_category and t.registration_category.category == "guest" and t.registration_category.label
+                    else (t.registration_category.get_category_display() if t.registration_category else None)
+                ),
             }
             for t in qs
         ]
@@ -302,6 +312,10 @@ class EventDetailSerializer(serializers.ModelSerializer):
         prefetched = getattr(obj, "prefetched_sponsors", None)
         qs = prefetched if prefetched is not None else obj.event_sponsors.order_by("tier", "sort_order", "name")
         return SponsorSerializer(qs, many=True, context=self.context).data
+
+    def get_registration_categories(self, obj: Event):
+        qs = obj.registration_categories.filter(is_active=True).prefetch_related("questions").order_by("sort_order")
+        return RegistrationCategorySerializer(qs, many=True).data
 
 
 class EventCreateSerializer(serializers.ModelSerializer):

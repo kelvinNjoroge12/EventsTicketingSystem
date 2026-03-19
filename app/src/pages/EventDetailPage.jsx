@@ -328,7 +328,8 @@ const EventDetailPage = () => {
       event.title,
       event.themeColor,
       event.accentColor,
-      ticketData.items
+      ticketData.items,
+      { registration: ticketData.registration || null }
     );
     navigate(`/checkout/${event.slug}`);
   };

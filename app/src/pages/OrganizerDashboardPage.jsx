@@ -24,6 +24,7 @@ import OrganizerHeader from '../components/organizer/OrganizerHeader';
 import OrganizerDashboardOverview from '../components/dashboard/Overview';
 import OrganizerMyEvents from '../components/dashboard/MyEvents';
 import OrganizerEventDetail from '../components/dashboard/EventDetail';
+import FinanceOverview from '../components/dashboard/FinanceOverview';
 import OrganizerSettings from '../components/dashboard/Settings';
 import { api } from '../lib/apiClient';
 import { fetchEvent } from '../lib/eventsApi';
@@ -249,10 +250,18 @@ const OrganizerDashboardPage = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedEventId, setSelectedEventId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [revenueRange, setRevenueRange] = useState('month');
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showRevenueForm, setShowRevenueForm] = useState(false);
   const [entryView, setEntryView] = useState('all');
+  const [analyticsFilters, setAnalyticsFilters] = useState({
+    eventId: '',
+    graduationYear: '',
+    courseId: '',
+    location: '',
+  });
+  const [financeRange, setFinanceRange] = useState('month');
+  const [financeEventId, setFinanceEventId] = useState('');
+  const [modalEventId, setModalEventId] = useState('');
   const mainScrollRef = useRef(null);
 
   const isStaffUser = user && (user.role === 'checkin' || user.role === 'staff');
@@ -268,7 +277,7 @@ const OrganizerDashboardPage = () => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
     if (!tab) return;
-    const allowed = ['dashboard', 'events', 'checkin', 'create', 'settings', 'event'];
+    const allowed = ['dashboard', 'events', 'checkin', 'create', 'settings', 'event', 'finance'];
     if (!allowed.includes(tab)) return;
 
     if (tab === 'event') {
@@ -351,11 +360,63 @@ const OrganizerDashboardPage = () => {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: globalStatsData, isLoading: isLoadingGlobalStats } = useQuery({
-    queryKey: ['dashboard_stats', 'all', revenueRange],
-    queryFn: () => api.get(`/api/finances/dashboard-stats/?range=${revenueRange}`),
+  const analyticsParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (analyticsFilters.eventId) params.set('event_id', analyticsFilters.eventId);
+    if (analyticsFilters.graduationYear) params.set('graduation_year', analyticsFilters.graduationYear);
+    if (analyticsFilters.courseId) params.set('course_id', analyticsFilters.courseId);
+    if (analyticsFilters.location) params.set('location', analyticsFilters.location);
+    return params.toString();
+  }, [analyticsFilters]);
+
+  const { data: analyticsData, isLoading: isLoadingAnalytics } = useQuery({
+    queryKey: ['organizer_analytics', analyticsFilters],
+    queryFn: () => api.get(`/api/analytics/organizer/summary/${analyticsParams ? `?${analyticsParams}` : ''}`),
     enabled: !!hasAccess,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+  });
+
+  const financeParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (financeRange) params.set('range', financeRange);
+    if (financeEventId) params.set('event_id', financeEventId);
+    return params.toString();
+  }, [financeRange, financeEventId]);
+
+  const { data: financeStatsData, isLoading: isLoadingFinanceStats } = useQuery({
+    queryKey: ['finance_stats', financeRange, financeEventId],
+    queryFn: () => api.get(`/api/finances/dashboard-stats/${financeParams ? `?${financeParams}` : ''}`),
+    enabled: !!hasAccess && currentPage === 'finance',
+    staleTime: 60 * 1000,
+  });
+
+  const { data: financeRevenueSeriesData, isLoading: isLoadingFinanceSeries } = useQuery({
+    queryKey: ['finance_revenue_series', financeRange, financeEventId],
+    queryFn: () => api.get(`/api/finances/revenue-series/${financeParams ? `?${financeParams}` : ''}`),
+    enabled: !!hasAccess && currentPage === 'finance',
+    staleTime: 60 * 1000,
+  });
+
+  const { data: financeExpensesData, isLoading: isLoadingFinanceExpenses } = useQuery({
+    queryKey: ['finance_expenses', financeEventId],
+    queryFn: async () => {
+      const params = financeEventId ? `?event_id=${financeEventId}` : '';
+      const data = await api.get(`/api/finances/expenses/${params}`);
+      return apiList(data);
+    },
+    enabled: !!hasAccess && currentPage === 'finance',
+    staleTime: 60 * 1000,
+  });
+
+  const { data: financeRevenuesData, isLoading: isLoadingFinanceRevenues } = useQuery({
+    queryKey: ['finance_revenues', financeEventId],
+    queryFn: async () => {
+      const params = financeEventId ? `?event_id=${financeEventId}` : '';
+      const data = await api.get(`/api/finances/revenues/${params}`);
+      return apiList(data);
+    },
+    enabled: !!hasAccess && currentPage === 'finance',
+    staleTime: 60 * 1000,
   });
 
   const { data: eventStatsData, isLoading: isLoadingEventStats } = useQuery({
@@ -399,37 +460,17 @@ const OrganizerDashboardPage = () => {
     staleTime: 60 * 1000,
   });
 
-  const overviewStats = normalizeStats(globalStatsData?.kpis || globalStatsData || EMPTY_STATS);
-  const statsChanges = buildStatChanges(globalStatsData);
   const selectedStats = normalizeStats(eventStatsData?.kpis || eventStatsData || EMPTY_STATS);
   const eventAttendees = eventAttendeesData?.items || [];
   const eventAttendeesTotal = eventAttendeesData?.count ?? eventAttendees.length;
   const eventExpenses = eventExpensesData || [];
   const eventRevenues = eventRevenuesData || [];
 
-  const { data: revenueSeriesData } = useQuery({
-    queryKey: ['dashboard_revenue_series', revenueRange],
-    queryFn: async () => {
-      try {
-        const data = await api.get(`/api/finances/revenue-series/?range=${revenueRange}`);
-        return apiList(data);
-      } catch (err) {
-        try {
-          const allRevenues = await api.get('/api/finances/revenues/');
-          return buildRevenueSeriesFromEntries(apiList(allRevenues), revenueRange);
-        } catch {
-          return [];
-        }
-      }
-    },
-    enabled: !!hasAccess,
-    staleTime: 60 * 1000,
-  });
-
-  const normalizedRevenueSeries = useMemo(
-    () => normalizeRevenueSeries(revenueSeriesData),
-    [revenueSeriesData]
-  );
+  const financeStats = financeStatsData?.kpis || financeStatsData || EMPTY_STATS;
+  const financeExpenseBreakdown = financeStatsData?.expenseBreakdown || [];
+  const financeRevenueSeries = apiList(financeRevenueSeriesData);
+  const financeExpenses = financeExpensesData || [];
+  const financeRevenues = financeRevenuesData || [];
 
   const revenueBreakdownTotals = eventRevenues.reduce((acc, item) => {
     const key = item.source || 'other';
@@ -535,6 +576,8 @@ const OrganizerDashboardPage = () => {
         return 'Check-in';
       case 'create':
         return 'Create Event';
+      case 'finance':
+        return 'Finance';
       case 'settings':
         return 'Settings';
       default:
@@ -556,23 +599,24 @@ const OrganizerDashboardPage = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'dashboard':
-        return (
-          <OrganizerDashboardOverview
-            events={events}
-            stats={overviewStats}
-            statChanges={statsChanges}
-            onEventClick={openEventDetail}
-            onViewAll={() => {
-              setCurrentPage('events');
-              syncTabToUrl('events', { event: null });
-            }}
-            isLoadingStats={isLoadingGlobalStats}
-            revenueSeries={normalizedRevenueSeries}
-            range={revenueRange}
-            onRangeChange={setRevenueRange}
-          />
-        );
+        case 'dashboard':
+          return (
+            <OrganizerDashboardOverview
+              events={events}
+              analytics={analyticsData}
+              isLoading={isLoadingAnalytics}
+              filters={analyticsFilters}
+              filterOptions={analyticsData?.filters || {}}
+              onFilterChange={(field, value) => {
+                setAnalyticsFilters((prev) => ({ ...prev, [field]: value }));
+              }}
+              onEventClick={openEventDetail}
+              onViewAll={() => {
+                setCurrentPage('events');
+                syncTabToUrl('events', { event: null });
+              }}
+            />
+          );
       case 'events':
         return (
           <OrganizerMyEvents

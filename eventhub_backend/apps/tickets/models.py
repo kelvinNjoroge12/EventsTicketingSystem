@@ -7,6 +7,87 @@ from common.models import TimeStampedModel
 from apps.events.models import Event
 
 
+class RegistrationCategory(TimeStampedModel):
+    CATEGORY_CHOICES = (
+        ("student", "Student"),
+        ("alumni", "Alumni"),
+        ("guest", "Guest"),
+    )
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="registration_categories")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    label = models.CharField(max_length=100, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    # Fixed field toggles
+    require_student_email = models.BooleanField(default=False)
+    require_admission_number = models.BooleanField(default=False)
+    ask_graduation_year = models.BooleanField(default=False)
+    ask_course = models.BooleanField(default=False)
+    ask_school = models.BooleanField(default=False)
+    ask_location = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("event", "category")
+        ordering = ["sort_order", "category"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.get_category_display()} ({self.event.title})"
+
+
+class RegistrationQuestion(TimeStampedModel):
+    FIELD_TYPE_CHOICES = (
+        ("text", "Text"),
+        ("number", "Number"),
+        ("dropdown", "Dropdown"),
+        ("email", "Email"),
+        ("phone", "Phone"),
+        ("date", "Date"),
+    )
+
+    category = models.ForeignKey(RegistrationCategory, on_delete=models.CASCADE, related_name="questions")
+    label = models.CharField(max_length=255)
+    field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES)
+    is_required = models.BooleanField(default=False)
+    options = models.JSONField(default=list, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "created_at"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.label} ({self.category.get_category_display()})"
+
+
+class School(TimeStampedModel):
+    name = models.CharField(max_length=200, unique=True)
+    code = models.CharField(max_length=50, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.name
+
+
+class Course(TimeStampedModel):
+    school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name="courses")
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=50, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ("school", "name")
+        ordering = ["sort_order", "name"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.name
+
+
 class TicketType(TimeStampedModel):
     TICKET_CLASS_CHOICES = (
         ("free", "Free"),
@@ -17,6 +98,13 @@ class TicketType(TimeStampedModel):
     )
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="ticket_types")
+    registration_category = models.ForeignKey(
+        RegistrationCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ticket_types",
+    )
     name = models.CharField(max_length=100)
     ticket_class = models.CharField(max_length=20, choices=TICKET_CLASS_CHOICES)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -96,4 +184,3 @@ class PromoCode(TimeStampedModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.code} ({self.event.title})"
-

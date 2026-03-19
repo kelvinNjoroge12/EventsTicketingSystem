@@ -3,35 +3,26 @@ import {
   Calendar,
   Users,
   CheckCircle,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
   ArrowRight,
   MapPin,
   Clock,
-  Receipt,
-  Wallet,
+  GraduationCap,
+  Ticket,
+  Award,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  AreaChart,
-  Area,
   PieChart,
   Pie,
   Cell,
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
-const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
-
-const StatCard = ({ title, value, change, changeType, icon: Icon, delay, changeLabel }) => {
+const StatCard = ({ title, value, icon: Icon, delay, subtitle }) => {
   const [animated, setAnimated] = useState(false);
 
   useEffect(() => {
@@ -51,19 +42,7 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, delay, changeL
           <div className="space-y-1 lg:space-y-2">
             <p className="text-xs lg:text-sm text-gray-500">{title}</p>
             <h3 className="text-xl lg:text-2xl font-bold text-[#0F172A]">{value}</h3>
-            <div
-              className={cn(
-                'flex items-center gap-1 text-xs font-medium',
-                changeType === 'positive' && 'text-green-600',
-                changeType === 'negative' && 'text-red-600',
-                changeType === 'neutral' && 'text-gray-400'
-              )}
-            >
-              {changeType === 'positive' && <TrendingUp className="w-3 h-3" />}
-              {changeType === 'negative' && <TrendingDown className="w-3 h-3" />}
-              <span>{change}</span>
-              {changeLabel && <span className="text-gray-400 ml-1 hidden sm:inline">{changeLabel}</span>}
-            </div>
+            {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
           </div>
           <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center group-hover:scale-110 transition-transform">
             <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
@@ -89,56 +68,35 @@ const getStatusColor = (status) => {
   }
 };
 
-const buildCategoryData = (events) => {
-  if (!events || events.length === 0) return [];
-  const counts = events.reduce((acc, event) => {
-    const key = event.category || 'Other';
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-  const entries = Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4);
-  const total = events.length;
-  const colors = ['#02338D', '#7C3AED', '#C58B1A', '#0F4FA8', '#B91C1C'];
+const buildCategoryData = (breakdown = []) => {
+  if (!Array.isArray(breakdown) || breakdown.length === 0) return [];
+  const filtered = breakdown.filter((item) => Number(item.count || 0) > 0);
+  if (filtered.length === 0) return [];
+  const colors = {
+    student: '#02338D',
+    alumni: '#7C3AED',
+    guest: '#C58B1A',
+    uncategorized: '#94A3B8',
+  };
+  const total = filtered.reduce((sum, item) => sum + Number(item.count || 0), 0);
+  if (total <= 0) return [];
 
-  const data = entries.map(([name, count], index) => ({
-    name,
-    value: Math.round((count / total) * 100),
-    color: colors[index % colors.length],
+  return filtered.map((item) => ({
+    name: item.label || item.category || 'Unknown',
+    value: Math.round((Number(item.count || 0) / total) * 100),
+    color: colors[item.category] || '#0F4FA8',
   }));
-
-  const used = entries.reduce((sum, [, count]) => sum + count, 0);
-  if (used < total) {
-    data.push({
-      name: 'Other',
-      value: Math.max(1, Math.round(((total - used) / total) * 100)),
-      color: '#94A3B8',
-    });
-  }
-  return data;
 };
-
-const emptyRevenueSeries = [
-  { name: 'Mon', revenue: 0 },
-  { name: 'Tue', revenue: 0 },
-  { name: 'Wed', revenue: 0 },
-  { name: 'Thu', revenue: 0 },
-  { name: 'Fri', revenue: 0 },
-  { name: 'Sat', revenue: 0 },
-  { name: 'Sun', revenue: 0 },
-];
 
 const OrganizerDashboardOverview = ({
   events,
-  stats,
-  statChanges = {},
+  analytics,
+  isLoading,
+  filters,
+  filterOptions,
+  onFilterChange,
   onEventClick,
   onViewAll,
-  isLoadingStats,
-  revenueSeries,
-  range = 'month',
-  onRangeChange,
 }) => {
   const [mounted, setMounted] = useState(false);
 
@@ -146,78 +104,152 @@ const OrganizerDashboardOverview = ({
     setMounted(true);
   }, []);
 
-  const categoryData = useMemo(() => buildCategoryData(events), [events]);
-  const recentEvents = events.slice(0, 4);
+  const stats = analytics?.kpis || {};
+  const alumniInsights = analytics?.alumni_insights || {};
+  const breakdown = analytics?.category_breakdown || [];
+  const options = filterOptions || {};
 
-  const formatChange = (value) => {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) {
-      return { label: '—', type: 'neutral' };
+  const categoryData = useMemo(() => buildCategoryData(breakdown), [breakdown]);
+
+  const filteredEvents = useMemo(() => {
+    let list = events;
+    if (filters?.eventId) {
+      list = list.filter((eventItem) =>
+        String(eventItem.id) === String(filters.eventId) ||
+        String(eventItem.slug) === String(filters.eventId)
+      );
     }
-    const numeric = Number(value);
-    const rounded = Math.round(numeric);
-    const label = `${numeric >= 0 ? '+' : ''}${rounded}%`;
-    return { label, type: numeric >= 0 ? 'positive' : 'negative' };
-  };
+    if (filters?.location) {
+      const query = String(filters.location).toLowerCase();
+      list = list.filter((eventItem) =>
+        String(eventItem.location || '').toLowerCase().includes(query)
+      );
+    }
+    return list;
+  }, [events, filters?.eventId, filters?.location]);
 
-  const changeLabel = range === 'week' ? 'vs last week' : range === 'year' ? 'vs last year' : 'vs last month';
+  const recentEvents = filteredEvents.slice(0, 4);
+
+  const formatNumber = (value) => Number(value || 0).toLocaleString();
 
   const statsCards = [
     {
       title: 'Total Events',
-      value: isLoadingStats ? '...' : String(stats.totalEvents ?? 0),
-      change: formatChange(statChanges.totalEvents).label,
-      changeType: formatChange(statChanges.totalEvents).type,
+      value: isLoading ? '...' : formatNumber(stats.total_events ?? stats.totalEvents ?? 0),
       icon: Calendar,
     },
     {
-      title: 'Total Guests',
-      value: isLoadingStats ? '...' : Number(stats.totalAttendees ?? 0).toLocaleString(),
-      change: formatChange(statChanges.totalAttendees).label,
-      changeType: formatChange(statChanges.totalAttendees).type,
+      title: 'Total Attendees',
+      value: isLoading ? '...' : formatNumber(stats.total_attendees ?? stats.totalAttendees ?? 0),
       icon: Users,
     },
     {
-      title: 'Total Check-ins',
-      value: isLoadingStats ? '...' : Number(stats.totalCheckins ?? 0).toLocaleString(),
-      change: formatChange(statChanges.totalCheckins).label,
-      changeType: formatChange(statChanges.totalCheckins).type,
+      title: 'Total Alumni',
+      value: isLoading ? '...' : formatNumber(stats.total_alumni ?? stats.totalAlumni ?? 0),
+      icon: Award,
+    },
+    {
+      title: 'Total Students',
+      value: isLoading ? '...' : formatNumber(stats.total_students ?? stats.totalStudents ?? 0),
+      icon: GraduationCap,
+    },
+    {
+      title: 'Total Guests',
+      value: isLoading ? '...' : formatNumber(stats.total_guests ?? stats.totalGuests ?? 0),
+      icon: Ticket,
+    },
+    {
+      title: 'Check-in Rate',
+      value: isLoading ? '...' : `${stats.checkin_percent ?? stats.checkinPercent ?? 0}%`,
       icon: CheckCircle,
-    },
-    {
-      title: 'Revenue',
-      value: isLoadingStats ? '...' : formatMoney(stats.totalRevenue ?? 0),
-      change: formatChange(statChanges.totalRevenue).label,
-      changeType: formatChange(statChanges.totalRevenue).type,
-      icon: DollarSign,
-    },
-    {
-      title: 'Expenses',
-      value: isLoadingStats ? '...' : formatMoney(stats.totalExpenses ?? 0),
-      change: formatChange(statChanges.totalExpenses).label,
-      changeType: formatChange(statChanges.totalExpenses).type,
-      icon: Receipt,
-    },
-    {
-      title: 'Net Profit',
-      value: isLoadingStats ? '...' : formatMoney(stats.netProfit ?? 0),
-      change: formatChange(statChanges.netProfit).label,
-      changeType: formatChange(statChanges.netProfit).type,
-      icon: Wallet,
     },
   ];
 
-  const chartData = revenueSeries && revenueSeries.length > 0 ? revenueSeries : emptyRevenueSeries;
+  const alumniRegistration = alumniInsights.registration_vs_attendance || {};
+  const alumniPercent = Number(alumniRegistration.percent || 0);
+  const topClass = alumniInsights.most_engaged_class;
+  const topYears = alumniInsights.top_graduation_years || [];
+  const mostActiveAlumni = alumniInsights.most_active_alumni || [];
+
+  const handleFilter = (field) => (event) => {
+    if (!onFilterChange) return;
+    onFilterChange(field, event.target.value);
+  };
 
   return (
     <div className="space-y-4 lg:space-y-6">
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] p-6 lg:p-8 text-white">
         <div className="relative z-10">
           <h2 className="text-xl lg:text-2xl font-bold mb-1">Welcome back!</h2>
-          <p className="text-white/70 text-sm lg:text-base">Here is what is happening with your events today.</p>
+          <p className="text-white/70 text-sm lg:text-base">Here is a snapshot of your attendee analytics.</p>
         </div>
         <div className="absolute top-0 right-0 w-48 lg:w-64 h-48 lg:h-64 bg-[#C58B1A]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-1/2 w-24 lg:w-32 h-24 lg:h-32 bg-white/5 rounded-full translate-y-1/2" />
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Analytics Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">My Event</label>
+              <select
+                value={filters?.eventId || ''}
+                onChange={handleFilter('eventId')}
+                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+              >
+                <option value="">All Events</option>
+                {events.map((eventItem) => (
+                  <option key={eventItem.id} value={eventItem.id}>{eventItem.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Graduation Year</label>
+              <select
+                value={filters?.graduationYear || ''}
+                onChange={handleFilter('graduationYear')}
+                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+              >
+                <option value="">All Years</option>
+                {(options.graduation_years || []).map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
+              <select
+                value={filters?.courseId || ''}
+                onChange={handleFilter('courseId')}
+                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+              >
+                <option value="">All Courses</option>
+                {(options.courses || []).map((course) => (
+                  <option key={course.course_id || course.id} value={course.course_id || course.id}>
+                    {course.course__name || course.name || 'Course'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
+              <select
+                value={filters?.location || ''}
+                onChange={handleFilter('location')}
+                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+              >
+                <option value="">All Locations</option>
+                {(options.locations || []).map((loc) => (
+                  <option key={loc.label} value={loc.label}>{loc.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-6">
         {statsCards.map((stat, index) => (
@@ -225,80 +257,21 @@ const OrganizerDashboardOverview = ({
             key={stat.title}
             {...stat}
             delay={index * 100}
-            changeLabel={stat.changeType === 'neutral' ? '' : changeLabel}
           />
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Revenue Overview</CardTitle>
-            <div className="flex gap-1 lg:gap-2">
-              {['week', 'month', 'year'].map((option) => (
-                <Button
-                  key={option}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onRangeChange && onRangeChange(option)}
-                  className={cn(
-                    'text-xs h-7 lg:h-8 capitalize',
-                    range === option && 'bg-[#C58B1A] text-white border-[#C58B1A]'
-                  )}
-                >
-                  {option}
-                </Button>
-              ))}
-            </div>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Attendees by Category</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-48 lg:h-64">
               {mounted && (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#C58B1A" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#C58B1A" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="name" stroke="#999" fontSize={12} />
-                    <YAxis stroke="#999" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                      }}
-                      formatter={(value) => formatMoney(value)}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#C58B1A"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorRevenue)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Events by Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-40 lg:h-48">
-              {mounted && (
-                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={4} dataKey="value">
+                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={35} outerRadius={70} paddingAngle={4} dataKey="value">
                       {categoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -319,9 +292,68 @@ const OrganizerDashboardOverview = ({
                 </div>
               ))}
               {categoryData.length === 0 && (
-                <p className="text-sm text-gray-500">No categories yet.</p>
+                <p className="text-sm text-gray-500">No attendee data yet.</p>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Alumni Insights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Events with alumni</span>
+              <span className="font-semibold text-[#0F172A]">{formatNumber(alumniInsights.events_with_alumni || 0)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Most engaged class</span>
+              <span className="font-semibold text-[#0F172A]">
+                {topClass?.year ? `${topClass.year} (${formatNumber(topClass.count)})` : 'N/A'}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Registration vs attendance</span>
+                <span className="font-semibold text-[#0F172A]">{alumniPercent}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#C58B1A] rounded-full"
+                  style={{ width: `${Math.min(100, Math.max(0, alumniPercent))}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-400">
+                {formatNumber(alumniRegistration.registered || 0)} registered, {formatNumber(alumniRegistration.checked_in || 0)} checked in
+              </div>
+            </div>
+            {topYears.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1">Top graduation years</p>
+                <div className="space-y-1">
+                  {topYears.map((item) => (
+                    <div key={item.year} className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">{item.year}</span>
+                      <span className="font-medium text-[#0F172A]">{formatNumber(item.count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {mostActiveAlumni.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1">Most active alumni</p>
+                <div className="space-y-1">
+                  {mostActiveAlumni.map((alumni) => (
+                    <div key={alumni.email} className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600 truncate max-w-[140px]">{alumni.email}</span>
+                      <span className="font-medium text-[#0F172A]">{alumni.events} events</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -347,8 +379,7 @@ const OrganizerDashboardOverview = ({
                   <th className="text-left py-2 lg:py-3 px-3 lg:px-4 text-xs font-medium text-gray-500 hidden sm:table-cell">Date</th>
                   <th className="text-left py-2 lg:py-3 px-3 lg:px-4 text-xs font-medium text-gray-500 hidden md:table-cell">Location</th>
                   <th className="text-left py-2 lg:py-3 px-3 lg:px-4 text-xs font-medium text-gray-500">Status</th>
-                  <th className="text-left py-2 lg:py-3 px-3 lg:px-4 text-xs font-medium text-gray-500 hidden sm:table-cell">Tickets</th>
-                  <th className="text-left py-2 lg:py-3 px-3 lg:px-4 text-xs font-medium text-gray-500">Revenue</th>
+                  <th className="text-left py-2 lg:py-3 px-3 lg:px-4 text-xs font-medium text-gray-500 hidden sm:table-cell">Attendees</th>
                 </tr>
               </thead>
               <tbody>
@@ -381,7 +412,7 @@ const OrganizerDashboardOverview = ({
                         <span className="text-xs lg:text-sm text-gray-700">{event.date}</span>
                         <span className="text-xs text-gray-400 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {event.time || '—'}
+                          {event.time || '-'}
                         </span>
                       </div>
                     </td>
@@ -397,7 +428,7 @@ const OrganizerDashboardOverview = ({
                     <td className="py-2 lg:py-4 px-3 lg:px-4 hidden sm:table-cell">
                       <div className="flex items-center gap-2">
                         <span className="text-xs lg:text-sm font-medium text-[#0F172A]">
-                          {event.ticketsSold}/{event.totalTickets || 0}
+                          {event.ticketsSold || 0}
                         </span>
                         <div className="w-12 lg:w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
@@ -409,16 +440,11 @@ const OrganizerDashboardOverview = ({
                         </div>
                       </div>
                     </td>
-                    <td className="py-2 lg:py-4 px-3 lg:px-4">
-                      <span className="text-xs lg:text-sm font-medium text-[#0F172A]">
-                        {formatMoney(event.revenue)}
-                      </span>
-                    </td>
                   </tr>
                 ))}
                 {recentEvents.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-sm text-gray-500">
+                    <td colSpan={5} className="py-6 text-center text-sm text-gray-500">
                       No events yet.
                     </td>
                   </tr>
@@ -433,4 +459,3 @@ const OrganizerDashboardOverview = ({
 };
 
 export default OrganizerDashboardOverview;
-

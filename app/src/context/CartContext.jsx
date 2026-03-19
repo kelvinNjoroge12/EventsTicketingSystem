@@ -48,7 +48,7 @@ export const CartProvider = ({ children }) => {
     setCart(prev => {
       // If cart is for a different event, start fresh
       if (prev && prev.eventSlug !== item.eventSlug) {
-        return buildCart(item.eventSlug, item.eventTitle, item.themeColor, item.accentColor, [item]);
+        return buildCart(item.eventSlug, item.eventTitle, item.themeColor, item.accentColor, [item], null, 0, null, {});
       }
 
       // Existing cart for same event — merge items
@@ -68,7 +68,11 @@ export const CartProvider = ({ children }) => {
         item.eventTitle,
         item.themeColor || prev?.themeColor,
         item.accentColor || prev?.accentColor,
-        existingItems
+        existingItems,
+        prev?.promoCode,
+        prev?.promoDiscountValue ?? 0,
+        prev?.promoDiscountType ?? null,
+        { registration: prev?.registration || null }
       );
     });
   }, []);
@@ -76,8 +80,8 @@ export const CartProvider = ({ children }) => {
   /**
    * addMultipleToCart replaces all items at once (used by the new TicketBox).
    */
-  const addMultipleToCart = useCallback((eventSlug, eventTitle, themeColor, accentColor, items) => {
-    setCart(buildCart(eventSlug, eventTitle, themeColor, accentColor, items));
+  const addMultipleToCart = useCallback((eventSlug, eventTitle, themeColor, accentColor, items, meta = {}) => {
+    setCart(buildCart(eventSlug, eventTitle, themeColor, accentColor, items, null, 0, null, meta));
   }, []);
 
   const clearCart = useCallback(() => {
@@ -95,7 +99,7 @@ export const CartProvider = ({ children }) => {
       // Store the promo parameters so buildCart can recalculate on quantity changes
       return buildCart(
         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
-        prev.items, code, discountValue, discountType
+        prev.items, code, discountValue, discountType, { registration: prev.registration || null }
       );
     });
   }, []);
@@ -105,7 +109,7 @@ export const CartProvider = ({ children }) => {
       if (!prev) return null;
       return buildCart(
         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
-        prev.items, null, 0, null
+        prev.items, null, 0, null, { registration: prev.registration || null }
       );
     });
   }, []);
@@ -117,7 +121,7 @@ export const CartProvider = ({ children }) => {
       if (newItems.length === 0) return null;
       return buildCart(
         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
-        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null
+        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null, { registration: prev.registration || null }
       );
     });
   }, []);
@@ -130,7 +134,7 @@ export const CartProvider = ({ children }) => {
       );
       return buildCart(
         prev.eventSlug, prev.eventTitle, prev.themeColor, prev.accentColor,
-        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null
+        newItems, prev.promoCode, prev.promoDiscountValue ?? 0, prev.promoDiscountType ?? null, { registration: prev.registration || null }
       );
     });
   }, []);
@@ -170,7 +174,7 @@ export const CartProvider = ({ children }) => {
 /**
  * Build a normalized cart object from items array.
  */
-function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoCode = null, promoDiscountValue = 0, promoDiscountType = null) {
+function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoCode = null, promoDiscountValue = 0, promoDiscountType = null, meta = {}) {
   const subtotalCents = items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.quantity, 0);
 
   // Recalculate discount from original promo parameters (not a stale flat amount)
@@ -190,6 +194,7 @@ function buildCart(eventSlug, eventTitle, themeColor, accentColor, items, promoC
     themeColor,
     accentColor,
     items, // Array of { ticketTypeId, ticketType, quantity, unitPrice }
+    registration: meta.registration || null,
     promoCode,
     promoDiscountValue,   // Store original value so recalculation works on quantity change
     promoDiscountType,    // 'percent' | 'fixed' | null

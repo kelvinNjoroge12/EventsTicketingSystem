@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, User } from 'lucide-react';
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
+import { api } from '../../lib/apiClient';
 
 const AttendeeForm = ({
   event,
@@ -25,6 +26,28 @@ const AttendeeForm = ({
   );
   const [showAdditional, setShowAdditional] = useState(true);
   const [errors, setErrors] = useState({});
+  const registration = cart?.registration || null;
+  const fixedFields = registration?.fixedFields || {};
+  const questions = Array.isArray(registration?.questions) ? registration.questions : [];
+
+  const [registrationData, setRegistrationData] = useState({
+    graduationYear: '',
+    courseId: '',
+    schoolId: '',
+    admissionNumber: '',
+    studentEmail: '',
+    locationText: '',
+    locationCity: '',
+    locationCountry: '',
+    locationLat: null,
+    locationLng: null,
+    answers: {},
+  });
+
+  const [schools, setSchools] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [isLocationLoading, setIsLocationLoading] = useState(false);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -44,6 +67,43 @@ const AttendeeForm = ({
     }
   };
 
+  useEffect(() => {
+    if (!fixedFields.askSchool) return;
+    api.get('/api/academics/schools/')
+      .then((data) => setSchools(Array.isArray(data) ? data : []))
+      .catch(() => setSchools([]));
+  }, [fixedFields.askSchool]);
+
+  useEffect(() => {
+    if (!fixedFields.askCourse) return;
+    const query = registrationData.schoolId ? `?school=${registrationData.schoolId}` : '';
+    api.get(`/api/academics/courses/${query}`)
+      .then((data) => setCourses(Array.isArray(data) ? data : []))
+      .catch(() => setCourses([]));
+  }, [fixedFields.askCourse, registrationData.schoolId]);
+
+  useEffect(() => {
+    if (!fixedFields.askLocation) return;
+    const q = registrationData.locationText.trim();
+    if (!q) {
+      setLocationSuggestions([]);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      setIsLocationLoading(true);
+      try {
+        const res = await api.get(`/api/locations/search/?q=${encodeURIComponent(q)}`);
+        const results = res?.results || res || [];
+        setLocationSuggestions(Array.isArray(results) ? results : []);
+      } catch {
+        setLocationSuggestions([]);
+      } finally {
+        setIsLocationLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [fixedFields.askLocation, registrationData.locationText]);
+
   const validate = () => {
     const newErrors = {};
 
@@ -60,6 +120,36 @@ const AttendeeForm = ({
     }
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
+    }
+
+    if (registration) {
+      if (fixedFields.requireStudentEmail) {
+        if (!registrationData.studentEmail.trim()) {
+          newErrors.studentEmail = 'Student email is required';
+        } else if (!registrationData.studentEmail.toLowerCase().endsWith('@strathmore.edu')) {
+          newErrors.studentEmail = 'Student email must be a @strathmore.edu address';
+        }
+      }
+      if (fixedFields.requireAdmissionNumber && !registrationData.admissionNumber.trim()) {
+        newErrors.admissionNumber = 'Admission number is required';
+      }
+      if (fixedFields.askGraduationYear && !registrationData.graduationYear) {
+        newErrors.graduationYear = 'Graduation year is required';
+      }
+      if (fixedFields.askSchool && !registrationData.schoolId) {
+        newErrors.schoolId = 'School is required';
+      }
+      if (fixedFields.askCourse && !registrationData.courseId) {
+        newErrors.courseId = 'Course is required';
+      }
+      if (fixedFields.askLocation && !registrationData.locationText.trim()) {
+        newErrors.locationText = 'Location is required';
+      }
+      questions.forEach((q) => {
+        if (q.is_required && !registrationData.answers[q.id]) {
+          newErrors[`question_${q.id}`] = `${q.label} is required`;
+        }
+      });
     }
 
     additionalAttendees.forEach((attendee, index) => {
@@ -86,6 +176,25 @@ const AttendeeForm = ({
       onSubmit({
         ...formData,
         additionalAttendees: cart.quantity > 1 ? additionalAttendees : [],
+        registration: registration ? {
+          category_id: registration.categoryId ?? registration.category_id ?? null,
+          category_type: registration.categoryType ?? registration.category_type ?? '',
+          category_label: registration.categoryLabel ?? registration.category_label ?? '',
+          graduation_year: registrationData.graduationYear || null,
+          course_id: registrationData.courseId || null,
+          school_id: registrationData.schoolId || null,
+          admission_number: registrationData.admissionNumber || '',
+          student_email: registrationData.studentEmail || '',
+          location_text: registrationData.locationText || '',
+          location_city: registrationData.locationCity || '',
+          location_country: registrationData.locationCountry || '',
+          location_lat: registrationData.locationLat,
+          location_lng: registrationData.locationLng,
+          answers: questions.map((q) => ({
+            question_id: q.id,
+            value: registrationData.answers[q.id] || '',
+          })),
+        } : null,
       });
     }
   };
@@ -145,6 +254,165 @@ const AttendeeForm = ({
           required
         />
       </div>
+
+      {/* Category-Specific Registration */}
+      {registration && (
+        <div className="space-y-4 p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-[#0F172A]">Registration Details</p>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white border border-[#E2E8F0] text-[#64748B]">
+              {registration.categoryLabel || registration.category_label}
+            </span>
+          </div>
+
+          {fixedFields.requireStudentEmail && (
+            <CustomInput
+              label="Student Email"
+              type="email"
+              value={registrationData.studentEmail}
+              onChange={(e) => setRegistrationData((prev) => ({ ...prev, studentEmail: e.target.value }))}
+              error={errors.studentEmail}
+              placeholder="name@strathmore.edu"
+              required
+            />
+          )}
+
+          {fixedFields.requireAdmissionNumber && (
+            <CustomInput
+              label="Admission Number"
+              value={registrationData.admissionNumber}
+              onChange={(e) => setRegistrationData((prev) => ({ ...prev, admissionNumber: e.target.value }))}
+              error={errors.admissionNumber}
+              required
+            />
+          )}
+
+          {fixedFields.askGraduationYear && (
+            <CustomInput
+              label="Graduation Year"
+              type="number"
+              value={registrationData.graduationYear}
+              onChange={(e) => setRegistrationData((prev) => ({ ...prev, graduationYear: e.target.value }))}
+              error={errors.graduationYear}
+              placeholder="e.g. 2026"
+              required
+            />
+          )}
+
+          {fixedFields.askSchool && (
+            <div>
+              <label className="block text-sm font-medium text-[#0F172A] mb-2">School</label>
+              <select
+                value={registrationData.schoolId}
+                onChange={(e) => setRegistrationData((prev) => ({ ...prev, schoolId: e.target.value }))}
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.schoolId ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
+              >
+                <option value="">Select a school</option>
+                {schools.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              {errors.schoolId && <p className="mt-1.5 text-sm text-[#DC2626]">{errors.schoolId}</p>}
+            </div>
+          )}
+
+          {fixedFields.askCourse && (
+            <div>
+              <label className="block text-sm font-medium text-[#0F172A] mb-2">Course</label>
+              <select
+                value={registrationData.courseId}
+                onChange={(e) => setRegistrationData((prev) => ({ ...prev, courseId: e.target.value }))}
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.courseId ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
+              >
+                <option value="">Select a course</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {errors.courseId && <p className="mt-1.5 text-sm text-[#DC2626]">{errors.courseId}</p>}
+            </div>
+          )}
+
+          {fixedFields.askLocation && (
+            <div className="relative">
+              <CustomInput
+                label="Location"
+                value={registrationData.locationText}
+                onChange={(e) => setRegistrationData((prev) => ({ ...prev, locationText: e.target.value }))}
+                error={errors.locationText}
+                placeholder="Start typing your location..."
+                required
+              />
+              {locationSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E2E8F0] rounded-lg shadow-lg z-10 max-h-48 overflow-auto">
+                  {locationSuggestions.map((item, idx) => (
+                    <button
+                      type="button"
+                      key={`${item.label}-${idx}`}
+                      onClick={() => {
+                        setRegistrationData((prev) => ({
+                          ...prev,
+                          locationText: item.label || '',
+                          locationCity: item.city || '',
+                          locationCountry: item.country || '',
+                          locationLat: item.lat ?? null,
+                          locationLng: item.lng ?? null,
+                        }));
+                        setLocationSuggestions([]);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#F8FAFC]"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {isLocationLoading && (
+                <p className="text-xs text-[#94A3B8] mt-1">Searching locations...</p>
+              )}
+            </div>
+          )}
+
+          {questions.length > 0 && (
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-[#0F172A]">Additional Questions</p>
+              {questions.map((q) => (
+                <div key={q.id}>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">{q.label}</label>
+                  {q.field_type === 'dropdown' ? (
+                    <select
+                      value={registrationData.answers[q.id] || ''}
+                      onChange={(e) => setRegistrationData((prev) => ({
+                        ...prev,
+                        answers: { ...prev.answers, [q.id]: e.target.value },
+                      }))}
+                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors[`question_${q.id}`] ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
+                    >
+                      <option value="">Select an option</option>
+                      {(q.options || []).map((opt, idx) => (
+                        <option key={`${q.id}-${idx}`} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={q.field_type === 'number' ? 'number' : q.field_type === 'email' ? 'email' : q.field_type === 'phone' ? 'tel' : q.field_type === 'date' ? 'date' : 'text'}
+                      value={registrationData.answers[q.id] || ''}
+                      onChange={(e) => setRegistrationData((prev) => ({
+                        ...prev,
+                        answers: { ...prev.answers, [q.id]: e.target.value },
+                      }))}
+                      className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors[`question_${q.id}`] ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
+                    />
+                  )}
+                  {errors[`question_${q.id}`] && (
+                    <p className="mt-1.5 text-sm text-[#DC2626]">{errors[`question_${q.id}`]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Additional Attendees */}
       {cart.quantity > 1 && (

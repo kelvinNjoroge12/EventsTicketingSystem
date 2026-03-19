@@ -3,7 +3,9 @@ from __future__ import annotations
 import csv
 import logging
 
-from django.db.models import Count, Sum
+import uuid
+
+from django.db.models import Count, Sum, Q
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import permissions, status, throttling
@@ -13,7 +15,7 @@ from rest_framework.views import APIView
 from rest_framework import generics
 
 from apps.events.models import Event
-from apps.orders.models import Order, Ticket
+from apps.orders.models import Order, Ticket, OrderRegistration
 from apps.checkin.models import CheckIn
 from .models import EventView, DailyEventStats
 
@@ -197,3 +199,213 @@ class EventAnalyticsExportView(APIView):
             ])
 
         return response
+
+
+def _safe_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_uuid(value):
+    try:
+        return uuid.UUID(str(value))
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+class OrganizerAnalyticsDashboardView(APIView):
+    """
+    GET /api/analytics/organizer/summary/
+    Organizer-only analytics across their events with optional filters.
+    Query params: event_id, event_slug, graduation_year, course_id, location, category.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ("organizer", "admin") and not request.user.is_staff:
+            raise PermissionDenied("Only organizers can view analytics.")
+
+        event_id = request.query_params.get("event_id") or request.query_params.get("event")
+        event_slug = request.query_params.get("event_slug")
+        graduation_year = _safe_int(request.query_params.get("graduation_year"))
+        course_id = _safe_uuid(request.query_params.get("course_id") or request.query_params.get("course"))
+        location = (request.query_params.get("location") or "").strip()
+        category = (request.query_params.get("category") or "").strip().lower()
+
+        events_qs = Event.objects.filter(organizer=request.user)
+        if event_id:
+            events_qs = events_qs.filter(id=event_id)
+        if event_slug:
+            events_qs = events_qs.filter(slug=event_slug)
+        if location:
+            parts = [p.strip() for p in location.split(",") if p.strip()]
+            location_query = Q()
+            for part in parts or [location]:
+                location_query |= Q(city__icontains=part) | Q(country__icontains=part) | Q(venue_name__icontains=part)
+            events_qs = events_qs.filter(location_query)
+
+        event_ids = list(events_qs.values_list("id", flat=True))
+        if not event_ids:
+            return Response({
+                "kpis": {
+                    "total_events": 0,
+                    "total_attendees": 0,
+                    "total_students": 0,
+                    "total_alumni": 0,
+                    "total_guests": 0,
+                    "total_uncategorized": 0,
+                    "total_checkins": 0,
+                    "checkin_percent": 0,
+                },
+                "category_breakdown": [],
+                "alumni_insights": {
+                    "total_alumni": 0,
+                    "events_with_alumni": 0,
+                    "most_engaged_class": None,
+                    "top_graduation_years": [],
+                    "most_active_alumni": [],
+                    "registration_vs_attendance": {
+                        "registered": 0,
+                        "checked_in": 0,
+                        "percent": 0,
+                    },
+                },
+                "filters": {
+                    "graduation_years": [],
+                    "courses": [],
+                    "locations": [],
+                },
+            })
+
+        tickets_qs = Ticket.objects.filter(event_id__in=event_ids).exclude(status__in=["cancelled", "refunded"])
+
+        reg_filters = {}
+        if graduation_year is not None:
+            reg_filters["order__registration__graduation_year"] = graduation_year
+        if course_id:
+            reg_filters["order__registration__course_id"] = course_id
+        if category in ("student", "alumni", "guest"):
+            reg_filters["order__registration__category"] = category
+
+        if reg_filters:
+            tickets_qs = tickets_qs.filter(**reg_filters)
+
+        total_attendees = tickets_qs.count()
+        total_checkins = CheckIn.objects.filter(ticket__in=tickets_qs).count()
+        checkin_percent = round((total_checkins / total_attendees) * 100, 1) if total_attendees else 0
+
+        # Category counts
+        counts = {
+            "student": 0,
+            "alumni": 0,
+            "guest": 0,
+            "uncategorized": 0,
+        }
+        for row in tickets_qs.values("order__registration__category").annotate(count=Count("id")):
+            key = row["order__registration__category"] or "uncategorized"
+            if key not in counts:
+                key = "uncategorized"
+            counts[key] = row["count"]
+
+        # Events count respects attendee filters when applied
+        if reg_filters:
+            filtered_event_ids = tickets_qs.values_list("event_id", flat=True).distinct()
+            total_events = filtered_event_ids.count()
+        else:
+            total_events = events_qs.count()
+
+        # Alumni-specific insights
+        alumni_tickets = tickets_qs.filter(order__registration__category="alumni")
+        alumni_registered = alumni_tickets.count()
+        alumni_checkins = CheckIn.objects.filter(ticket__in=alumni_tickets).count()
+        alumni_checkin_percent = round((alumni_checkins / alumni_registered) * 100, 1) if alumni_registered else 0
+
+        alumni_years_qs = (
+            alumni_tickets.exclude(order__registration__graduation_year__isnull=True)
+            .values("order__registration__graduation_year")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+        top_years = [
+            {"year": row["order__registration__graduation_year"], "count": row["count"]}
+            for row in alumni_years_qs[:5]
+        ]
+        most_engaged_class = top_years[0] if top_years else None
+
+        alumni_activity = (
+            alumni_tickets.values("order__attendee_email")
+            .annotate(events=Count("event_id", distinct=True), tickets=Count("id"))
+            .order_by("-events", "-tickets")
+        )
+        most_active_alumni = [
+            {
+                "email": row["order__attendee_email"],
+                "events": row["events"],
+                "tickets": row["tickets"],
+            }
+            for row in alumni_activity[:5]
+            if row.get("order__attendee_email")
+        ]
+
+        events_with_alumni = alumni_tickets.values("event_id").distinct().count()
+
+        # Filter options (based on organizer events + registrations)
+        reg_base = OrderRegistration.objects.filter(order__event_id__in=event_ids)
+        graduation_years = list(
+            reg_base.exclude(graduation_year__isnull=True)
+            .values_list("graduation_year", flat=True)
+            .distinct()
+            .order_by("-graduation_year")
+        )
+        courses = list(
+            reg_base.exclude(course__isnull=True)
+            .values("course_id", "course__name")
+            .distinct()
+            .order_by("course__name")
+        )
+        locations = []
+        for row in events_qs.values("city", "country").distinct():
+            city = (row.get("city") or "").strip()
+            country = (row.get("country") or "").strip()
+            label = ", ".join(part for part in [city, country] if part)
+            if label:
+                locations.append({"label": label, "city": city, "country": country})
+
+        return Response({
+            "kpis": {
+                "total_events": total_events,
+                "total_attendees": total_attendees,
+                "total_students": counts["student"],
+                "total_alumni": counts["alumni"],
+                "total_guests": counts["guest"],
+                "total_uncategorized": counts["uncategorized"],
+                "total_checkins": total_checkins,
+                "checkin_percent": checkin_percent,
+            },
+            "category_breakdown": [
+                {"category": "student", "label": "Students", "count": counts["student"]},
+                {"category": "alumni", "label": "Alumni", "count": counts["alumni"]},
+                {"category": "guest", "label": "Guests", "count": counts["guest"]},
+                {"category": "uncategorized", "label": "Uncategorized", "count": counts["uncategorized"]},
+            ],
+            "alumni_insights": {
+                "total_alumni": counts["alumni"],
+                "events_with_alumni": events_with_alumni,
+                "most_engaged_class": most_engaged_class,
+                "top_graduation_years": top_years,
+                "most_active_alumni": most_active_alumni,
+                "registration_vs_attendance": {
+                    "registered": alumni_registered,
+                    "checked_in": alumni_checkins,
+                    "percent": alumni_checkin_percent,
+                },
+            },
+            "filters": {
+                "graduation_years": graduation_years,
+                "courses": courses,
+                "locations": locations,
+            },
+        })

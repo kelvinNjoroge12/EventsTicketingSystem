@@ -164,6 +164,9 @@ export const mapDetailEvent = (e) => {
         ticket_class: t.ticket_class,
         isSoldOut: t.is_sold_out || false,
         isAlmostSoldOut: t.is_almost_sold_out || false,
+        registration_category: t.registration_category || null,
+        registration_category_type: t.registration_category_type || null,
+        registration_category_label: t.registration_category_label || null,
       })) || [],
     promoCodes: e.promo_codes || [],
     enableWaitlist: e.enable_waitlist ?? false,
@@ -190,6 +193,11 @@ export const mapDetailEvent = (e) => {
       totalAttendees: e.organizer?.total_attendees || 0,
       bio: e.organizer?.organization_name || e.organizer?.bio || "",
     },
+    registrationCategories: Array.isArray(e.registration_categories)
+      ? e.registration_categories
+      : Array.isArray(e.registrationCategories)
+        ? e.registrationCategories
+        : [],
   };
 };
 

@@ -5,17 +5,28 @@ from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
 from apps.events.models import Event
-from .models import PromoCode, TicketType
+from django.conf import settings
+from django.db import transaction
+from .models import PromoCode, TicketType, RegistrationCategory, RegistrationQuestion, School, Course
 from .serializers import (
     PromoCodeSerializer,
     PromoCodeValidateSerializer,
     TicketTypeCreateSerializer,
     TicketTypeSerializer,
+    RegistrationCategorySerializer,
+    RegistrationCategoryWriteSerializer,
+    SchoolSerializer,
+    CourseSerializer,
 )
+import csv
+import io
+import requests
 
 
 class EventTicketTypesView(generics.ListAPIView):
@@ -34,6 +45,9 @@ class TicketTypeCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+        reg_category = serializer.validated_data.get("registration_category")
+        if reg_category and reg_category.event_id != event.id:
+            raise ValidationError({"registration_category": "Category does not belong to this event."})
         serializer.save(event=event)
 
 
@@ -46,6 +60,298 @@ class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.ticket_types.all()
+
+    def perform_update(self, serializer):
+        event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+        reg_category = serializer.validated_data.get("registration_category")
+        if reg_category and reg_category.event_id != event.id:
+            raise ValidationError({"registration_category": "Category does not belong to this event."})
+        serializer.save()
+
+
+class EventRegistrationSetupView(APIView):
+    """
+    Organizer-only: configure registration categories + questions for an event.
+    GET returns all categories (active + inactive) with questions.
+    POST upserts categories + nested questions.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
+
+    def get(self, request, slug):
+        event = get_object_or_404(Event, slug=slug, organizer=request.user)
+        categories = event.registration_categories.prefetch_related("questions").all().order_by("sort_order")
+        data = RegistrationCategorySerializer(categories, many=True).data
+        return Response({"categories": data}, status=status.HTTP_200_OK)
+
+    def post(self, request, slug):
+        event = get_object_or_404(Event, slug=slug, organizer=request.user)
+        payload = request.data or {}
+        categories_data = payload.get("categories", [])
+        if not isinstance(categories_data, list):
+            raise ValidationError({"categories": "Expected a list of categories."})
+
+        # Map existing categories by id and by type for upsert
+        existing = {str(c.id): c for c in event.registration_categories.all()}
+        existing_by_type = {c.category: c for c in event.registration_categories.all()}
+
+        saved = []
+        with transaction.atomic():
+            for cat in categories_data:
+                serializer = RegistrationCategoryWriteSerializer(data=cat)
+                serializer.is_valid(raise_exception=True)
+                validated = serializer.validated_data
+
+                category_type = validated.get("category")
+                if not category_type:
+                    raise ValidationError({"category": "Category type is required."})
+
+                # Force label for student/alumni to default values
+                if category_type in ["student", "alumni"]:
+                    validated["label"] = "Student" if category_type == "student" else "Alumni"
+                    if category_type == "student":
+                        validated["require_student_email"] = True
+                        validated["require_admission_number"] = True
+                else:
+                    # Guest label fallback
+                    if not validated.get("label"):
+                        validated["label"] = "Guest"
+
+                category_id = cat.get("id")
+                instance = existing.get(str(category_id)) if category_id else existing_by_type.get(category_type)
+                if instance:
+                    for field, value in validated.items():
+                        if field == "questions":
+                            continue
+                        setattr(instance, field, value)
+                    instance.event = event
+                    instance.save()
+                else:
+                    instance = RegistrationCategory.objects.create(event=event, **{
+                        k: v for k, v in validated.items() if k != "questions"
+                    })
+
+                # Upsert questions
+                questions_data = validated.get("questions", [])
+                existing_questions = {str(q.id): q for q in instance.questions.all()}
+                incoming_ids = {str(q.get("id")) for q in questions_data if q.get("id")}
+                for q in questions_data:
+                    q_id = q.get("id")
+                    q_instance = existing_questions.get(str(q_id)) if q_id else None
+                    if q_instance:
+                        for field, value in q.items():
+                            if field == "id":
+                                continue
+                            setattr(q_instance, field, value)
+                        q_instance.save()
+                    else:
+                        RegistrationQuestion.objects.create(
+                            category=instance,
+                            label=q.get("label", ""),
+                            field_type=q.get("field_type", "text"),
+                            is_required=bool(q.get("is_required", False)),
+                            options=q.get("options") or [],
+                            sort_order=int(q.get("sort_order") or 0),
+                        )
+
+                # Delete removed questions
+                if questions_data is not None:
+                    if incoming_ids:
+                        for qid, qobj in existing_questions.items():
+                            if qid not in incoming_ids:
+                                qobj.delete()
+                    else:
+                        # If no questions sent, remove all existing
+                        for qobj in existing_questions.values():
+                            qobj.delete()
+
+                saved.append(instance)
+
+        data = RegistrationCategorySerializer(saved, many=True).data
+        return Response({"categories": data}, status=status.HTTP_200_OK)
+
+
+class EventRegistrationPublicView(generics.ListAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = RegistrationCategorySerializer
+
+    def get_queryset(self):
+        slug = self.kwargs["slug"]
+        event = get_object_or_404(Event, slug=slug, status="published")
+        return event.registration_categories.filter(is_active=True).prefetch_related("questions").order_by("sort_order")
+
+
+class SchoolListView(generics.ListCreateAPIView):
+    serializer_class = SchoolSerializer
+    queryset = School.objects.all().order_by("sort_order", "name")
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsOrganizerRole()]
+
+
+class CourseListView(generics.ListCreateAPIView):
+    serializer_class = CourseSerializer
+
+    def get_queryset(self):
+        qs = Course.objects.select_related("school").all().order_by("sort_order", "name")
+        school_id = self.request.query_params.get("school")
+        if school_id:
+            qs = qs.filter(school_id=school_id)
+        return qs
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsOrganizerRole()]
+
+
+class SchoolUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
+
+    def post(self, request):
+        file = request.FILES.get("file")
+        if not file:
+            raise ValidationError({"file": "Upload file is required."})
+
+        name_map = {}
+        created = 0
+
+        # CSV fallback
+        if file.name.lower().endswith(".csv"):
+            content = file.read().decode("utf-8")
+            reader = csv.DictReader(io.StringIO(content))
+            for row in reader:
+                name = (row.get("name") or row.get("Name") or "").strip()
+                if not name:
+                    continue
+                code = (row.get("code") or row.get("Code") or "").strip()
+                name_map[name.lower()] = code
+        else:
+            # XLSX (requires openpyxl)
+            try:
+                import openpyxl
+            except Exception:
+                raise ValidationError({"file": "Excel upload requires openpyxl."})
+            wb = openpyxl.load_workbook(file)
+            ws = wb.active
+            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
+            for row in ws.iter_rows(min_row=2):
+                data = {headers[i].lower(): (row[i].value or "") for i in range(len(headers))}
+                name = str(data.get("name", "")).strip()
+                if not name:
+                    continue
+                code = str(data.get("code", "")).strip()
+                name_map[name.lower()] = code
+
+        for name_lower, code in name_map.items():
+            name = name_lower.title()
+            obj = School.objects.filter(name__iexact=name).first()
+            if not obj:
+                obj = School.objects.create(name=name, code=code)
+                created += 1
+            elif code and not obj.code:
+                obj.code = code
+                obj.save(update_fields=["code"])
+
+        return Response({"created": created, "total": len(name_map)}, status=status.HTTP_200_OK)
+
+
+class CourseUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
+
+    def post(self, request):
+        file = request.FILES.get("file")
+        if not file:
+            raise ValidationError({"file": "Upload file is required."})
+
+        rows = []
+
+        if file.name.lower().endswith(".csv"):
+            content = file.read().decode("utf-8")
+            reader = csv.DictReader(io.StringIO(content))
+            rows = list(reader)
+        else:
+            try:
+                import openpyxl
+            except Exception:
+                raise ValidationError({"file": "Excel upload requires openpyxl."})
+            wb = openpyxl.load_workbook(file)
+            ws = wb.active
+            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
+            for row in ws.iter_rows(min_row=2):
+                data = {headers[i].lower(): (row[i].value or "") for i in range(len(headers))}
+                rows.append(data)
+
+        created = 0
+        for row in rows:
+            name = str(row.get("name") or row.get("Name") or "").strip()
+            if not name:
+                continue
+            code = str(row.get("code") or row.get("Code") or "").strip()
+            school_name = str(row.get("school") or row.get("School") or "").strip()
+            school = None
+            if school_name:
+                school = School.objects.filter(name__iexact=school_name).first()
+                if not school:
+                    school = School.objects.create(name=school_name)
+            obj = Course.objects.filter(school=school, name__iexact=name).first()
+            if not obj:
+                obj = Course.objects.create(name=name, code=code, school=school)
+                created += 1
+            elif code and not obj.code:
+                obj.code = code
+                obj.save(update_fields=["code"])
+
+        return Response({"created": created, "total": len(rows)}, status=status.HTTP_200_OK)
+
+
+class LocationSearchView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        query = (request.query_params.get("q") or "").strip()
+        if not query:
+            return Response({"results": []}, status=status.HTTP_200_OK)
+
+        token = getattr(settings, "MAPBOX_ACCESS_TOKEN", "") or getattr(settings, "LOCATIONIQ_TOKEN", "")
+        if not token:
+            return Response({"results": []}, status=status.HTTP_200_OK)
+
+        # Default to Mapbox if token present
+        try:
+            url = "https://api.mapbox.com/geocoding/v5/mapbox.places/{q}.json".format(q=requests.utils.quote(query))
+            params = {
+                "access_token": token,
+                "autocomplete": "true",
+                "limit": 5,
+                "types": "place,locality,neighborhood,address",
+            }
+            resp = requests.get(url, params=params, timeout=6)
+            resp.raise_for_status()
+            data = resp.json()
+            results = []
+            for feat in data.get("features", []):
+                place = feat.get("place_name", "")
+                center = feat.get("center") or []
+                ctx = feat.get("context", []) or []
+                city = ""
+                country = ""
+                for item in ctx:
+                    if item.get("id", "").startswith("place"):
+                        city = item.get("text", "")
+                    if item.get("id", "").startswith("country"):
+                        country = item.get("text", "")
+                results.append({
+                    "label": place,
+                    "city": city,
+                    "country": country,
+                    "lat": center[1] if len(center) > 1 else None,
+                    "lng": center[0] if len(center) > 0 else None,
+                })
+            return Response({"results": results}, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({"results": []}, status=status.HTTP_200_OK)
 
 
 class PromoCodeManageView(generics.ListCreateAPIView):
@@ -93,4 +399,3 @@ class PromoCodeValidateView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
-

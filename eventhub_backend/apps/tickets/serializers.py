@@ -4,7 +4,14 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from .models import PromoCode, TicketType
+from .models import (
+    PromoCode,
+    TicketType,
+    RegistrationCategory,
+    RegistrationQuestion,
+    School,
+    Course,
+)
 
 
 class TicketTypeCreateSerializer(serializers.ModelSerializer):
@@ -25,6 +32,7 @@ class TicketTypeCreateSerializer(serializers.ModelSerializer):
             "max_per_order",
             "is_active",
             "sort_order",
+            "registration_category",
         ]
         read_only_fields = ["id", "event"]
 
@@ -34,6 +42,8 @@ class TicketTypeSerializer(serializers.ModelSerializer):
     is_sold_out = serializers.BooleanField(read_only=True)
     is_almost_sold_out = serializers.BooleanField(read_only=True)
     is_on_sale = serializers.BooleanField(read_only=True)
+    registration_category_type = serializers.SerializerMethodField()
+    registration_category_label = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketType
@@ -54,6 +64,9 @@ class TicketTypeSerializer(serializers.ModelSerializer):
             "max_per_order",
             "is_active",
             "sort_order",
+            "registration_category",
+            "registration_category_type",
+            "registration_category_label",
             "quantity_available",
             "is_sold_out",
             "is_almost_sold_out",
@@ -67,6 +80,100 @@ class TicketTypeSerializer(serializers.ModelSerializer):
             "is_almost_sold_out",
             "is_on_sale",
         ]
+
+    def get_registration_category_type(self, obj):
+        return obj.registration_category.category if obj.registration_category else None
+
+    def get_registration_category_label(self, obj):
+        if not obj.registration_category:
+            return None
+        if obj.registration_category.category == "guest" and obj.registration_category.label:
+            return obj.registration_category.label
+        return obj.registration_category.get_category_display()
+
+
+class RegistrationQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RegistrationQuestion
+        fields = [
+            "id",
+            "label",
+            "field_type",
+            "is_required",
+            "options",
+            "sort_order",
+        ]
+
+
+class RegistrationQuestionWriteSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(required=False, allow_null=True)
+
+    class Meta:
+        model = RegistrationQuestion
+        fields = [
+            "id",
+            "label",
+            "field_type",
+            "is_required",
+            "options",
+            "sort_order",
+        ]
+
+
+class RegistrationCategorySerializer(serializers.ModelSerializer):
+    questions = RegistrationQuestionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = RegistrationCategory
+        fields = [
+            "id",
+            "category",
+            "label",
+            "is_active",
+            "sort_order",
+            "require_student_email",
+            "require_admission_number",
+            "ask_graduation_year",
+            "ask_course",
+            "ask_school",
+            "ask_location",
+            "questions",
+        ]
+
+
+class RegistrationCategoryWriteSerializer(serializers.ModelSerializer):
+    questions = RegistrationQuestionWriteSerializer(many=True, required=False)
+
+    class Meta:
+        model = RegistrationCategory
+        fields = [
+            "id",
+            "category",
+            "label",
+            "is_active",
+            "sort_order",
+            "require_student_email",
+            "require_admission_number",
+            "ask_graduation_year",
+            "ask_course",
+            "ask_school",
+            "ask_location",
+            "questions",
+        ]
+
+
+class SchoolSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = School
+        fields = ["id", "name", "code", "is_active", "sort_order"]
+
+
+class CourseSerializer(serializers.ModelSerializer):
+    school_name = serializers.CharField(source="school.name", read_only=True)
+
+    class Meta:
+        model = Course
+        fields = ["id", "name", "code", "school", "school_name", "is_active", "sort_order"]
 
 
 class PromoCodeSerializer(serializers.ModelSerializer):
@@ -103,4 +210,3 @@ class PromoCodeValidateSerializer(serializers.Serializer):
         attrs["promo"] = promo
         attrs["discount_amount"] = discount_amount
         return attrs
-
