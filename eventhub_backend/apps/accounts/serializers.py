@@ -129,19 +129,29 @@ class UserProfileSerializer(serializers.ModelSerializer):
                 if event.id in seen:
                     continue
                 seen.add(event.id)
-                event_date = getattr(event, "start_date", None) or getattr(event, "date", None)
-                event_time = getattr(event, "start_time", None) or getattr(event, "time", None)
-                if event_time is not None and hasattr(event_time, "isoformat"):
-                    event_time_value = event_time.isoformat()
-                else:
-                    event_time_value = event_time if event_time else None
-                details.append({
-                    "id": str(event.id),
-                    "slug": event.slug,
-                    "title": event.title,
-                    "date": event_date.isoformat() if event_date else None,
-                    "time": event_time_value,
-                })
+                try:
+                    event_date = event.start_date
+                    event_time = event.start_time
+                    if event_time is not None and hasattr(event_time, "isoformat"):
+                        event_time_value = event_time.isoformat()
+                    else:
+                        event_time_value = str(event_time) if event_time else None
+                    details.append({
+                        "id": str(event.id),
+                        "slug": event.slug,
+                        "title": event.title,
+                        "date": event_date.isoformat() if event_date else None,
+                        "time": event_time_value,
+                    })
+                except Exception:
+                    # Gracefully skip events that have data issues
+                    details.append({
+                        "id": str(event.id),
+                        "slug": getattr(event, "slug", ""),
+                        "title": getattr(event, "title", "Unknown Event"),
+                        "date": None,
+                        "time": None,
+                    })
         return details
 
     def update(self, instance, validated_data):
