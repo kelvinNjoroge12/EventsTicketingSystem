@@ -542,7 +542,7 @@ const EventDetailPage = () => {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-10 w-full" style={{ overflowX: 'hidden' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10 w-full">
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}
@@ -796,7 +796,7 @@ const EventDetailPage = () => {
 
           {/* ── RIGHT SIDEBAR ── */}
           <aside className="hidden lg:block">
-            <div className="sticky top-24 max-h-[90vh] overflow-y-auto pr-1 space-y-4 scrollbar-thin scrollbar-thumb-[#E2E8F0] scrollbar-track-transparent">
+            <div className="sticky top-[8.5rem] max-h-[90vh] overflow-y-auto pr-1 space-y-4 scrollbar-thin scrollbar-thumb-[#E2E8F0] scrollbar-track-transparent">
               {/* Ticket price preview pill */}
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-white shadow-lg"
                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
