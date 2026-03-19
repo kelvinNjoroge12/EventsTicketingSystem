@@ -182,10 +182,10 @@ const EventDetailPage = () => {
     setTimeout(() => {
       if (contentStartRef.current) {
         const top = contentStartRef.current.getBoundingClientRect().top;
-        // 64px is the height of the main top Navbar. If the top of our content 
-        // is hiding above the Navbar (because user scrolled down), auto-scroll it back.
-        if (top < 64) {
-          const y = top + window.scrollY - 64;
+        // 112px is the height of the main top Navbar (h-28 spacer).
+        // If the top of our content is hiding above the Navbar, auto-scroll it back.
+        if (top < 112) {
+          const y = top + window.scrollY - 112;
           // Subtly offset by 5px so the sticky tab bar sits perfectly flush under Navbar
           window.scrollTo({ top: y - 5, behavior: 'smooth' });
         }
@@ -546,7 +546,7 @@ const EventDetailPage = () => {
           <div className="lg:col-span-2 space-y-10 min-w-0 overflow-hidden" ref={contentStartRef}>
 
             {/* ── TABS ── */}
-            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
+            <div className="sticky top-[7rem] z-10 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0] w-full min-w-0">
               <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full flex-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
                 {tabs.map((tab) => (
                   <button
@@ -569,7 +569,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── TAB CONTENT ── */}
-            <div className="min-h-[50vh]">
+            <div className="min-h-[50vh] pt-6">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
