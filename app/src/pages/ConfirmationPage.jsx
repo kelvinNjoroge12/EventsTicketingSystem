@@ -3,7 +3,6 @@ import { useParams, useLocation, Link, useNavigate, useSearchParams } from 'reac
 import { motion } from 'framer-motion';
 import {
   Calendar,
-  Download,
   Share2,
   Check,
   ArrowRight,
@@ -85,11 +84,6 @@ const ConfirmationPage = () => {
       day: 'numeric',
       year: 'numeric'
     });
-  };
-
-  const handleDownload = () => {
-    // Simulate ticket download
-    window.print();
   };
 
   const handleAddToCalendar = (type) => {
@@ -210,9 +204,10 @@ END:VCALENDAR`;
 
   return (
     <PageWrapper>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="min-h-[calc(100vh-112px)] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-6">
+        <div className="w-full max-w-2xl">
         {/* Success Animation */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <motion.div
             className="w-24 h-24 mx-auto mb-6 relative"
             initial={{ scale: 0 }}
@@ -268,7 +263,7 @@ END:VCALENDAR`;
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="mb-8 p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-center"
+          className="mb-6 p-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl text-center"
         >
           <div className="w-12 h-12 bg-[#EFF6FF] text-[#02338D] rounded-full flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -310,44 +305,34 @@ END:VCALENDAR`;
           )}
         </motion.div>
 
-        {/* Action Buttons */}
+        {/* Calendar Buttons */}
         <motion.div
-          className="grid grid-cols-2 gap-4 mb-8"
+          className="flex flex-wrap items-center justify-center gap-3 mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9 }}
         >
           <CustomButton
-            variant="primary"
-            leftIcon={Download}
-            onClick={handleDownload}
-            fullWidth
+            variant="outline"
+            leftIcon={Calendar}
+            onClick={() => handleAddToCalendar('google')}
+            className="min-w-[140px]"
           >
-            Download Ticket
+            Google
           </CustomButton>
-          <div className="flex gap-2">
-            <CustomButton
-              variant="outline"
-              leftIcon={Calendar}
-              onClick={() => handleAddToCalendar('google')}
-              className="flex-1"
-            >
-              Google
-            </CustomButton>
-            <CustomButton
-              variant="outline"
-              leftIcon={Calendar}
-              onClick={() => handleAddToCalendar('apple')}
-              className="flex-1"
-            >
-              Apple
-            </CustomButton>
-          </div>
+          <CustomButton
+            variant="outline"
+            leftIcon={Calendar}
+            onClick={() => handleAddToCalendar('apple')}
+            className="min-w-[140px]"
+          >
+            Apple
+          </CustomButton>
         </motion.div>
 
         {/* Share Section */}
         <motion.div
-          className="text-center mb-8"
+          className="text-center mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
@@ -381,6 +366,7 @@ END:VCALENDAR`;
             <ArrowRight className="w-4 h-4" />
           </Link>
         </motion.div>
+        </div>
       </div>
     </PageWrapper>
   );
