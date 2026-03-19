@@ -18,7 +18,7 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.utils.text import slugify
 from apps.events.models import Event, Category
-from apps.tickets.models import TicketType, School, Course
+from apps.tickets.models import TicketType, School, Course, RegistrationCategory
 from apps.accounts.models import User
 
 # Data definitions
@@ -131,6 +131,43 @@ for school_name, courses in SCHOOLS_COURSES.items():
                 published_at=timezone.now(),
             )
             ev.save()
+
+            # Registration categories (Student / Alumni / Guest)
+            student_cat, _ = RegistrationCategory.objects.get_or_create(
+                event=ev,
+                category="student",
+                defaults={
+                    "label": "Student",
+                    "is_active": True,
+                    "sort_order": 0,
+                    "require_student_email": True,
+                    "require_admission_number": True,
+                    "ask_school": True,
+                    "ask_course": True,
+                },
+            )
+            alumni_cat, _ = RegistrationCategory.objects.get_or_create(
+                event=ev,
+                category="alumni",
+                defaults={
+                    "label": "Alumni",
+                    "is_active": True,
+                    "sort_order": 1,
+                    "ask_graduation_year": True,
+                    "ask_school": True,
+                    "ask_course": True,
+                },
+            )
+            guest_cat, _ = RegistrationCategory.objects.get_or_create(
+                event=ev,
+                category="guest",
+                defaults={
+                    "label": "Guest",
+                    "is_active": True,
+                    "sort_order": 2,
+                    "ask_location": True,
+                },
+            )
             
             print(f"  📸  Downloading cover image for {title}...")
             img = dl(random.choice(IMAGES), f"cover_{ev.id}.jpg")
@@ -138,10 +175,31 @@ for school_name, courses in SCHOOLS_COURSES.items():
                 ev.cover_image.save(f"cover_{ev.id}.jpg", img, save=True)
             
             TicketType.objects.create(
-                event=ev, name="Student Registration", ticket_class="free", price=0, quantity=100, is_active=True
+                event=ev,
+                registration_category=student_cat,
+                name="Student Registration",
+                ticket_class="free",
+                price=0,
+                quantity=100,
+                is_active=True,
             )
             TicketType.objects.create(
-                event=ev, name="Alumni / Guest Pass", ticket_class="paid", price=2000, quantity=50, is_active=True
+                event=ev,
+                registration_category=alumni_cat,
+                name="Alumni Pass",
+                ticket_class="paid",
+                price=2000,
+                quantity=50,
+                is_active=True,
+            )
+            TicketType.objects.create(
+                event=ev,
+                registration_category=guest_cat,
+                name="Guest Pass",
+                ticket_class="paid",
+                price=2000,
+                quantity=50,
+                is_active=True,
             )
             
             print(f"Created: {title}")
@@ -163,11 +221,72 @@ while len(events_to_create) < 20:
         start_time=e_start.time(), end_date=e_end.date(), end_time=e_end.time(), timezone="Africa/Nairobi",
         venue_name="Strathmore University", city="Nairobi", country="Kenya", published_at=timezone.now(),
     )
+    student_cat, _ = RegistrationCategory.objects.get_or_create(
+        event=ev,
+        category="student",
+        defaults={
+            "label": "Student",
+            "is_active": True,
+            "sort_order": 0,
+            "require_student_email": True,
+            "require_admission_number": True,
+            "ask_school": True,
+            "ask_course": True,
+        },
+    )
+    alumni_cat, _ = RegistrationCategory.objects.get_or_create(
+        event=ev,
+        category="alumni",
+        defaults={
+            "label": "Alumni",
+            "is_active": True,
+            "sort_order": 1,
+            "ask_graduation_year": True,
+            "ask_school": True,
+            "ask_course": True,
+        },
+    )
+    guest_cat, _ = RegistrationCategory.objects.get_or_create(
+        event=ev,
+        category="guest",
+        defaults={
+            "label": "Guest",
+            "is_active": True,
+            "sort_order": 2,
+            "ask_location": True,
+        },
+    )
     img = dl(random.choice(IMAGES), f"cover_{ev.id}.jpg")
     if img:
         ev.cover_image.save(f"cover_{ev.id}.jpg", img, save=True)
         
-    TicketType.objects.create(event=ev, name="General Pass", ticket_class="free", price=0, quantity=100, is_active=True)
+    TicketType.objects.create(
+        event=ev,
+        registration_category=student_cat,
+        name="Student Registration",
+        ticket_class="free",
+        price=0,
+        quantity=100,
+        is_active=True,
+    )
+    TicketType.objects.create(
+        event=ev,
+        registration_category=alumni_cat,
+        name="Alumni Pass",
+        ticket_class="paid",
+        price=2000,
+        quantity=50,
+        is_active=True,
+    )
+    TicketType.objects.create(
+        event=ev,
+        registration_category=guest_cat,
+        name="Guest Pass",
+        ticket_class="paid",
+        price=2000,
+        quantity=50,
+        is_active=True,
+    )
     events_to_create.append(ev)
     event_id += 1
 
