@@ -140,10 +140,10 @@ const TicketBox = ({
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-lg overflow-hidden"
+      className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col lg:max-h-[calc(90vh-6rem)]"
       style={{ borderTop: `4px solid ${themeColor}` }}
     >
-      <div className="p-6">
+      <div className="p-6 flex-1 min-h-0 lg:overflow-y-auto lg:pr-2 scrollbar-thin scrollbar-thumb-[#E2E8F0] scrollbar-track-transparent">
         {/* Ticket Type Selection with Quantities */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-[#0F172A] mb-3">
@@ -401,30 +401,31 @@ const TicketBox = ({
           </div>
         )}
 
-        {/* CTA Button */}
-        <div className="lg:sticky lg:bottom-0 lg:z-10 lg:-mx-6 lg:px-6 lg:pt-4 lg:pb-4 lg:bg-white lg:border-t lg:border-[#E2E8F0]">
-          <CustomButton
-            variant="primary"
-            fullWidth
-            onClick={handleGetTickets}
-            disabled={totalQuantity === 0}
-            className="py-4"
-            style={{ backgroundColor: themeColor }}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <ShoppingCart className="w-5 h-5" />
-              {totalQuantity === 0
-                ? 'Select Tickets'
-                : `Get ${totalQuantity} Ticket${totalQuantity > 1 ? 's' : ''}`
-              }
-            </span>
-          </CustomButton>
+      </div>
 
-          {/* Trust Badges */}
-          <div className="mt-4 flex items-center justify-center gap-1 text-xs text-[#64748B]">
-            <span>🔒</span>
-            <span>Secure Checkout · Instant QR Ticket · Free Cancellation</span>
-          </div>
+      <div className="p-6 border-t border-[#E2E8F0] bg-white">
+        {/* CTA Button */}
+        <CustomButton
+          variant="primary"
+          fullWidth
+          onClick={handleGetTickets}
+          disabled={totalQuantity === 0}
+          className="py-4"
+          style={{ backgroundColor: themeColor }}
+        >
+          <span className="flex items-center justify-center gap-2">
+            <ShoppingCart className="w-5 h-5" />
+            {totalQuantity === 0
+              ? 'Select Tickets'
+              : `Get ${totalQuantity} Ticket${totalQuantity > 1 ? 's' : ''}`
+            }
+          </span>
+        </CustomButton>
+
+        {/* Trust Badges */}
+        <div className="mt-4 flex items-center justify-center gap-1 text-xs text-[#64748B]">
+          <span>🔒</span>
+          <span>Secure Checkout · Instant QR Ticket · Free Cancellation</span>
         </div>
       </div>
     </div>
