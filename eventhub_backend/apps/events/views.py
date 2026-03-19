@@ -11,6 +11,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.core.management import call_command
+import io
 
 from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
 from apps.schedules.models import ScheduleItem
@@ -345,3 +347,33 @@ def related_events(request, slug: str):
     serializer = EventListSerializer(qs, many=True, context={"request": request})
     cache.set(cache_key, serializer.data, 900)  # 15 minutes
     return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def admin_seed_strathmore(request):
+    """
+    Temporary endpoint to trigger the 'seed_strathmore' management command.
+    Bypasses Render Shell restrictions for free-tier users.
+    Requires ?passcode=strathmore2026
+    """
+    passcode = request.query_params.get("passcode")
+    if passcode != "strathmore2026":
+        return Response({"error": "Invalid passcode"}, status=status.HTTP_403_FORBIDDEN)
+
+    out = io.StringIO()
+    try:
+        # We need to use call_command with stdout redirected so we can see what happened
+        call_command('seed_strathmore', stdout=out)
+        result = out.getvalue()
+        return Response({
+            "status": "success",
+            "message": "Seeding script finished successfully on Render.",
+            "output": result
+        })
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "output": out.getvalue()
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

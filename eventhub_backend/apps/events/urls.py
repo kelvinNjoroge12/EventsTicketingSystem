@@ -14,10 +14,12 @@ from .views import (
     OrganizerEventListView,
     MyEventsListView,
     related_events,
+    admin_seed_strathmore,
 )
 
 urlpatterns = [
     # Top-priority specific endpoints
+    path("admin/seed-strathmore/", admin_seed_strathmore),
     path("organizer/", MyEventsListView.as_view(), name="my-events"),
     # Alias for /organizer/ — kept for backwards-compat with old frontend builds
     path("my/", MyEventsListView.as_view(), name="my-events-alias"),
