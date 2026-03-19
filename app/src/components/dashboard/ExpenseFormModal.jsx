@@ -22,6 +22,8 @@ const ExpenseFormModal = ({ isOpen, onClose, events, defaultEventId }) => {
             onClose();
             queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
             queryClient.invalidateQueries({ queryKey: ['event_expenses'] });
+            queryClient.invalidateQueries({ queryKey: ['finance_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['finance_expenses'] });
         },
         onError: (error) => {
             toast.error(error?.message || 'Failed to add expense.');

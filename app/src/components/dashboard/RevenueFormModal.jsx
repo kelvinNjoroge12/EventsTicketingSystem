@@ -24,6 +24,9 @@ const RevenueFormModal = ({ isOpen, onClose, events, defaultEventId }) => {
             onClose();
             queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
             queryClient.invalidateQueries({ queryKey: ['event_revenues'] });
+            queryClient.invalidateQueries({ queryKey: ['finance_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['finance_revenues'] });
+            queryClient.invalidateQueries({ queryKey: ['finance_revenue_series'] });
         },
         onError: (error) => {
             toast.error(error?.message || 'Failed to add revenue.');

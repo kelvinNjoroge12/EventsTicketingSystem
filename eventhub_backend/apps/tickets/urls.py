@@ -6,6 +6,7 @@ from .views import (
     EventTicketTypesView,
     PromoCodeDetailView,
     PromoCodeManageView,
+    PromoCodeBulkUploadView,
     PromoCodeValidateView,
     TicketTypeCreateView,
     TicketTypeUpdateView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path("events/<slug:slug>/registration/", EventRegistrationPublicView.as_view(), name="event-registration-public"),
     path("events/<slug:slug>/registration/setup/", EventRegistrationSetupView.as_view(), name="event-registration-setup"),
     path("events/<slug:slug>/promo-codes/", PromoCodeManageView.as_view(), name="promo-list-create"),
+    path("events/<slug:slug>/promo-codes/upload/", PromoCodeBulkUploadView.as_view(), name="promo-bulk-upload"),
     path(
         "events/<slug:slug>/promo-codes/<uuid:promo_id>/",
         PromoCodeDetailView.as_view(),

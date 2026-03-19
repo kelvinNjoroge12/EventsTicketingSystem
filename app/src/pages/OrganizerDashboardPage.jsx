@@ -554,6 +554,10 @@ const OrganizerDashboardPage = () => {
       syncTabToUrl('dashboard', { event: null });
       return;
     }
+    if (page === 'finance') {
+      syncTabToUrl('finance', { event: null });
+      return;
+    }
   };
 
   useEffect(() => {
@@ -598,7 +602,7 @@ const OrganizerDashboardPage = () => {
   }
 
   const renderPage = () => {
-    switch (currentPage) {
+      switch (currentPage) {
         case 'dashboard':
           return (
             <OrganizerDashboardOverview
@@ -617,10 +621,54 @@ const OrganizerDashboardPage = () => {
               }}
             />
           );
-      case 'events':
-        return (
-          <OrganizerMyEvents
-            events={events}
+        case 'finance':
+          return (
+            <FinanceOverview
+              events={events}
+              stats={financeStats}
+              expenseBreakdown={financeExpenseBreakdown}
+              revenueSeries={financeRevenueSeries}
+              range={financeRange}
+              onRangeChange={setFinanceRange}
+              eventId={financeEventId}
+              onEventChange={setFinanceEventId}
+              expenses={financeExpenses}
+              revenues={financeRevenues}
+              isLoadingStats={isLoadingFinanceStats || isLoadingFinanceSeries}
+              isLoadingExpenses={isLoadingFinanceExpenses}
+              isLoadingRevenues={isLoadingFinanceRevenues}
+              onOpenExpense={() => {
+                setModalEventId(financeEventId || '');
+                setShowExpenseForm(true);
+              }}
+              onOpenRevenue={() => {
+                setModalEventId(financeEventId || '');
+                setShowRevenueForm(true);
+              }}
+              onDeleteExpense={async (id) => {
+                await api.delete(`/api/finances/expenses/${id}/`);
+                queryClient.invalidateQueries({ queryKey: ['finance_stats'] });
+                queryClient.invalidateQueries({ queryKey: ['finance_expenses'] });
+                queryClient.invalidateQueries({ queryKey: ['finance_revenue_series'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+                queryClient.invalidateQueries({ queryKey: ['event_expenses'] });
+                toast.success('Expense deleted.');
+              }}
+              onDeleteRevenue={async (id) => {
+                await api.delete(`/api/finances/revenues/${id}/`);
+                queryClient.invalidateQueries({ queryKey: ['finance_stats'] });
+                queryClient.invalidateQueries({ queryKey: ['finance_revenues'] });
+                queryClient.invalidateQueries({ queryKey: ['finance_revenue_series'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+                queryClient.invalidateQueries({ queryKey: ['event_revenues'] });
+                toast.success('Revenue deleted.');
+              }}
+            />
+          );
+        case 'events':
+          return (
+            <OrganizerMyEvents
+              events={events}
             onEventClick={openEventDetail}
             onViewEvent={openPublicEvent}
             onCreateEvent={handleCreateEvent}
@@ -640,10 +688,16 @@ const OrganizerDashboardPage = () => {
             attendeesTotal={eventAttendeesTotal}
             attendeesLoading={isLoadingEventAttendees}
             onBack={handleBackToEvents}
-            onCheckIn={() => openCheckinForEvent(selectedEvent)}
-            onEditEvent={handleEditEvent}
-            onOpenExpense={() => setShowExpenseForm(true)}
-            onOpenRevenue={() => setShowRevenueForm(true)}
+              onCheckIn={() => openCheckinForEvent(selectedEvent)}
+              onEditEvent={handleEditEvent}
+              onOpenExpense={() => {
+                setModalEventId(selectedEvent?.id || selectedEventId || '');
+                setShowExpenseForm(true);
+              }}
+              onOpenRevenue={() => {
+                setModalEventId(selectedEvent?.id || selectedEventId || '');
+                setShowRevenueForm(true);
+              }}
             revenueBreakdown={revenueBreakdown}
             entryView={entryView}
             setEntryView={setEntryView}
@@ -655,12 +709,18 @@ const OrganizerDashboardPage = () => {
               await api.delete(`/api/finances/expenses/${id}/`);
               queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
               queryClient.invalidateQueries({ queryKey: ['event_expenses'] });
+              queryClient.invalidateQueries({ queryKey: ['finance_stats'] });
+              queryClient.invalidateQueries({ queryKey: ['finance_expenses'] });
+              queryClient.invalidateQueries({ queryKey: ['finance_revenue_series'] });
               toast.success('Expense deleted.');
             }}
             onDeleteRevenue={async (id) => {
               await api.delete(`/api/finances/revenues/${id}/`);
               queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
               queryClient.invalidateQueries({ queryKey: ['event_revenues'] });
+              queryClient.invalidateQueries({ queryKey: ['finance_stats'] });
+              queryClient.invalidateQueries({ queryKey: ['finance_revenues'] });
+              queryClient.invalidateQueries({ queryKey: ['finance_revenue_series'] });
               toast.success('Revenue deleted.');
             }}
             onRefreshEvent={() => queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', selectedEvent?.slug] })}
@@ -736,14 +796,14 @@ const OrganizerDashboardPage = () => {
         isOpen={showExpenseForm}
         onClose={() => setShowExpenseForm(false)}
         events={events}
-        defaultEventId={selectedEventId}
+        defaultEventId={modalEventId}
       />
 
       <RevenueFormModal
         isOpen={showRevenueForm}
         onClose={() => setShowRevenueForm(false)}
         events={events}
-        defaultEventId={selectedEventId}
+        defaultEventId={modalEventId}
       />
     </PageWrapper>
   );

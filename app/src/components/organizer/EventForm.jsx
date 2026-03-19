@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Palette, ChevronUp, ChevronDown } from 'lucide-react';
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
-import { api } from '../../lib/apiClient';
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -562,7 +561,6 @@ export const SponsorsStep = ({ data, onChange }) => {
 
 // ── Step 7: Tickets ────────────────────────────────────────────────────────
 export const TicketsStep = ({ data, onChange, errors }) => {
-  const [uploadStatus, setUploadStatus] = useState({ school: '', course: '', error: '' });
   const categories = Array.isArray(data.registrationCategories) ? data.registrationCategories : [];
   const enabledCategories = categories.filter((c) => c.is_active);
   const defaultCategoryType = enabledCategories[0]?.category || categories[0]?.category || 'guest';
@@ -623,20 +621,6 @@ export const TicketsStep = ({ data, onChange, errors }) => {
   };
 
   const typeIcons = { Standard: '🎟', VIP: '⭐', 'Early Bird': '🐦', Free: '🎁', Donation: '❤️' };
-
-  const handleUpload = async (kind, file) => {
-    if (!file) return;
-    setUploadStatus({ school: '', course: '', error: '' });
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const endpoint = kind === 'school' ? '/api/academics/schools/upload/' : '/api/academics/courses/upload/';
-      await api.postForm(endpoint, fd);
-      setUploadStatus((prev) => ({ ...prev, [kind]: 'Upload successful.' }));
-    } catch (err) {
-      setUploadStatus((prev) => ({ ...prev, error: err?.message || 'Upload failed.' }));
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -803,25 +787,6 @@ export const TicketsStep = ({ data, onChange, errors }) => {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Upload Courses & Schools */}
-      <div className="p-5 bg-white rounded-2xl border border-[#E2E8F0] space-y-3">
-        <p className="text-sm font-semibold text-[#0F172A]">Courses & Schools Upload</p>
-        <p className="text-xs text-[#64748B]">Upload Excel/CSV files to populate school and course dropdowns.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-[#64748B] mb-1">Schools file</label>
-            <input type="file" accept=".csv,.xlsx" onChange={(e) => handleUpload('school', e.target.files?.[0])} />
-            {uploadStatus.school && <p className="text-xs text-[#16A34A] mt-1">{uploadStatus.school}</p>}
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[#64748B] mb-1">Courses file</label>
-            <input type="file" accept=".csv,.xlsx" onChange={(e) => handleUpload('course', e.target.files?.[0])} />
-            {uploadStatus.course && <p className="text-xs text-[#16A34A] mt-1">{uploadStatus.course}</p>}
-          </div>
-        </div>
-        {uploadStatus.error && <p className="text-xs text-[#DC2626]">{uploadStatus.error}</p>}
       </div>
 
       <AnimatePresence>

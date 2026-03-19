@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from datetime import date as dt_date, datetime, time as dt_time
 
 from django_ratelimit.decorators import ratelimit
 from django.shortcuts import get_object_or_404
@@ -13,6 +14,8 @@ from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
 from apps.events.models import Event
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 from .models import PromoCode, TicketType, RegistrationCategory, RegistrationQuestion, School, Course
 from .serializers import (
     PromoCodeSerializer,
@@ -365,6 +368,197 @@ class PromoCodeManageView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         serializer.save(event=event)
+
+
+class PromoCodeBulkUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+
+    @staticmethod
+    def _normalize_header(value) -> str:
+        return str(value or "").strip().lower().replace(" ", "_")
+
+    @staticmethod
+    def _pick_value(row: dict, *keys):
+        for key in keys:
+            if key in row and row[key] not in (None, ""):
+                return row[key]
+        return None
+
+    @staticmethod
+    def _parse_bool(value, default=True) -> bool:
+        if value is None or str(value).strip() == "":
+            return default
+        if isinstance(value, bool):
+            return value
+        text = str(value).strip().lower()
+        if text in {"1", "true", "yes", "y", "t"}:
+            return True
+        if text in {"0", "false", "no", "n", "f"}:
+            return False
+        raise ValueError("Invalid active flag.")
+
+    @staticmethod
+    def _parse_decimal(value):
+        if value is None or str(value).strip() == "":
+            return None
+        if isinstance(value, Decimal):
+            return value
+        if isinstance(value, (int, float)):
+            return Decimal(str(value))
+        raw = str(value).strip().replace(",", "")
+        if raw.endswith("%"):
+            raw = raw[:-1].strip()
+        return Decimal(raw)
+
+    @staticmethod
+    def _parse_expiry(value):
+        if value is None or str(value).strip() == "":
+            return None
+        if isinstance(value, datetime):
+            expiry_dt = value
+        elif isinstance(value, dt_date):
+            expiry_dt = datetime.combine(value, dt_time.min)
+        else:
+            raw = str(value).strip()
+            expiry_dt = parse_datetime(raw)
+            if not expiry_dt:
+                parsed_date = parse_date(raw)
+                if parsed_date:
+                    expiry_dt = datetime.combine(parsed_date, dt_time.min)
+        if not expiry_dt:
+            raise ValueError("Invalid expiry date.")
+        if timezone.is_naive(expiry_dt):
+            expiry_dt = timezone.make_aware(expiry_dt, timezone.get_current_timezone())
+        return expiry_dt
+
+    def post(self, request, slug):
+        event = get_object_or_404(Event, slug=slug, organizer=request.user)
+        file = request.FILES.get("file")
+        if not file:
+            raise ValidationError({"file": "Upload file is required."})
+
+        rows = []
+        filename = file.name.lower()
+
+        if filename.endswith(".csv"):
+            content = file.read().decode("utf-8-sig")
+            reader = csv.DictReader(io.StringIO(content))
+            for row in reader:
+                normalized = {self._normalize_header(k): v for k, v in row.items() if k}
+                if any(str(val).strip() for val in normalized.values() if val is not None):
+                    rows.append(normalized)
+        elif filename.endswith(".xlsx"):
+            try:
+                import openpyxl
+            except Exception:
+                raise ValidationError({"file": "Excel upload requires openpyxl."})
+            wb = openpyxl.load_workbook(file)
+            ws = wb.active
+            headers = [self._normalize_header(cell.value) for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+            for row in ws.iter_rows(min_row=2):
+                data = {}
+                for idx, header in enumerate(headers):
+                    if not header:
+                        continue
+                    data[header] = row[idx].value
+                if any(str(val).strip() for val in data.values() if val is not None):
+                    rows.append(data)
+        else:
+            raise ValidationError({"file": "Upload a CSV or XLSX file."})
+
+        if not rows:
+            return Response({"total": 0, "created": 0, "updated": 0, "skipped": 0, "errors": []})
+
+        created = 0
+        updated = 0
+        skipped = 0
+        errors = []
+
+        for index, row in enumerate(rows, start=2):
+            try:
+                code_raw = self._pick_value(row, "code", "promo_code", "promo", "coupon", "coupon_code")
+                if not code_raw:
+                    raise ValueError("Missing code.")
+                code = str(code_raw).strip().upper().replace(" ", "")
+                if not code:
+                    raise ValueError("Missing code.")
+
+                discount_type_raw = self._pick_value(row, "discount_type", "type")
+                discount_type = str(discount_type_raw or "percent").strip().lower()
+                if discount_type in {"percent", "percentage", "pct", "%"}:
+                    discount_type = "percent"
+                elif discount_type in {"fixed", "amount", "flat", "value"}:
+                    discount_type = "fixed"
+                else:
+                    raise ValueError("Invalid discount type.")
+
+                discount_value_raw = self._pick_value(row, "discount_value", "discount", "value", "amount")
+                discount_value = self._parse_decimal(discount_value_raw)
+                if discount_value is None:
+                    raise ValueError("Missing discount value.")
+
+                usage_limit_raw = self._pick_value(row, "usage_limit", "limit", "usage")
+                usage_limit = None
+                if usage_limit_raw not in (None, ""):
+                    usage_limit = int(float(str(usage_limit_raw).strip()))
+                    if usage_limit <= 0:
+                        usage_limit = None
+
+                expiry_raw = self._pick_value(row, "expiry", "expires", "expiry_date", "expires_at", "expiry_at")
+                expiry = self._parse_expiry(expiry_raw)
+
+                is_active_raw = self._pick_value(row, "is_active", "active", "enabled")
+                is_active = self._parse_bool(is_active_raw, default=True)
+
+                minimum_raw = self._pick_value(
+                    row,
+                    "minimum_order_amount",
+                    "minimum_order",
+                    "min_order",
+                    "min_order_amount",
+                    "minimum",
+                )
+                minimum_order_amount = self._parse_decimal(minimum_raw)
+                if minimum_order_amount is None:
+                    minimum_order_amount = Decimal("0")
+
+                existing = PromoCode.objects.filter(event=event, code__iexact=code).first()
+                if existing:
+                    existing.code = code
+                    existing.discount_type = discount_type
+                    existing.discount_value = discount_value
+                    existing.usage_limit = usage_limit
+                    existing.expiry = expiry
+                    existing.is_active = is_active
+                    existing.minimum_order_amount = minimum_order_amount
+                    existing.save()
+                    updated += 1
+                else:
+                    PromoCode.objects.create(
+                        event=event,
+                        code=code,
+                        discount_type=discount_type,
+                        discount_value=discount_value,
+                        usage_limit=usage_limit,
+                        expiry=expiry,
+                        is_active=is_active,
+                        minimum_order_amount=minimum_order_amount,
+                    )
+                    created += 1
+            except Exception as exc:
+                skipped += 1
+                errors.append({"row": index, "error": str(exc)})
+
+        return Response(
+            {
+                "total": len(rows),
+                "created": created,
+                "updated": updated,
+                "skipped": skipped,
+                "errors": errors,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):

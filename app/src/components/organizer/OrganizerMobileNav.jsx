@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Calendar, QrCode, PlusCircle, Settings, LogOut, X } from 'lucide-react';
+import { Home, Calendar, QrCode, PlusCircle, Settings, LogOut, X, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ const navItems = [
   { id: 'events', label: 'My Events', icon: Calendar },
   { id: 'checkin', label: 'Check-in', icon: QrCode },
   { id: 'create', label: 'Create Event', icon: PlusCircle },
+  { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
