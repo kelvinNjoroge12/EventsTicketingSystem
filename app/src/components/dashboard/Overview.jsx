@@ -191,70 +191,55 @@ const OrganizerDashboardOverview = ({
         <div className="absolute top-0 right-0 w-36 lg:w-44 h-36 lg:h-44 bg-[#C58B1A]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
       </div>
 
-      <Card className="border border-[#E2E8F0] shadow-none !rounded-[1.25rem] !pressable-card-none active:transform-none">
-        <CardContent className="py-2.5 px-3 lg:px-4">
-          <div className="flex items-center gap-3 mb-1.5 px-0.5">
-            <div className="w-1.5 h-3.5 bg-[#02338D] rounded-full" />
-            <span className="text-xs font-bold text-[#0F172A] tracking-tight">Analytics Filters</span>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3">
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 mb-0.5 ml-0.5">MY EVENT</label>
-              <select
-                value={filters?.eventId || ''}
-                onChange={handleFilter('eventId')}
-                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-xl text-[11px] lg:text-xs bg-white focus:ring-1 focus:ring-[#02338D] outline-none transition-all"
-              >
-                <option value="">All Events</option>
-                {events.map((eventItem) => (
-                  <option key={eventItem.id} value={eventItem.id}>{eventItem.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 mb-0.5 ml-0.5">GRADUATION</label>
-              <select
-                value={filters?.graduationYear || ''}
-                onChange={handleFilter('graduationYear')}
-                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-xl text-[11px] lg:text-xs bg-white focus:ring-1 focus:ring-[#02338D] outline-none transition-all"
-              >
-                <option value="">All Years</option>
-                {(options.graduation_years || []).map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 mb-0.5 ml-0.5">COURSE</label>
-              <select
-                value={filters?.courseId || ''}
-                onChange={handleFilter('courseId')}
-                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-xl text-[11px] lg:text-xs bg-white focus:ring-1 focus:ring-[#02338D] outline-none transition-all"
-              >
-                <option value="">All Courses</option>
-                {(options.courses || []).map((course) => (
-                  <option key={course.course_id || course.id} value={course.course_id || course.id}>
-                    {course.course__name || course.name || 'Course'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 mb-0.5 ml-0.5">LOCATION</label>
-              <select
-                value={filters?.location || ''}
-                onChange={handleFilter('location')}
-                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-xl text-[11px] lg:text-xs bg-white focus:ring-1 focus:ring-[#02338D] outline-none transition-all"
-              >
-                <option value="">All Locations</option>
-                {(options.locations || []).map((loc) => (
-                  <option key={loc.label} value={loc.label}>{loc.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white border border-[#E2E8F0] rounded-2xl p-1.5 lg:p-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 lg:gap-2">
+          <select
+            value={filters?.eventId || ''}
+            onChange={handleFilter('eventId')}
+            className="w-full px-3 py-1.5 lg:py-2 border border-[#E2E8F0] rounded-full text-[11px] lg:text-xs bg-gray-50/50 focus:bg-white focus:ring-1 focus:ring-[#02338D] outline-none hover:bg-white transition-colors cursor-pointer"
+          >
+            <option value="">All Events</option>
+            {events.map((eventItem) => (
+              <option key={eventItem.id} value={eventItem.id}>{eventItem.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filters?.graduationYear || ''}
+            onChange={handleFilter('graduationYear')}
+            className="w-full px-3 py-1.5 lg:py-2 border border-[#E2E8F0] rounded-full text-[11px] lg:text-xs bg-gray-50/50 focus:bg-white focus:ring-1 focus:ring-[#02338D] outline-none hover:bg-white transition-colors cursor-pointer"
+          >
+            <option value="">All Years</option>
+            {(options.graduation_years || []).map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+
+          <select
+            value={filters?.courseId || ''}
+            onChange={handleFilter('courseId')}
+            className="w-full px-3 py-1.5 lg:py-2 border border-[#E2E8F0] rounded-full text-[11px] lg:text-xs bg-gray-50/50 focus:bg-white focus:ring-1 focus:ring-[#02338D] outline-none hover:bg-white transition-colors cursor-pointer"
+          >
+            <option value="">All Courses</option>
+            {(options.courses || []).map((course) => (
+              <option key={course.course_id || course.id} value={course.course_id || course.id}>
+                {course.course__name || course.name || 'Course'}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filters?.location || ''}
+            onChange={handleFilter('location')}
+            className="w-full px-3 py-1.5 lg:py-2 border border-[#E2E8F0] rounded-full text-[11px] lg:text-xs bg-gray-50/50 focus:bg-white focus:ring-1 focus:ring-[#02338D] outline-none hover:bg-white transition-colors cursor-pointer"
+          >
+            <option value="">All Locations</option>
+            {(options.locations || []).map((loc) => (
+              <option key={loc.label} value={loc.label}>{loc.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {statsCards.map((stat, index) => (
