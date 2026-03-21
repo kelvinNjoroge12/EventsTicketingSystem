@@ -574,9 +574,9 @@ class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class PromoCodeValidateView(generics.GenericAPIView):
     serializer_class = PromoCodeValidateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
-    @ratelimit(key="user", rate="10/m", block=True)
+    @ratelimit(key="user_or_ip", rate="10/m", block=True)
     def post(self, request, *args, **kwargs):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], status="published")
         serializer = self.get_serializer(data=request.data)

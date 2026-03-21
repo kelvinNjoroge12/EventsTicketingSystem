@@ -151,7 +151,7 @@ class OrderCancelView(generics.GenericAPIView):
 class OrderResendEmailView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [throttling.ScopedRateThrottle]
-    throttle_scope = "auth"
+    throttle_scope = "resend_email"
     lookup_field = "order_number"
 
     def post(self, request, order_number: str):
@@ -181,6 +181,8 @@ from django.http import HttpResponse
 
 class TicketQRView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "qr_generation"
 
     def get(self, request, qr_code_data, *args, **kwargs):
         # Dynamically generate QR code to bypass any auth/S3 headers from storages

@@ -165,6 +165,8 @@ REST_FRAMEWORK = {
         "checkout": "5/minute",      # Specific throttle for checkout
         "auth": "10/minute",         # Specific throttle for auth
         "order_lookup": "30/minute", # Throttle for order detail lookups (anti brute-force)
+        "qr_generation": "30/minute", # Throttle for QR generation
+        "resend_email": "5/minute",  # Throttle for email resending
     },
 }
 
