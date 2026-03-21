@@ -182,13 +182,15 @@ const OrganizerDashboardOverview = ({
   };
 
   return (
-    <div className="space-y-2.5 lg:space-y-3">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] px-4 py-3 lg:px-6 lg:py-3 text-white">
-        <div className="relative z-10">
-          <h2 className="text-base lg:text-lg font-semibold mb-0.5">Welcome back!</h2>
-          <p className="text-white/70 text-[11px] lg:text-xs">Here is a snapshot of your attendee analytics.</p>
+    <div className="space-y-2">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] px-4 py-2 lg:px-6 text-white flex items-center min-h-[52px]">
+        <div className="relative z-10 w-full flex items-baseline justify-between">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-sm lg:text-base font-semibold">Welcome back!</h2>
+            <p className="text-white/80 text-[10px] lg:text-xs">Here is a snapshot of your attendee analytics.</p>
+          </div>
         </div>
-        <div className="absolute top-0 right-0 w-36 lg:w-44 h-36 lg:h-44 bg-[#C58B1A]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#C58B1A]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
       </div>
 
       <div className="bg-white border border-[#E2E8F0] rounded-2xl p-1.5 lg:p-2">
