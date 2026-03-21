@@ -45,7 +45,7 @@ const StatCard = ({ title, value, icon: Icon, delay, subtitle }) => {
       <CardContent className="p-2 lg:p-2.5">
         <div className="flex items-center justify-between gap-2 lg:gap-3">
           <div className="space-y-0">
-            <p className="text-[10px] lg:text-[11px] uppercase tracking-wide text-gray-500">{title}</p>
+            <p className="text-[10px] lg:text-[11px] font-medium text-gray-500">{title}</p>
             <h3 className="text-sm lg:text-base font-semibold text-[#0F172A] leading-tight">{value}</h3>
             {subtitle && <p className="text-[10px] text-gray-400">{subtitle}</p>}
           </div>
