@@ -29,14 +29,18 @@ const STEP_COLORS = [
   { bg: 'bg-rose-500',    light: 'bg-rose-50',    ring: 'ring-rose-200',    text: 'text-rose-500',    border: 'border-rose-200' },
   { bg: 'bg-amber-500',   light: 'bg-amber-50',   ring: 'ring-amber-200',   text: 'text-amber-500',   border: 'border-amber-200' },
   { bg: 'bg-emerald-600', light: 'bg-emerald-50', ring: 'ring-emerald-200', text: 'text-emerald-600', border: 'border-emerald-200' },
+  { bg: 'bg-cyan-600',    light: 'bg-cyan-50',    ring: 'ring-cyan-200',    text: 'text-cyan-600',    border: 'border-cyan-200' },
+  { bg: 'bg-indigo-600',  light: 'bg-indigo-50',  ring: 'ring-indigo-200',  text: 'text-indigo-600',  border: 'border-indigo-200' },
 ];
 
 const STEPS = [
-  { id: 1, label: 'Details',  icon: Info,       desc: 'Core event information' },
-  { id: 2, label: 'Tickets',  icon: Tag,        desc: 'Pricing & capacity' },
-  { id: 3, label: 'Lineup',   icon: Mic,        desc: 'Speakers & sponsors' },
-  { id: 4, label: 'Settings', icon: Zap,        desc: 'Privacy & notifications' },
-  { id: 5, label: 'Review',   icon: Eye,        desc: 'Confirm & publish' },
+  { id: 1, label: 'Details',   icon: Info,       desc: 'Core event information' },
+  { id: 2, label: 'Tickets',   icon: Tag,        desc: 'Pricing & capacity' },
+  { id: 3, label: 'Lineup',    icon: Mic,        desc: 'Speakers & sponsors' },
+  { id: 4, label: 'Schedule',  icon: Calendar,   desc: 'Event agenda' },
+  { id: 5, label: 'Attendees', icon: Users,      desc: 'Registration categories' },
+  { id: 6, label: 'Settings',  icon: Zap,        desc: 'Privacy & notifications' },
+  { id: 7, label: 'Review',    icon: Eye,        desc: 'Confirm & publish' },
 ];
 
 function validateImage(file) {
@@ -234,6 +238,26 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
   const [speakers, setSpeakers] = useState([{ id: '1', name: '', title: '', org: '' }]);
   const [sponsors, setSponsors] = useState([{ id: '1', name: '', website: '', tier: 'partner' }]);
 
+  // MC state
+  const [hasMC, setHasMC] = useState(false);
+  const [mcName, setMcName] = useState('');
+  const [mcBio, setMcBio] = useState('');
+
+  // Schedule state
+  const [schedule, setSchedule] = useState([]);
+  const addScheduleItem = () => setSchedule(p => [...p, { id: Date.now().toString(), time: '', title: '', description: '' }]);
+  const updSchedule = (id, f, v) => setSchedule(p => p.map(s => s.id === id ? { ...s, [f]: v } : s));
+  const rmSchedule = id => setSchedule(p => p.filter(s => s.id !== id));
+
+  // Registration categories state
+  const [regCategories, setRegCategories] = useState([
+    { category: 'student', label: 'Student', is_active: true, require_student_email: true, require_admission_number: true, ask_school: true, ask_course: true, ask_graduation_year: true, ask_location: true, questions: [] },
+    { category: 'alumni',  label: 'Alumni',  is_active: true, require_student_email: false, require_admission_number: false, ask_school: true,  ask_course: true,  ask_graduation_year: true,  ask_location: true,  questions: [] },
+    { category: 'guest',   label: 'Guest',   is_active: true, require_student_email: false, require_admission_number: false, ask_school: false, ask_course: false, ask_graduation_year: false, ask_location: true,  questions: [] },
+  ]);
+  const updRegCat = (category, field, value) =>
+    setRegCategories(p => p.map(c => c.category === category ? { ...c, [field]: value } : c));
+
   const { data: categoriesData = [] } = useQuery({
     queryKey: eventQueryKeys.categories(),
     queryFn: fetchCategories,
@@ -334,40 +358,88 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
         created = await api.post('/api/events/create/', payload);
       }
 
-      if (ticketTypes.length && created?.slug) {
-        await Promise.allSettled(
-          ticketTypes.map(t =>
-            api.post(`/api/events/${created.slug}/tickets/create/`, {
-              name: t.name,
-              ticket_class: t.ticketClass,
-              price: t.ticketClass === 'free' ? 0 : Number(t.price || 0),
-              quantity: Number(t.quantity || 0),
-              description: t.description || '',
-            }).catch(() => null)
-          )
+      const slug = created?.slug;
+      if (!slug) throw new Error('Event creation failed — no slug returned.');
+
+      const tasks = [];
+
+      // Tickets
+      ticketTypes.forEach(t => {
+        tasks.push(
+          api.post(`/api/events/${slug}/tickets/create/`, {
+            name: t.name,
+            ticket_class: t.ticketClass,
+            price: t.ticketClass === 'free' ? 0 : Number(t.price || 0),
+            quantity: Number(t.quantity || 0),
+            description: t.description || '',
+          }).catch(() => null)
+        );
+      });
+
+      // Speakers (non-MC)
+      speakers.filter(s => s.name.trim()).forEach((s, idx) => {
+        tasks.push(
+          api.post(`/api/events/${slug}/speakers/`, {
+            name: s.name, title: s.title || '', organization: s.org || '',
+            bio: '', is_mc: false, sort_order: idx,
+          }).catch(() => null)
+        );
+      });
+
+      // MC
+      if (hasMC && mcName.trim()) {
+        const mcFd = new FormData();
+        mcFd.append('name', mcName);
+        mcFd.append('bio', mcBio || '');
+        mcFd.append('is_mc', 'true');
+        mcFd.append('sort_order', '0');
+        tasks.push(api.postForm(`/api/events/${slug}/speakers/`, mcFd).catch(() => null));
+      }
+
+      // Schedule items
+      schedule.filter(s => s.title.trim()).forEach((item, idx) => {
+        tasks.push(
+          api.post(`/api/events/${slug}/schedule/`, {
+            title: item.title,
+            description: item.description || '',
+            start_time: item.time || '00:00',
+            sort_order: idx,
+          }).catch(() => null)
+        );
+      });
+
+      // Sponsors
+      sponsors.filter(s => s.name.trim()).forEach((s, idx) => {
+        tasks.push(
+          api.post(`/api/events/${slug}/sponsors/`, {
+            name: s.name, website: s.website || '', tier: s.tier || 'partner', sort_order: idx,
+          }).catch(() => null)
+        );
+      });
+
+      // Registration categories
+      const activeCats = regCategories.filter(c => c.is_active);
+      if (activeCats.length > 0) {
+        tasks.push(
+          api.post(`/api/events/${slug}/registration/setup/`, {
+            categories: regCategories.map((cat, idx) => ({
+              category: cat.category,
+              label: cat.label,
+              is_active: cat.is_active,
+              sort_order: idx,
+              require_student_email: cat.category === 'student' ? true : cat.require_student_email,
+              require_admission_number: cat.category === 'student' ? true : cat.require_admission_number,
+              ask_graduation_year: cat.ask_graduation_year,
+              ask_course: cat.ask_course,
+              ask_school: cat.ask_school,
+              ask_location: cat.ask_location,
+              questions: [],
+            })),
+          }).catch(() => null)
         );
       }
 
-      if (speakers.some(s => s.name.trim()) && created?.slug) {
-        await Promise.allSettled(
-          speakers.filter(s => s.name.trim()).map(s =>
-            api.post(`/api/events/${created.slug}/speakers/`, {
-              name: s.name, title: s.title, organization: s.org || '',
-              bio: '', twitter: '', linkedin: '', is_mc: false, sort_order: 0,
-            }).catch(() => null)
-          )
-        );
-      }
-
-      if (sponsors.some(s => s.name.trim()) && created?.slug) {
-        await Promise.allSettled(
-          sponsors.filter(s => s.name.trim()).map(s =>
-            api.post(`/api/events/${created.slug}/sponsors/`, {
-              name: s.name, website: s.website, tier: s.tier || 'partner', sort_order: 0,
-            }).catch(() => null)
-          )
-        );
-      }
+      await Promise.allSettled(tasks);
 
       toast.success('Event submitted for review! You\'ll be notified once it goes live.', { duration: 6000 });
       if (onCreated) onCreated(created);
@@ -695,9 +767,120 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
           </div>
         </section>
 
-        {/* ════ STEP 4 — Settings ════ */}
+        {/* ════ STEP 4 — Schedule ════ */}
         <section ref={el => stepRefs.current[3] = el} className="space-y-5 scroll-mt-36">
-          <SectionHeader step={4} title="Event Settings" subtitle="Control privacy, waitlist, and notifications" />
+          <SectionHeader step={4} title="Event Schedule" subtitle="Add your event agenda — sessions, breaks, keynotes" />
+
+          <div className="space-y-3">
+            {schedule.map((item, idx) => (
+              <div key={item.id} className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Session #{idx + 1}</span>
+                  <button type="button" onClick={() => rmSchedule(item.id)}
+                    className="p-1 text-slate-300 hover:text-red-500 rounded-lg transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Field label="Time">
+                    <TextInput icon={Clock} type="time" value={item.time} onChange={e => updSchedule(item.id, 'time', e.target.value)} />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Session Title" required>
+                      <TextInput placeholder="e.g. Opening Keynote" value={item.title} onChange={e => updSchedule(item.id, 'title', e.target.value)} />
+                    </Field>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <Field label="Description">
+                      <Textarea placeholder="Brief description of the session…" rows={2} value={item.description} onChange={e => updSchedule(item.id, 'description', e.target.value)} />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={addScheduleItem}
+            className="w-full py-3 rounded-2xl border-2 border-dashed border-amber-200 text-amber-600 font-semibold text-sm hover:bg-amber-50 hover:border-amber-400 transition-all flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Schedule Item
+          </button>
+
+          {schedule.length === 0 && (
+            <p className="text-center text-xs text-slate-400 py-4">No schedule items yet — your event agenda will appear here.</p>
+          )}
+        </section>
+
+        {/* ════ STEP 5 — Registration Categories ════ */}
+        <section ref={el => stepRefs.current[4] = el} className="space-y-5 scroll-mt-36">
+          <SectionHeader step={5} title="Attendee Categories" subtitle="Control who can register and what info is collected" />
+
+          {/* MC toggle */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-700 flex items-center gap-2"><Mic className="w-4 h-4 text-rose-500" /> Master of Ceremonies (MC)</p>
+                <p className="text-xs text-slate-400 mt-0.5">Add an MC to the event — shown on the event page</p>
+              </div>
+              <Switch checked={hasMC} onCheckedChange={setHasMC} />
+            </div>
+            {hasMC && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+                <Field label="MC Full Name" required>
+                  <TextInput placeholder="e.g. John Kamau" value={mcName} onChange={e => setMcName(e.target.value)} />
+                </Field>
+                <Field label="MC Bio">
+                  <TextInput placeholder="Brief bio or title" value={mcBio} onChange={e => setMcBio(e.target.value)} />
+                </Field>
+              </div>
+            )}
+          </div>
+
+          {/* Registration categories */}
+          {regCategories.map(cat => (
+            <div key={cat.category} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{cat.label}</p>
+                  <p className="text-xs text-slate-400">
+                    {cat.category === 'student' ? 'Requires student email + admission number' :
+                     cat.category === 'alumni' ? 'For university alumni registrations' :
+                     'Open to general public / external guests'}
+                  </p>
+                </div>
+                <Switch checked={cat.is_active} onCheckedChange={v => updRegCat(cat.category, 'is_active', v)} />
+              </div>
+              {cat.is_active && (
+                <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { field: 'ask_school', label: 'Ask School' },
+                    { field: 'ask_course', label: 'Ask Course' },
+                    { field: 'ask_graduation_year', label: 'Graduation Year' },
+                    { field: 'ask_location', label: 'Location' },
+                    ...(cat.category !== 'student' ? [{ field: 'require_admission_number', label: 'Admission No.' }] : []),
+                  ].map(({ field, label }) => (
+                    <label key={field} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!cat[field]}
+                        disabled={cat.category === 'student' && (field === 'require_student_email' || field === 'require_admission_number')}
+                        onChange={e => updRegCat(cat.category, field, e.target.checked)}
+                        className="w-3.5 h-3.5 rounded accent-violet-600"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+
+        {/* ════ STEP 6 — Settings ════ */}
+        <section ref={el => stepRefs.current[5] = el} className="space-y-5 scroll-mt-36">
+          <SectionHeader step={6} title="Event Settings" subtitle="Control privacy, waitlist, and notifications" />
 
           <ToggleRow
             icon={Globe} iconBg="bg-violet-500"
@@ -722,9 +905,9 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
           />
         </section>
 
-        {/* ════ STEP 5 — Review ════ */}
-        <section ref={el => stepRefs.current[4] = el} className="space-y-5 scroll-mt-36">
-          <SectionHeader step={5} title="Review & Submit" subtitle="Double-check everything before going live" />
+        {/* ════ STEP 7 — Review ════ */}
+        <section ref={el => stepRefs.current[6] = el} className="space-y-5 scroll-mt-36">
+          <SectionHeader step={7} title="Review & Submit" subtitle="Double-check everything before going live" />
 
           {issues.length > 0 && (
             <div className="rounded-2xl bg-red-50 border border-red-200 p-4 space-y-1.5">

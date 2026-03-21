@@ -67,8 +67,8 @@ export const mapEvent = (e) => {
     stickers: e.stickers || [],
     format: e.format || "in_person",
     coverImage: e.cover_image || e.coverImage || null,
-    tags: [],
-    description: "",
+    tags: Array.isArray(e.tags) ? e.tags.map(t => t?.name || t || '').filter(Boolean) : [],
+    description: e.description || '',
     organizer: {
       id: e.organizer?.id,
       name:
@@ -86,7 +86,8 @@ export const mapEvent = (e) => {
   return {
     ...base,
     isFree,
-    isAlmostSoldOut: false,
+    // Read from backend — backend property is_almost_sold_out returns true when <10% remain
+    isAlmostSoldOut: e.is_almost_sold_out ?? false,
     // Use currency from API; fall back to KES for backward compat with older API versions
     currency: e.currency || "KES",
     price: Number(price || 0),

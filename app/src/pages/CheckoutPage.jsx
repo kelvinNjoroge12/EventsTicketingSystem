@@ -13,7 +13,9 @@ import { api } from '../lib/apiClient';
 import { useCart } from '../context/CartContext';
 
 const SIMULATED_PAYMENTS_ENABLED =
-  import.meta.env.VITE_ENABLE_SIMULATED_PAYMENTS === 'true' || import.meta.env.DEV;
+  import.meta.env.VITE_ENABLE_SIMULATED_PAYMENTS === 'true';
+// NOTE: To enable simulated payments in local dev, add VITE_ENABLE_SIMULATED_PAYMENTS=true to your .env file.
+// We intentionally do NOT default to true in dev to avoid masking real payment integration bugs.
 const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
 
