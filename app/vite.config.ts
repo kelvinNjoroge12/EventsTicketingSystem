@@ -18,4 +18,15 @@ export default defineConfig(({ mode }) => ({
   esbuild: {
     drop: mode === 'production' ? ['console', 'debugger'] : [],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+          'ui': ['lucide-react', 'framer-motion', 'recharts'],
+          'dashboard': ['./src/pages/OrganizerDashboardPage.jsx'],
+        }
+      }
+    }
+  }
 }));
