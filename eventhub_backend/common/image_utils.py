@@ -1,4 +1,5 @@
 import logging
+from django.conf import settings
 from django.db.models import ImageField
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -11,6 +12,8 @@ def trigger_image_compression(sender, instance, created, **kwargs):
     Hook to trigger background image compression after a model is saved.
     This replaces synchronous pre_save compression to avoid blocking requests.
     """
+    if not getattr(settings, "ENABLE_IMAGE_OPTIMIZATION", True):
+        return
     # Only hook into our own app models to avoid third-party libraries
     if not sender._meta.app_label.startswith('apps.'):
         return

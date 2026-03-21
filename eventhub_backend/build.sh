@@ -33,22 +33,5 @@ EOF
 # Run migrations
 python manage.py migrate
 
-# Optional: seed demo data on Render (use env RUN_SEED_STRATHMORE=true)
-# WARNING: seed_strathmore.py deletes all existing events.
-if [ "${RUN_SEED_STRATHMORE:-}" = "true" ]; then
-  echo ">>> Running seed_strathmore.py (this will delete all events)..."
-  python seed_strathmore.py
-fi
-
-# Optional: seed schools/courses from Excel/CSV (use env RUN_SEED_ACADEMICS=true and SEED_ACADEMICS_PATH)
-if [ "${RUN_SEED_ACADEMICS:-}" = "true" ]; then
-  if [ -z "${SEED_ACADEMICS_PATH:-}" ]; then
-    echo ">>> RUN_SEED_ACADEMICS set but SEED_ACADEMICS_PATH is empty; skipping."
-  else
-    echo ">>> Running seed_academics from ${SEED_ACADEMICS_PATH}..."
-    python manage.py seed_academics --path "${SEED_ACADEMICS_PATH}"
-  fi
-fi
-
 # Collect static files
 python manage.py collectstatic --no-input

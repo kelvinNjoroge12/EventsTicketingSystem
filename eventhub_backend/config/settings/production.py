@@ -75,6 +75,8 @@ AWS_S3_REGION_NAME = env("SB_STORAGE_REGION", default="eu-west-1")
 # Because Render deployed without a Redis instance add-on defined natively in environment,
 # we need to execute Celery tasks (like email sending) synchronously during sign-ups to prevent 500 crashes
 CELERY_TASK_ALWAYS_EAGER = True
+ENABLE_IMAGE_OPTIMIZATION = env.bool("ENABLE_IMAGE_OPTIMIZATION", default=False)  # noqa: F405
+ENABLE_KEEP_ALIVE_PING = env.bool("ENABLE_KEEP_ALIVE_PING", default=False)  # noqa: F405
 
 # URL construction (no auth required for public links)
 AWS_DEFAULT_ACL = "public-read"

@@ -1,8 +1,18 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+// ──────────────────────────────────────────────────────────────
+// Security: The JWT access token lives ONLY in memory.
+// Storing it in localStorage would expose it to XSS attacks.
+// The HttpOnly refresh cookie handles persistence across sessions.
+// We keep only a boolean session-hint flag in localStorage so we
+// know whether to attempt a silent refresh on page load.
+// ──────────────────────────────────────────────────────────────
 const HAS_SESSION_KEY = "eventhub_has_session";
-const ACCESS_TOKEN_KEY = "eventhub_access_token";
+
+// In-memory token store — cleared on every page reload (intentional).
+// The refresh cookie rehydrates it transparently via refreshAccessToken().
+let _accessToken = null;
 
 export const getSessionHint = () => {
   try {
@@ -19,32 +29,28 @@ export const setSessionHint = (enabled) => {
       localStorage.setItem(HAS_SESSION_KEY, "1");
     } else {
       localStorage.removeItem(HAS_SESSION_KEY);
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      // Also remove the legacy token key if it was ever stored (migration safety)
+      localStorage.removeItem("eventhub_access_token");
+      _accessToken = null;
     }
   } catch {
     // ignore storage failures
   }
 };
 
-export const getStoredToken = () => {
-  try {
-    return typeof localStorage !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
-  } catch {
-    return null;
+// One-time migration: purge the old insecure localStorage token key
+try {
+  if (typeof localStorage !== "undefined" && localStorage.getItem("eventhub_access_token")) {
+    localStorage.removeItem("eventhub_access_token");
   }
-};
+} catch { /* ignore */ }
 
+/** Returns the current in-memory access token (never touches localStorage). */
+export const getStoredToken = () => _accessToken;
+
+/** Stores the access token in memory only — NOT in localStorage. */
 export const setStoredToken = (token) => {
-  try {
-    if (typeof localStorage === "undefined") return;
-    if (token) {
-      localStorage.setItem(ACCESS_TOKEN_KEY, token);
-    } else {
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-    }
-  } catch {
-    // ignore
-  }
+  _accessToken = token || null;
 };
 
 const API_ORIGIN = (() => {
@@ -94,7 +100,7 @@ const refreshAccessToken = async () => {
   const data = await res.json().catch(() => null);
   const token = data?.data?.access || data?.access;
   if (token) {
-    setStoredToken(token);
+    setStoredToken(token);      // store in memory only
   }
 
   setSessionHint(true);
@@ -136,6 +142,7 @@ async function request(path, options = {}, retry = true) {
         isRefreshing = true;
         refreshPromise = refreshAccessToken().finally(() => {
           isRefreshing = false;
+          refreshPromise = null;  // prevent stale promises from being awaited
         });
       }
       const newToken = await refreshPromise;

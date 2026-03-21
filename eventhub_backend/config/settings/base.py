@@ -113,6 +113,7 @@ if "postgres" in DATABASES["default"]["ENGINE"]:
 ENABLE_KEEP_ALIVE_PING = env.bool("ENABLE_KEEP_ALIVE_PING", default=False)
 KEEP_ALIVE_URL = env("KEEP_ALIVE_URL", default="https://eventsticketingsystem.onrender.com/api/health/")
 KEEP_ALIVE_INTERVAL_SECONDS = env.int("KEEP_ALIVE_INTERVAL_SECONDS", default=840)
+ENABLE_IMAGE_OPTIMIZATION = env.bool("ENABLE_IMAGE_OPTIMIZATION", default=True)
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

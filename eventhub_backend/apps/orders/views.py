@@ -77,7 +77,9 @@ class OrderCreateView(generics.GenericAPIView):
                 event = serializer.validated_data["event"]
                 items = serializer.validated_data["items"]
                 ticket_ids = [i["ticket_type_id"] for i in items]
-                TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids).exists()
+                # Fetch (not just .exists()) so Postgres actually acquires row locks.
+                # .exists() evaluates to True/False without touching rows and NO lock is taken.
+                list(TicketType.objects.select_for_update(nowait=True).filter(event=event, id__in=ticket_ids))
                 order = serializer.save()
         except DatabaseError:
             return Response(
