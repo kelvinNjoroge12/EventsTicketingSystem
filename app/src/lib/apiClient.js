@@ -61,6 +61,12 @@ const API_ORIGIN = (() => {
   }
 })();
 
+const getCookie = (name) => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(^|; )${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[2]) : null;
+};
+
 if (API_ORIGIN && typeof document !== "undefined") {
   const ensureLink = (rel) => {
     const selector = `link[rel="${rel}"][href="${API_ORIGIN}"]`;
@@ -111,9 +117,13 @@ const refreshAccessToken = async () => {
 async function request(path, options = {}, retry = true) {
   const url = `${API_BASE_URL}${path}`;
   const token = getStoredToken();
+  const method = (options.method || "GET").toUpperCase();
+  const isSafeMethod = ["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
+  const csrfToken = isSafeMethod ? null : getCookie("csrftoken");
   const headers = {
     ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
     ...(options.headers || {}),
   };
 

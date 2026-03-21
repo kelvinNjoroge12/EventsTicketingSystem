@@ -11,6 +11,7 @@ from django.db import transaction
 from django.db.models import Prefetch
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.middleware.csrf import get_token
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import PermissionDenied
@@ -159,6 +160,7 @@ class RegisterView(generics.CreateAPIView):
         send_verification_email.delay(str(user.id))
         if user.role == "organizer":
             send_welcome_email.delay(str(user.id))
+        get_token(request)  # ensure CSRF cookie is set
         return response
 
 
@@ -192,6 +194,7 @@ class LoginView(APIView):
         response = Response(data, status=status.HTTP_200_OK)
         tokens = data.get("tokens", {}) if isinstance(data, dict) else {}
         _set_auth_cookies(response, tokens.get("access"), tokens.get("refresh"))
+        get_token(request)  # ensure CSRF cookie is set
         return response
 
 
@@ -239,6 +242,7 @@ class TokenRefreshView(SimpleJWTTokenRefreshView):
             serializer.validated_data.get("access"),
             serializer.validated_data.get("refresh"),
         )
+        get_token(request)  # ensure CSRF cookie is set
         return response
 
 

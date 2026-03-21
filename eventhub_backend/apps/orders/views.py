@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -18,6 +19,31 @@ from .serializers import OrderCreateSerializer, OrderDetailSerializer, OrderPubl
 from .utils import send_ticket_email
 
 logger = logging.getLogger(__name__)
+
+
+def _dispatch_ticket_email_async(order: Order) -> None:
+    order_id = order.pk
+    order_number = order.order_number
+
+    def _send():
+        try:
+            fresh = Order.objects.select_related("event").get(pk=order_id)
+            send_ticket_email(fresh)
+        except Exception as exc:  # pragma: no cover
+            logger.error(
+                "Email failed for order %s: %s - %s",
+                order_number,
+                exc.__class__.__name__,
+                exc,
+            )
+
+    def _schedule():
+        threading.Thread(target=_send, daemon=True).start()
+
+    try:
+        transaction.on_commit(_schedule)
+    except RuntimeError:
+        _schedule()
 
 
 def _notify_waitlist_if_available(event):
@@ -88,10 +114,7 @@ class OrderCreateView(generics.GenericAPIView):
             )
 
         if order.status == "confirmed":
-            try:
-                send_ticket_email(order)
-            except Exception as e:
-                logger.error(f"Failed to send email for order {order.order_number}: {e}")
+            _dispatch_ticket_email_async(order)
 
         data = OrderDetailSerializer(order).data
         return Response(data, status=status.HTTP_201_CREATED)

@@ -15,5 +15,9 @@ class CookieJWTAuthentication(JWTAuthentication):
         if not raw_token:
             return None
 
+        # Avoid CSRF risks: only allow cookie-auth for safe (read-only) methods.
+        if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
+            return None
+
         validated_token = self.get_validated_token(raw_token)
         return self.get_user(validated_token), validated_token

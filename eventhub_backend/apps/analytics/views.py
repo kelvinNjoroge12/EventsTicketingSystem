@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import csv
 import logging
-
 import uuid
+import hashlib
 
 from django.db.models import Count, Sum, Q
 from django.http import HttpResponse
 from django.utils import timezone
+from django.core.cache import cache
 from rest_framework import permissions, status, throttling
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -83,11 +84,20 @@ class RecordEventViewView(APIView):
         event = generics.get_object_or_404(Event, slug=slug)
         # Avoid counting the same session twice in one minute
         session_key = request.session.session_key or ""
+        user_agent = request.META.get("HTTP_USER_AGENT", "")[:200]
+        ip_addr = request.META.get("REMOTE_ADDR", "")
+        fingerprint_source = session_key or f"{ip_addr}:{user_agent}"
+        if fingerprint_source:
+            fingerprint = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+            cache_key = f"event:view:{event.pk}:{fingerprint}"
+            if not cache.add(cache_key, "1", timeout=60):
+                return Response({"recorded": False, "deduped": True}, status=status.HTTP_200_OK)
+
         EventView.objects.create(
             event=event,
             session_key=session_key,
-            ip_address=request.META.get("REMOTE_ADDR"),
-            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+            ip_address=ip_addr,
+            user_agent=user_agent[:500],
             referrer=request.META.get("HTTP_REFERER", "")[:500],
         )
         from django.db.models import F
