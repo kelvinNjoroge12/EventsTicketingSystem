@@ -245,16 +245,17 @@ class EventPublishView(generics.UpdateAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return Event.objects.filter(organizer=self.request.user, status__in=["draft", "pending"])
+        return Event.objects.filter(organizer=self.request.user)
 
     def update(self, request, *args, **kwargs):
         event = self.get_object()
-        if request.user.is_superuser:
-            event.status = "published"
-        else:
-            event.status = "pending"
-        event.save(update_fields=["status"])
-        _bump_cache_version()
+        if event.status != "published":
+            if request.user.is_superuser:
+                event.status = "published"
+            else:
+                event.status = "pending"
+            event.save(update_fields=["status"])
+            _bump_cache_version()
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(serializer.data)
 
