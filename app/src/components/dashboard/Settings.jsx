@@ -517,7 +517,7 @@ const OrganizerSettings = ({ events = [] }) => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-        <Card className="lg:w-64 h-fit overflow-x-auto">
+        <Card className="lg:w-64 h-fit overflow-x-auto pressable-card-none">
           <CardContent className="p-2">
             <nav className="flex lg:flex-col gap-1 min-w-max lg:min-w-0">
               {sidebarItems.map((item) => {
@@ -544,7 +544,7 @@ const OrganizerSettings = ({ events = [] }) => {
 
         <div className="flex-1">
           {activeTab === 'profile' && (
-            <Card className="animate-slide-in-right">
+            <Card className="animate-slide-in-right pressable-card-none">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Profile Information</CardTitle>
                 <CardDescription className="text-sm">Update your personal and professional details</CardDescription>
@@ -673,7 +673,7 @@ const OrganizerSettings = ({ events = [] }) => {
             </Card>
           )}
           {activeTab === 'notifications' && (
-            <Card className="animate-slide-in-right">
+            <Card className="animate-slide-in-right pressable-card-none">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Notification Preferences</CardTitle>
                 <CardDescription className="text-sm">Choose how you want to be notified</CardDescription>
@@ -747,7 +747,7 @@ const OrganizerSettings = ({ events = [] }) => {
             </Card>
           )}
           {activeTab === 'payment' && (
-            <Card className="animate-slide-in-right">
+            <Card className="animate-slide-in-right pressable-card-none">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Payment Settings</CardTitle>
                 <CardDescription className="text-sm">Connect Stripe to receive payouts and track onboarding status.</CardDescription>
@@ -884,7 +884,7 @@ const OrganizerSettings = ({ events = [] }) => {
             </Card>
           )}
           {activeTab === 'team' && (
-            <Card className="animate-slide-in-right">
+            <Card className="animate-slide-in-right pressable-card-none">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Team Members</CardTitle>
                 <CardDescription className="text-sm">Assign team members to check-in specific events</CardDescription>
@@ -968,7 +968,7 @@ const OrganizerSettings = ({ events = [] }) => {
             </Card>
           )}
           {activeTab === 'integrations' && (
-            <Card className="animate-slide-in-right">
+            <Card className="animate-slide-in-right pressable-card-none">
               <CardHeader>
                 <CardTitle className="text-base lg:text-lg">Integrations</CardTitle>
                 <CardDescription className="text-sm">Connect with your favorite tools and services</CardDescription>
