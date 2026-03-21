@@ -16,9 +16,14 @@ import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Legend,
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
@@ -33,19 +38,19 @@ const StatCard = ({ title, value, icon: Icon, delay, subtitle }) => {
   return (
     <Card
       className={cn(
-        'overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:shadow-lg group',
-        animated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        'overflow-hidden border border-[#E2E8F0] transition-all duration-500 hover:-translate-y-0.5 hover:shadow-md group',
+        animated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
       )}
     >
-      <CardContent className="p-4 lg:p-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 lg:space-y-2">
-            <p className="text-xs lg:text-sm text-gray-500">{title}</p>
-            <h3 className="text-xl lg:text-2xl font-bold text-[#0F172A]">{value}</h3>
-            {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+      <CardContent className="p-3 lg:p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <p className="text-[11px] uppercase tracking-wide text-gray-500">{title}</p>
+            <h3 className="text-lg lg:text-xl font-semibold text-[#0F172A] leading-tight">{value}</h3>
+            {subtitle && <p className="text-[11px] text-gray-400">{subtitle}</p>}
           </div>
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+          <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center">
+            <Icon className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
           </div>
         </div>
       </CardContent>
@@ -68,23 +73,15 @@ const getStatusColor = (status) => {
   }
 };
 
-const buildCategoryData = (breakdown = []) => {
-  if (!Array.isArray(breakdown) || breakdown.length === 0) return [];
-  const filtered = breakdown.filter((item) => Number(item.count || 0) > 0);
-  if (filtered.length === 0) return [];
-  const colors = {
-    student: '#02338D',
-    alumni: '#7C3AED',
-    guest: '#C58B1A',
-    uncategorized: '#94A3B8',
-  };
-  const total = filtered.reduce((sum, item) => sum + Number(item.count || 0), 0);
-  if (total <= 0) return [];
-
-  return filtered.map((item) => ({
-    name: item.label || item.category || 'Unknown',
-    value: Math.round((Number(item.count || 0) / total) * 100),
-    color: colors[item.category] || '#0F4FA8',
+const buildEngagementSeries = (payload, category) => {
+  if (!payload || typeof payload !== 'object') return [];
+  const categories = payload.categories || {};
+  const series = categories[category] || categories.all || payload.series || [];
+  if (!Array.isArray(series)) return [];
+  return series.map((item) => ({
+    name: item.label || item.name || item.month || '',
+    current: Number(item.current ?? item.current_year ?? item.value ?? 0),
+    previous: Number(item.previous ?? item.previous_year ?? 0),
   }));
 };
 
@@ -99,17 +96,31 @@ const OrganizerDashboardOverview = ({
   onViewAll,
 }) => {
   const [mounted, setMounted] = useState(false);
+  const [engagementCategory, setEngagementCategory] = useState('all');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const stats = analytics?.kpis || {};
-  const alumniInsights = analytics?.alumni_insights || {};
-  const breakdown = analytics?.category_breakdown || [];
   const options = filterOptions || {};
+  const engagementPayload = analytics?.engagement_over_time || {};
+  const engagementSeries = useMemo(
+    () => buildEngagementSeries(engagementPayload, engagementCategory),
+    [engagementPayload, engagementCategory]
+  );
+  const engagementHasData = engagementSeries.some((item) => (item.current || 0) > 0 || (item.previous || 0) > 0);
+  const currentYearLabel = engagementPayload.current_year || new Date().getFullYear();
+  const previousYearLabel = engagementPayload.previous_year || currentYearLabel - 1;
 
-  const categoryData = useMemo(() => buildCategoryData(breakdown), [breakdown]);
+  const engagedSchools = analytics?.most_engaged_schools || analytics?.top_schools || [];
+  const schoolSeries = useMemo(() => {
+    if (!Array.isArray(engagedSchools)) return [];
+    return engagedSchools.map((item) => ({
+      name: item.school || item.name || item.label || 'School',
+      count: Number(item.count ?? item.total ?? 0),
+    }));
+  }, [engagedSchools]);
 
   const filteredEvents = useMemo(() => {
     let list = events;
@@ -165,40 +176,33 @@ const OrganizerDashboardOverview = ({
     },
   ];
 
-  const alumniRegistration = alumniInsights.registration_vs_attendance || {};
-  const alumniPercent = Number(alumniRegistration.percent || 0);
-  const topClass = alumniInsights.most_engaged_class;
-  const topYears = alumniInsights.top_graduation_years || [];
-  const mostActiveAlumni = alumniInsights.most_active_alumni || [];
-
   const handleFilter = (field) => (event) => {
     if (!onFilterChange) return;
     onFilterChange(field, event.target.value);
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] p-6 lg:p-8 text-white">
+    <div className="space-y-3 lg:space-y-4">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#02338D] to-[#7C3AED] px-4 py-4 lg:px-6 lg:py-4 text-white">
         <div className="relative z-10">
-          <h2 className="text-xl lg:text-2xl font-bold mb-1">Welcome back!</h2>
-          <p className="text-white/70 text-sm lg:text-base">Here is a snapshot of your attendee analytics.</p>
+          <h2 className="text-lg lg:text-xl font-semibold mb-0.5">Welcome back!</h2>
+          <p className="text-white/70 text-xs lg:text-sm">Here is a snapshot of your attendee analytics.</p>
         </div>
-        <div className="absolute top-0 right-0 w-48 lg:w-64 h-48 lg:h-64 bg-[#C58B1A]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-1/2 w-24 lg:w-32 h-24 lg:h-32 bg-white/5 rounded-full translate-y-1/2" />
+        <div className="absolute top-0 right-0 w-36 lg:w-44 h-36 lg:h-44 bg-[#C58B1A]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Analytics Filters</CardTitle>
+      <Card className="border border-[#E2E8F0]">
+        <CardHeader className="py-2">
+          <CardTitle className="text-sm font-semibold text-[#0F172A]">Analytics Filters</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">My Event</label>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">My Event</label>
               <select
                 value={filters?.eventId || ''}
                 onChange={handleFilter('eventId')}
-                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+                className="w-full px-2.5 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
               >
                 <option value="">All Events</option>
                 {events.map((eventItem) => (
@@ -207,11 +211,11 @@ const OrganizerDashboardOverview = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Graduation Year</label>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">Graduation Year</label>
               <select
                 value={filters?.graduationYear || ''}
                 onChange={handleFilter('graduationYear')}
-                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+                className="w-full px-2.5 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
               >
                 <option value="">All Years</option>
                 {(options.graduation_years || []).map((year) => (
@@ -220,11 +224,11 @@ const OrganizerDashboardOverview = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">Course</label>
               <select
                 value={filters?.courseId || ''}
                 onChange={handleFilter('courseId')}
-                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+                className="w-full px-2.5 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
               >
                 <option value="">All Courses</option>
                 {(options.courses || []).map((course) => (
@@ -235,11 +239,11 @@ const OrganizerDashboardOverview = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">Location</label>
               <select
                 value={filters?.location || ''}
                 onChange={handleFilter('location')}
-                className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
+                className="w-full px-2.5 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
               >
                 <option value="">All Locations</option>
                 {(options.locations || []).map((loc) => (
@@ -251,7 +255,7 @@ const OrganizerDashboardOverview = ({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-3">
         {statsCards.map((stat, index) => (
           <StatCard
             key={stat.title}
@@ -261,99 +265,80 @@ const OrganizerDashboardOverview = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4">
+        <Card className="lg:col-span-2 border border-[#E2E8F0]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Attendees by Category</CardTitle>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle className="text-sm lg:text-base font-semibold text-[#0F172A]">
+                Engagement Over Time
+              </CardTitle>
+              <div className="flex items-center gap-1">
+                {['all', 'alumni', 'student', 'guest'].map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setEngagementCategory(item)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                      engagementCategory === item
+                        ? 'bg-[#02338D] text-white border-[#02338D]'
+                        : 'bg-white text-gray-500 border-[#E2E8F0] hover:text-[#0F172A]'
+                    )}
+                  >
+                    {item === 'all' ? 'All' : item.charAt(0).toUpperCase() + item.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="h-48 lg:h-64">
-              {mounted && (
+            <div className="h-44 lg:h-52">
+              {mounted && engagementSeries.length > 0 && (
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={35} outerRadius={70} paddingAngle={4} dataKey="value">
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
+                  <LineChart data={engagementSeries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} />
+                    <YAxis stroke="#94A3B8" fontSize={11} />
                     <Tooltip />
-                  </PieChart>
+                    <Legend formatter={(value) => (value === 'current' ? `${currentYearLabel}` : `${previousYearLabel}`)} />
+                    <Line type="monotone" dataKey="current" stroke="#02338D" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="previous" stroke="#C58B1A" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+                  </LineChart>
                 </ResponsiveContainer>
               )}
-            </div>
-            <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
-              {categoryData.map((cat) => (
-                <div key={cat.name} className="flex items-center justify-between text-xs lg:text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                    <span className="text-gray-600">{cat.name}</span>
-                  </div>
-                  <span className="font-medium text-[#0F172A]">{cat.value}%</span>
+              {(!mounted || !engagementHasData) && (
+                <div className="h-full flex items-center justify-center text-xs text-gray-500">
+                  No engagement data yet.
                 </div>
-              ))}
-              {categoryData.length === 0 && (
-                <p className="text-sm text-gray-500">No attendee data yet.</p>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-[#E2E8F0]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Alumni Insights</CardTitle>
+            <CardTitle className="text-sm lg:text-base font-semibold text-[#0F172A]">
+              Most Engaged Schools
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Events with alumni</span>
-              <span className="font-semibold text-[#0F172A]">{formatNumber(alumniInsights.events_with_alumni || 0)}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Most engaged class</span>
-              <span className="font-semibold text-[#0F172A]">
-                {topClass?.year ? `${topClass.year} (${formatNumber(topClass.count)})` : 'N/A'}
-              </span>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Registration vs attendance</span>
-                <span className="font-semibold text-[#0F172A]">{alumniPercent}%</span>
-              </div>
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#C58B1A] rounded-full"
-                  style={{ width: `${Math.min(100, Math.max(0, alumniPercent))}%` }}
-                />
-              </div>
-              <div className="text-xs text-gray-400">
-                {formatNumber(alumniRegistration.registered || 0)} registered, {formatNumber(alumniRegistration.checked_in || 0)} checked in
-              </div>
-            </div>
-            {topYears.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1">Top graduation years</p>
-                <div className="space-y-1">
-                  {topYears.map((item) => (
-                    <div key={item.year} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600">{item.year}</span>
-                      <span className="font-medium text-[#0F172A]">{formatNumber(item.count)}</span>
-                    </div>
-                  ))}
+          <CardContent>
+            <div className="h-44 lg:h-52">
+              {mounted && schoolSeries.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={schoolSeries} layout="vertical" margin={{ left: 16, right: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                    <XAxis type="number" stroke="#94A3B8" fontSize={11} />
+                    <YAxis type="category" dataKey="name" width={110} stroke="#94A3B8" fontSize={11} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#7C3AED" radius={[4, 4, 4, 4]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-gray-500">
+                  No school data yet.
                 </div>
-              </div>
-            )}
-            {mostActiveAlumni.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1">Most active alumni</p>
-                <div className="space-y-1">
-                  {mostActiveAlumni.map((alumni) => (
-                    <div key={alumni.email} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600 truncate max-w-[140px]">{alumni.email}</span>
-                      <span className="font-medium text-[#0F172A]">{alumni.events} events</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

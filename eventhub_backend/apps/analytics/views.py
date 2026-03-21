@@ -6,6 +6,7 @@ import uuid
 import hashlib
 
 from django.db.models import Count, Sum, Q
+from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
 from django.utils import timezone
 from django.core.cache import cache
@@ -362,6 +363,60 @@ class OrganizerAnalyticsDashboardView(APIView):
 
         events_with_alumni = alumni_tickets.values("event_id").distinct().count()
 
+        # Engagement over time (monthly, current vs previous year)
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        now = timezone.now()
+        current_year = now.year
+        previous_year = current_year - 1
+
+        def _year_counts(qs, year):
+            rows = (
+                qs.filter(order__created_at__year=year)
+                .annotate(month=TruncMonth("order__created_at"))
+                .values("month")
+                .annotate(count=Count("id"))
+                .order_by("month")
+            )
+            data = {}
+            for row in rows:
+                month = row.get("month")
+                if not month:
+                    continue
+                data[month.month] = row["count"]
+            return data
+
+        def _build_series(qs):
+            current_map = _year_counts(qs, current_year)
+            previous_map = _year_counts(qs, previous_year)
+            return [
+                {
+                    "label": months[i],
+                    "current": current_map.get(i + 1, 0),
+                    "previous": previous_map.get(i + 1, 0),
+                }
+                for i in range(12)
+            ]
+
+        engagement_categories = {
+            "all": _build_series(tickets_qs),
+            "student": _build_series(tickets_qs.filter(order__registration__category="student")),
+            "alumni": _build_series(tickets_qs.filter(order__registration__category="alumni")),
+            "guest": _build_series(tickets_qs.filter(order__registration__category="guest")),
+        }
+
+        # Most engaged schools (top 6)
+        school_rows = (
+            tickets_qs.exclude(order__registration__school__isnull=True)
+            .values("order__registration__school__name")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:6]
+        )
+        most_engaged_schools = [
+            {"school": row["order__registration__school__name"], "count": row["count"]}
+            for row in school_rows
+            if row.get("order__registration__school__name")
+        ]
+
         # Filter options (based on organizer events + registrations)
         reg_base = OrderRegistration.objects.filter(order__event_id__in=event_ids)
         graduation_years = list(
@@ -413,6 +468,12 @@ class OrganizerAnalyticsDashboardView(APIView):
                     "percent": alumni_checkin_percent,
                 },
             },
+            "engagement_over_time": {
+                "current_year": current_year,
+                "previous_year": previous_year,
+                "categories": engagement_categories,
+            },
+            "most_engaged_schools": most_engaged_schools,
             "filters": {
                 "graduation_years": graduation_years,
                 "courses": courses,
