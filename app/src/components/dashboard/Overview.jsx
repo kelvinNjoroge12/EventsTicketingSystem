@@ -42,15 +42,15 @@ const StatCard = ({ title, value, icon: Icon, delay, subtitle }) => {
         animated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
       )}
     >
-      <CardContent className="p-2.5 lg:p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <p className="text-[11px] uppercase tracking-wide text-gray-500">{title}</p>
-            <h3 className="text-base lg:text-lg font-semibold text-[#0F172A] leading-tight">{value}</h3>
-            {subtitle && <p className="text-[11px] text-gray-400">{subtitle}</p>}
+      <CardContent className="p-2 lg:p-2.5">
+        <div className="flex items-center justify-between gap-2 lg:gap-3">
+          <div className="space-y-0">
+            <p className="text-[10px] lg:text-[11px] uppercase tracking-wide text-gray-500">{title}</p>
+            <h3 className="text-sm lg:text-base font-semibold text-[#0F172A] leading-tight">{value}</h3>
+            {subtitle && <p className="text-[10px] text-gray-400">{subtitle}</p>}
           </div>
-          <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center">
-            <Icon className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
+          <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center shrink-0">
+            <Icon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white" />
           </div>
         </div>
       </CardContent>
@@ -192,17 +192,17 @@ const OrganizerDashboardOverview = ({
       </div>
 
       <Card className="border border-[#E2E8F0]">
-        <CardHeader className="py-1.5">
-          <CardTitle className="text-sm font-semibold text-[#0F172A]">Analytics Filters</CardTitle>
+        <CardHeader className="py-1 lg:py-1.5 px-3 lg:px-4">
+          <CardTitle className="text-xs lg:text-sm font-semibold text-[#0F172A]">Analytics Filters</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0 pb-2">
+        <CardContent className="pt-0 pb-1.5 lg:pb-2 px-3 lg:px-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1">My Event</label>
+              <label className="block text-[10px] lg:text-[11px] font-medium text-gray-500 mb-0.5 lg:mb-1">My Event</label>
               <select
                 value={filters?.eventId || ''}
                 onChange={handleFilter('eventId')}
-                className="w-full px-2 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
+                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-md text-[11px] lg:text-xs bg-white"
               >
                 <option value="">All Events</option>
                 {events.map((eventItem) => (
@@ -211,11 +211,11 @@ const OrganizerDashboardOverview = ({
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1">Graduation Year</label>
+              <label className="block text-[10px] lg:text-[11px] font-medium text-gray-500 mb-0.5 lg:mb-1">Graduation Year</label>
               <select
                 value={filters?.graduationYear || ''}
                 onChange={handleFilter('graduationYear')}
-                className="w-full px-2 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
+                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-md text-[11px] lg:text-xs bg-white"
               >
                 <option value="">All Years</option>
                 {(options.graduation_years || []).map((year) => (
@@ -224,11 +224,11 @@ const OrganizerDashboardOverview = ({
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1">Course</label>
+              <label className="block text-[10px] lg:text-[11px] font-medium text-gray-500 mb-0.5 lg:mb-1">Course</label>
               <select
                 value={filters?.courseId || ''}
                 onChange={handleFilter('courseId')}
-                className="w-full px-2 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
+                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-md text-[11px] lg:text-xs bg-white"
               >
                 <option value="">All Courses</option>
                 {(options.courses || []).map((course) => (
@@ -239,11 +239,11 @@ const OrganizerDashboardOverview = ({
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1">Location</label>
+              <label className="block text-[10px] lg:text-[11px] font-medium text-gray-500 mb-0.5 lg:mb-1">Location</label>
               <select
                 value={filters?.location || ''}
                 onChange={handleFilter('location')}
-                className="w-full px-2 py-1.5 border border-[#E2E8F0] rounded-md text-xs bg-white"
+                className="w-full px-2 py-1 lg:py-1.5 border border-[#E2E8F0] rounded-md text-[11px] lg:text-xs bg-white"
               >
                 <option value="">All Locations</option>
                 {(options.locations || []).map((loc) => (
