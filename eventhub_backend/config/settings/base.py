@@ -165,7 +165,6 @@ REST_FRAMEWORK = {
         "checkout": "5/minute",      # Specific throttle for checkout
         "auth": "10/minute",         # Specific throttle for auth
         "order_lookup": "30/minute", # Throttle for order detail lookups (anti brute-force)
-        "frontend_error": "60/minute", # Client error telemetry
     },
 }
 
@@ -179,7 +178,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=60)),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=15)),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=env.int("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=7)),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -230,7 +229,7 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
 # ── Email System Configuration ──
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="kelvinnjorogeke@gmail.com")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@eventhub.test")
 ASYNC_TICKET_EMAIL = env.bool("ASYNC_TICKET_EMAIL", default=True)
 
 # SendGrid HTTP API takes priority over SMTP (works on Render free tier, SMTP is blocked).
@@ -247,7 +246,7 @@ elif env("EMAIL_HOST", default=""):
     EMAIL_HOST = env("EMAIL_HOST")
     EMAIL_PORT = env.int("EMAIL_PORT", default=587)
     EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
-    EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="kelvinnjorogeke@gmail.com")
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="noreply@eventhub.test")
     EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
     EMAIL_TIMEOUT = 10
 else:

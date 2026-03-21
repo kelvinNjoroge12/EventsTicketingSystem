@@ -22,6 +22,7 @@ const ConfirmationPage = lazy(() => import('./pages/ConfirmationPage'));
 const OrganizerProfilePage = lazy(() => import('./pages/OrganizerProfilePage'));
 const SearchResultsPage = lazy(() => import('./pages/SearchResultsPage'));
 const CreateEventPage = lazy(() => import('./pages/CreateEventPage'));
+const NewCreateEvent = lazy(() => import('./pages/organizer/CreateEvent'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
@@ -195,7 +196,12 @@ const AppRoutes = ({ onLocationKey }) => {
         } />
         <Route path="/create-event" element={
           <RequireAuth roles={organizerRoles}>
-            <Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>
+            <Suspense fallback={<PageLoader />}>
+              <NewCreateEvent 
+                onBack={() => window.history.back()} 
+                onCreated={(e) => window.location.href = `/events/${e.slug}`} 
+              />
+            </Suspense>
           </RequireAuth>
         } />
         <Route path="/login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
