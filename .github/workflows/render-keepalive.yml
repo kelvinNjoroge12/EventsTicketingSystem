@@ -13,5 +13,13 @@ jobs:
         env:
           HEALTH_URL: ${{ secrets.RENDER_HEALTH_URL || 'https://eventsticketingsystem.onrender.com/api/health/' }}
         run: |
-          echo "Pinging $HEALTH_URL"
-          curl -fsS -m 20 "$HEALTH_URL" > /dev/null
+          URL="${HEALTH_URL:-https://eventsticketingsystem.onrender.com/api/health/}"
+          echo "Pinging $URL"
+          # Render free instances can take a while to wake up; retry to avoid false failures.
+          curl -fsSL \
+            --connect-timeout 10 \
+            --max-time 120 \
+            --retry 6 \
+            --retry-all-errors \
+            --retry-delay 10 \
+            "$URL" > /dev/null
