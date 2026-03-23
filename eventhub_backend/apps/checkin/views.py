@@ -4,7 +4,7 @@ import logging
 
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -22,23 +22,37 @@ logger = logging.getLogger(__name__)
 def _can_manage_checkin(user, event) -> bool:
     if not user or not event:
         return False
+
     if user.is_staff or user.role == "admin":
         return True
-    if event.organizer_id == user.id:
-        return True
-    if user.role not in ["checkin", "staff"]:
-        return False
 
     membership = (
         OrganizerTeamMember.objects.filter(member=user, organizer=event.organizer)
         .prefetch_related("assigned_events")
         .first()
     )
-    if not membership:
+    if membership:
+        if membership.assigned_events.exists():
+            return membership.assigned_events.filter(id=event.id).exists()
         return False
-    if membership.assigned_events.exists():
-        return membership.assigned_events.filter(id=event.id).exists()
-    return True
+
+    if event.organizer_id == user.id:
+        return True
+
+    return False
+
+
+class CheckInClosed(APIException):
+    status_code = status.HTTP_410_GONE
+    default_detail = "Check-in is closed because this event has already ended."
+    default_code = "checkin_closed"
+
+
+def _raise_if_checkin_closed(event) -> None:
+    if event.status == "cancelled":
+        raise CheckInClosed("Check-in is closed because this event was cancelled.")
+    if event.has_ended():
+        raise CheckInClosed("Check-in is closed because this event has already ended.")
 
 
 class QRScanView(APIView):
@@ -54,11 +68,7 @@ class QRScanView(APIView):
         event = get_object_or_404(Event, slug=slug)
         if not _can_manage_checkin(request.user, event):
             raise PermissionDenied("Only assigned staff can perform check-ins.")
-        if event.has_ended():
-            return Response(
-                {"detail": "Check-in is closed because this event has already ended."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        _raise_if_checkin_closed(event)
 
         serializer = QRScanSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -104,6 +114,7 @@ class CheckInListView(generics.ListAPIView):
         event = get_object_or_404(Event, slug=self.kwargs["slug"])
         if not _can_manage_checkin(self.request.user, event):
             raise PermissionDenied("Only assigned staff can view check-ins.")
+        _raise_if_checkin_closed(event)
         return CheckIn.objects.filter(event=event).select_related("ticket", "checked_in_by").order_by("-created_at")
 
 
@@ -119,6 +130,7 @@ class AttendanceDashboardView(APIView):
         event = get_object_or_404(Event, slug=slug)
         if not _can_manage_checkin(request.user, event):
             raise PermissionDenied("Only assigned staff can view attendance.")
+        _raise_if_checkin_closed(event)
 
         orders = Order.objects.filter(
             event=event, status="confirmed"
@@ -195,6 +207,7 @@ class ResendTicketEmailView(APIView):
         event = get_object_or_404(Event, slug=slug)
         if not _can_manage_checkin(request.user, event):
             raise PermissionDenied("Only assigned staff can resend tickets.")
+        _raise_if_checkin_closed(event)
 
         order_number = request.data.get("order_number")
         if not order_number:

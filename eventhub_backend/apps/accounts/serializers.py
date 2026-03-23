@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
-
 from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings
 from django.utils import timezone
@@ -12,7 +10,6 @@ from common.validators import validate_upload_image
 from common.tokens import verify_secure_token, email_verification_token_generator
 from django.contrib.auth.tokens import default_token_generator
 from .models import OrganizerProfile, OrganizerTeamMember
-from apps.events.models import Event
 
 User = get_user_model()
 
@@ -150,18 +147,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return prefetched
         return OrganizerTeamMember.objects.filter(member=obj).prefetch_related("assigned_events")
 
+    def _is_active_checkin_event(self, event):
+        if not event:
+            return False
+        if getattr(event, "status", None) == "cancelled":
+            return False
+        try:
+            return not event.has_ended()
+        except Exception:
+            return False
+
+    def _get_assigned_events_for_membership(self, membership):
+        events = list(membership.assigned_events.all())
+        return [event for event in events if self._is_active_checkin_event(event)]
+
     def get_assigned_events(self, obj):
         memberships = self._get_memberships(obj)
         event_ids = set()
         for membership in memberships:
-            events = list(membership.assigned_events.all())
-            if not events:
-                events = list(
-                    Event.objects.filter(
-                        organizer=membership.organizer,
-                        status__in=["published", "completed"],
-                    )
-                )
+            events = self._get_assigned_events_for_membership(membership)
             for event in events:
                 event_ids.add(str(event.id))
         return list(event_ids)
@@ -171,14 +175,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         details = []
         seen = set()
         for membership in memberships:
-            events = list(membership.assigned_events.all())
-            if not events:
-                events = list(
-                    Event.objects.filter(
-                        organizer=membership.organizer,
-                        status__in=["published", "completed"],
-                    )
-                )
+            events = self._get_assigned_events_for_membership(membership)
             for event in events:
                 if event.id in seen:
                     continue

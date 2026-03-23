@@ -196,6 +196,8 @@ const CheckInPage = () => {
   const [event, setEvent] = useState(null);
   const [attendance, setAttendance] = useState(null);
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(true);
+  const [isCheckinClosed, setIsCheckinClosed] = useState(false);
+  const [checkinClosedMessage, setCheckinClosedMessage] = useState('');
   const [activeTab, setActiveTab] = useState('scan');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -221,7 +223,13 @@ const CheckInPage = () => {
     try {
       const data = await api.get(`/api/events/${slug}/checkin/attendance/`);
       setAttendance(data);
+      setIsCheckinClosed(false);
+      setCheckinClosedMessage('');
     } catch (err) {
+      if (err?.status === 410) {
+        setIsCheckinClosed(true);
+        setCheckinClosedMessage(err?.message || 'Check-in is closed for this event.');
+      }
       console.error('Failed to load attendance:', err);
     } finally {
       setIsLoadingAttendance(false);
@@ -237,6 +245,15 @@ const CheckInPage = () => {
       try {
         const data = await api.get(`/api/events/${slug}/`);
         setEvent(data);
+        if (data?.status === 'cancelled') {
+          setIsCheckinClosed(true);
+          setCheckinClosedMessage('Check-in is closed because this event was cancelled.');
+          return;
+        }
+        if (data?.time_state === 'past') {
+          setIsCheckinClosed(true);
+          setCheckinClosedMessage('Check-in is closed because this event has already ended.');
+        }
       } catch {
         setEvent(null);
       }
@@ -285,6 +302,10 @@ const CheckInPage = () => {
       setResult({ type: 'success', message: data.message || 'Checked in successfully.', data });
       loadAttendance();
     } catch (err) {
+      if (err?.status === 410) {
+        setIsCheckinClosed(true);
+        setCheckinClosedMessage(err?.message || 'Check-in is closed for this event.');
+      }
       const msg = err?.response?.error?.message || err?.message || 'Invalid or already used ticket.';
       setResult({ type: 'error', message: msg });
     } finally {
@@ -358,11 +379,17 @@ const CheckInPage = () => {
 
   const isOrganizer = user && (user.role === 'organizer' || user.role === 'admin');
   const isStaff = user && (user.is_staff || user.role === 'staff' || user.role === 'checkin');
-  const assignedEvents = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
-  const isAssigned = !assignedEvents.length || assignedEvents.some((value) => (
-    String(value) === String(event?.id) || String(value) === String(event?.slug)
+  const assignedEventsRaw = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
+  const assignedEvents = Array.isArray(assignedEventsRaw) ? assignedEventsRaw : [];
+  const hasAssignments = assignedEvents.length > 0;
+  const isAssigned = !event || assignedEvents.some((value) => (
+    String(value) === String(event?.id) ||
+    String(value) === String(event?.slug) ||
+    String(value) === String(slug)
   ));
-  const canAccess = Boolean(user && (isOrganizer || (isStaff && isAssigned)));
+  const organizerHasCheckinAccess = Boolean(isOrganizer && (!hasAssignments || isAssigned));
+  const staffHasCheckinAccess = Boolean(isStaff && isAssigned);
+  const canAccess = Boolean(user && (organizerHasCheckinAccess || staffHasCheckinAccess));
 
   if (!canAccess) {
     return (
@@ -371,6 +398,27 @@ const CheckInPage = () => {
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-[#0F172A]">Access Denied</h2>
           <p className="text-[#64748B] mt-2">You do not have permission to access this event check-in.</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (isCheckinClosed) {
+    return (
+      <PageWrapper className="bg-[#F8FAFC]">
+        <div className="text-center py-20">
+          <Clock className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-[#0F172A]">Check-In Closed</h2>
+          <p className="text-[#64748B] mt-2">{checkinClosedMessage || 'This check-in link has expired.'}</p>
+          {event?.slug && (
+            <Link
+              to={`/events/${event.slug}`}
+              className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-[#02338D] hover:text-[#022A78]"
+            >
+              <ExternalLink className="w-4 h-4" />
+              View Event Details
+            </Link>
+          )}
         </div>
       </PageWrapper>
     );

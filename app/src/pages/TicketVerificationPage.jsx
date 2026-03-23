@@ -46,10 +46,12 @@ const TicketVerificationPage = () => {
         const isOwner = String(user?.id) === String(ticketData.event.organizer_id);
         const isAdmin = Boolean(user?.is_staff || user?.role === 'admin');
         const isCheckinStaff = user?.role === 'staff' || user?.role === 'checkin';
-        const isAssigned = !assignedEvents.length || assignedEvents.some((value) => (
+        const hasAssignments = Array.isArray(assignedEvents) && assignedEvents.length > 0;
+        const isAssigned = Array.isArray(assignedEvents) && assignedEvents.some((value) => (
             String(value) === String(ticketData.event.id) || String(value) === String(ticketData.event.slug)
         ));
-        const canManageCheckin = Boolean(user && (isAdmin || isOwner || (isCheckinStaff && isAssigned)));
+        const ownerCanManage = Boolean(isOwner && (!hasAssignments || isAssigned));
+        const canManageCheckin = Boolean(user && (isAdmin || ownerCanManage || (isCheckinStaff && isAssigned)));
 
         if (!canManageCheckin) {
             toast.error('You do not have permission to check in this ticket.');
@@ -117,10 +119,12 @@ const TicketVerificationPage = () => {
     const isOwner = Boolean(user && String(user.id) === String(ticketData.event.organizer_id));
     const isAdmin = Boolean(user && (user.is_staff || user.role === 'admin'));
     const isCheckinStaff = Boolean(user && (user.role === 'staff' || user.role === 'checkin'));
-    const isAssigned = !assignedEvents.length || assignedEvents.some((value) => (
+    const hasAssignments = Array.isArray(assignedEvents) && assignedEvents.length > 0;
+    const isAssigned = Array.isArray(assignedEvents) && assignedEvents.some((value) => (
         String(value) === String(ticketData.event.id) || String(value) === String(ticketData.event.slug)
     ));
-    const canCheckIn = !isUsed && !isExpired && Boolean(user && (isAdmin || isOwner || (isCheckinStaff && isAssigned)));
+    const ownerCanCheckIn = Boolean(isOwner && (!hasAssignments || isAssigned));
+    const canCheckIn = !isUsed && !isExpired && Boolean(user && (isAdmin || ownerCanCheckIn || (isCheckinStaff && isAssigned)));
 
     return (
         <PageWrapper>

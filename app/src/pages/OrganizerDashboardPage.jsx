@@ -341,6 +341,15 @@ const OrganizerDashboardPage = () => {
 
   const rawEvents = eventsData || [];
   const events = useMemo(() => rawEvents.map(normalizeEvent), [rawEvents]);
+  const assignedEventsRaw = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
+  const assignedCheckinEvents = Array.isArray(assignedEventsRaw) ? assignedEventsRaw : [];
+  const hasCheckinAssignments = assignedCheckinEvents.length > 0;
+  const checkinEvents = useMemo(() => {
+    if (!hasCheckinAssignments) return events;
+    return events.filter((eventItem) => assignedCheckinEvents.some((value) => (
+      String(value) === String(eventItem.id) || String(value) === String(eventItem.slug)
+    )));
+  }, [assignedCheckinEvents, events, hasCheckinAssignments]);
 
   const deleteEventMutation = useMutation({
     mutationFn: async (eventItem) => {
@@ -787,10 +796,12 @@ const OrganizerDashboardPage = () => {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-600 bg-white border border-[#E2E8F0] rounded-xl px-4 py-3">
               <QrCode className="w-4 h-4 text-[#C58B1A]" />
-              Choose an event below to open the check-in screen.
+              {hasCheckinAssignments
+                ? 'Choose one of your assigned events to open check-in.'
+                : 'Choose an event below to open the check-in screen.'}
             </div>
             <OrganizerMyEvents
-              events={events}
+              events={checkinEvents}
               onEventClick={openCheckinForEvent}
               onViewEvent={openPublicEvent}
               onCreateEvent={handleCreateEvent}
