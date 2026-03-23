@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, MapPin, Clock, Globe, Share2, Bookmark, BookmarkCheck,
@@ -15,18 +15,22 @@ import ProgressiveImage from '../components/ui/ProgressiveImage';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
 import {
   buildEventDetailPlaceholderFromList,
+  approveEventReview,
   fetchEventLite,
   fetchEventSpeakers,
   fetchEventSchedule,
   fetchEventSponsors,
   fetchRelatedEvents,
+  rejectEventReview,
   trackEventView
 } from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import useSavedEvents from '../hooks/useSavedEvents';
 import { heroImage, heroSrcSet, avatarImage, logoImage } from '../lib/imageUtils';
 import eventQueryKeys from '../lib/eventQueryKeys';
+import { toast } from 'sonner';
 
 // ── Timeline Component ──────────────────────────────────────────────────────
 const ScheduleTimeline = ({ schedule, themeColor }) => (
@@ -163,13 +167,17 @@ const SponsorsGrid = ({ sponsors, themeColor }) => {
 // ── Main EventDetailPage ────────────────────────────────────────────────────
 const EventDetailPage = () => {
   const { slug } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToCart, addMultipleToCart } = useCart();
+  const { user } = useAuth();
   const { isSaved, toggleSave } = useSavedEvents();
   const [activeTab, setActiveTab] = useState('overview');
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const contentStartRef = useRef(null);
   const tabsRef = useRef(null);
@@ -199,8 +207,10 @@ const EventDetailPage = () => {
   // 1. Main event — served from hover-prefetch cache instantly on revisit
   useEffect(() => {
     // Fire analytics outside query so it never delays the data fetch
-    if (slug) trackEventView(slug);
-  }, [slug]);
+    if (slug && !location.pathname.startsWith('/admin/event-reviews/')) {
+      trackEventView(slug);
+    }
+  }, [location.pathname, slug]);
 
   const detailQueryKey = eventQueryKeys.detailLite(slug);
   const listCaches = queryClient.getQueriesData({ queryKey: eventQueryKeys.lists() });
@@ -244,6 +254,10 @@ const EventDetailPage = () => {
   // Speakers + schedule are now embedded in the main event response.
   // No secondary API calls needed — just use baseEvent directly.
   const event = baseEvent ?? null;
+  const isAdminUser = Boolean(user && (user.role === 'admin' || user.is_staff));
+  const isReviewMode = location.pathname.startsWith('/admin/event-reviews/');
+  const isEventOwner = Boolean(user && event?.organizer?.id && String(user.id) === String(event.organizer.id));
+  const canViewReviewState = Boolean(isAdminUser || isEventOwner);
 
   const speakersCount = event?.speakersCount ?? event?.speakers_count;
   const scheduleCount = event?.scheduleCount ?? event?.schedule_count;
@@ -335,7 +349,9 @@ const EventDetailPage = () => {
   };
 
   const handleShare = (platform) => {
-    const url = window.location.href;
+    const url = isReviewMode
+      ? `${window.location.origin}/events/${event.slug}`
+      : window.location.href;
     const text = `Check out ${event.title} on the Strathmore University Events Ticketing System!`;
     const urls = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`,
@@ -354,6 +370,51 @@ const EventDetailPage = () => {
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  useEffect(() => {
+    setReviewMessage(event?.reviewNotes || '');
+  }, [event?.reviewNotes]);
+
+  const refreshReviewData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: detailQueryKey }),
+      queryClient.invalidateQueries({ queryKey: eventQueryKeys.lists() }),
+      queryClient.invalidateQueries({ queryKey: ['admin_event_reviews'] }),
+      queryClient.invalidateQueries({ queryKey: ['organizer_events'] }),
+    ]);
+  };
+
+  const handleApproveEvent = async () => {
+    if (!slug) return;
+    try {
+      setIsSubmittingReview(true);
+      await approveEventReview(slug);
+      await refreshReviewData();
+      toast.success('Event approved and published.');
+    } catch (error) {
+      toast.error(error?.message || 'Failed to approve this event.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleRejectEvent = async () => {
+    if (!slug) return;
+    if (!reviewMessage.trim()) {
+      toast.error('Please add a rejection message before rejecting this event.');
+      return;
+    }
+    try {
+      setIsSubmittingReview(true);
+      await rejectEventReview(slug, reviewMessage.trim());
+      await refreshReviewData();
+      toast.success('Event rejected and the organizer has been notified.');
+    } catch (error) {
+      toast.error(error?.message || 'Failed to reject this event.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   if (isLoading && !baseEvent) {
     return (
@@ -379,6 +440,7 @@ const EventDetailPage = () => {
   const saved = isSaved({ id: event.id, slug: event.slug });
   const themeColor = event.themeColor || '#02338D';
   const accentColor = event.accentColor || '#7C3AED';
+  const eventWorkflowStatus = event.workflowStatus || event.status;
   const hasMC = event.mc?.name;
   const showClassicLoader = !detailAlreadyCached && (isPlaceholderData || (isFetching && isLoading));
 
@@ -388,6 +450,27 @@ const EventDetailPage = () => {
     ...(hasSchedule ? [{ id: 'schedule', label: 'Schedule', icon: <Clock className="w-4 h-4" /> }] : []),
     ...(hasSponsors ? [{ id: 'sponsors', label: 'Sponsors', icon: <Building2 className="w-4 h-4" /> }] : []),
   ];
+
+  const reviewStatusCopy = {
+    pending: {
+      title: 'Pending approval',
+      body: 'This event has been submitted for publication and is waiting for admin review.',
+      tone: 'border-[#FDE68A] bg-[#FFF7E6] text-[#8A620E]',
+    },
+    rejected: {
+      title: 'Changes requested',
+      body: 'This event was reviewed and needs updates before it can be published again.',
+      tone: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B]',
+    },
+    published: {
+      title: 'Published',
+      body: 'This event is live and visible to attendees.',
+      tone: 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]',
+    },
+  };
+  const reviewBanner = eventWorkflowStatus === 'published' && !isReviewMode
+    ? null
+    : reviewStatusCopy[eventWorkflowStatus] || null;
 
   return (
     <PageWrapper>
@@ -544,6 +627,102 @@ const EventDetailPage = () => {
 
       {/* ── MAIN CONTENT ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10 w-full">
+        {canViewReviewState && reviewBanner && (
+          <div className={`mb-6 rounded-2xl border p-5 ${reviewBanner.tone}`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-current/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+                    {reviewBanner.title}
+                  </span>
+                  {event.reviewedAt && (
+                    <span className="text-xs opacity-80">
+                      Reviewed {new Date(event.reviewedAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm leading-6">{reviewBanner.body}</p>
+                {event.approvalRequestedAt && (
+                  <p className="text-xs opacity-80">
+                    Submitted {new Date(event.approvalRequestedAt).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+                {event.reviewedByName && (
+                  <p className="text-xs opacity-80">Reviewed by {event.reviewedByName}</p>
+                )}
+                {event.reviewNotes && (
+                  <div className="rounded-xl border border-current/15 bg-white/50 p-4 text-sm leading-6 text-[#334155]">
+                    <p className="mb-1 font-semibold">Review message</p>
+                    <p>{event.reviewNotes}</p>
+                  </div>
+                )}
+              </div>
+
+              {isReviewMode && isAdminUser && (
+                <div className="w-full max-w-xl rounded-2xl border border-[#E2E8F0] bg-white p-4 text-[#0F172A] shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-bold">Admin Review</h2>
+                      <p className="text-sm text-[#64748B]">
+                        Review this event in its real detail-page layout, then publish or reject it.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/organizer-dashboard?tab=reviews')}
+                      className="text-sm font-semibold text-[#02338D] hover:text-[#022A78]"
+                    >
+                      Back to queue
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <label className="block text-sm font-medium text-[#0F172A]">
+                      Rejection message
+                    </label>
+                    <textarea
+                      value={reviewMessage}
+                      onChange={(e) => setReviewMessage(e.target.value)}
+                      placeholder="Explain what needs to change before this event can be published."
+                      className="min-h-[120px] w-full rounded-xl border border-[#CBD5E1] px-4 py-3 text-sm text-[#0F172A] shadow-sm focus:border-[#02338D] focus:outline-none focus:ring-2 focus:ring-[#02338D]/20"
+                    />
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={handleApproveEvent}
+                        disabled={isSubmittingReview || eventWorkflowStatus === 'published'}
+                        className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#02338D] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#022A78] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {eventWorkflowStatus === 'published' ? 'Already Published' : 'Publish Event'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRejectEvent}
+                        disabled={isSubmittingReview || eventWorkflowStatus === 'published'}
+                        className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#991B1B] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#7F1D1D] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Reject Event
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left Column */}

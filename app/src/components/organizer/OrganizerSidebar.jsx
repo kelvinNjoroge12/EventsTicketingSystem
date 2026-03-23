@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Calendar, QrCode, PlusCircle, Settings, LogOut, DollarSign } from 'lucide-react';
+import { Home, Calendar, Users, QrCode, PlusCircle, Settings, LogOut, DollarSign, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -17,19 +17,21 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
-const navItems = [
-  { id: 'dashboard', label: 'Home', icon: Home },
-  { id: 'events', label: 'My Events', icon: Calendar },
-  { id: 'checkin', label: 'Check-in', icon: QrCode },
-  { id: 'create', label: 'Create Event', icon: PlusCircle },
-  { id: 'finance', label: 'Finance', icon: DollarSign },
-  { id: 'settings', label: 'Settings', icon: Settings },
-];
-
 const OrganizerSidebar = ({ currentPage, onPageChange }) => {
   const { user, logout } = useAuth();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const isAdminUser = user?.role === 'admin' || user?.is_staff;
+  const navItems = [
+    { id: 'dashboard', label: 'Home', icon: Home },
+    { id: 'events', label: 'My Events', icon: Calendar },
+    { id: 'attendees', label: 'Attendees', icon: Users },
+    ...(isAdminUser ? [{ id: 'reviews', label: 'Review Events', icon: Eye }] : []),
+    { id: 'checkin', label: 'Check-in', icon: QrCode },
+    { id: 'create', label: 'Create Event', icon: PlusCircle },
+    { id: 'finance', label: 'Finance', icon: DollarSign },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
 
   const handleLogout = () => {
     logout();

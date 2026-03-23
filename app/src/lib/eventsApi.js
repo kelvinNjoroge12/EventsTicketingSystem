@@ -26,23 +26,35 @@ export const mapEvent = (e) => {
     }
   }
 
-  // Resolve Status helper
-  let resolvedStatus = e.status || (e.is_published ? 'published' : 'draft');
-  if (resolvedStatus !== 'draft' && resolvedStatus !== 'completed') {
+  let timeState = e.time_state || null;
+  const workflowStatus = e.status || (e.is_published ? 'published' : 'draft');
+  let resolvedStatus = workflowStatus;
+  if (!timeState && resolvedStatus !== 'draft' && resolvedStatus !== 'completed' && resolvedStatus !== 'cancelled') {
     const eventDate = new Date(rawStartDate || '');
     if (!Number.isNaN(eventDate.getTime())) {
       const today = new Date();
       if (eventDate < today && eventDate.toDateString() !== today.toDateString()) {
-        resolvedStatus = 'completed';
+        timeState = 'past';
       } else if (eventDate.toDateString() === today.toDateString()) {
-        resolvedStatus = 'live';
+        timeState = 'today';
       }
     }
-    if (resolvedStatus === 'published') resolvedStatus = 'upcoming';
+  }
+  if (!timeState && resolvedStatus === 'published') timeState = 'upcoming';
+
+  if (resolvedStatus === 'published' && timeState === 'past') {
+    resolvedStatus = 'completed';
+  } else if (resolvedStatus === 'published' && (timeState === 'today' || timeState === 'live')) {
+    resolvedStatus = 'live';
+  } else if (resolvedStatus === 'published') {
+    resolvedStatus = 'upcoming';
   }
 
+  const isToday = e.is_today ?? (timeState === 'today' || timeState === 'live');
+  const isPast = e.is_past ?? (timeState === 'past' || resolvedStatus === 'completed');
+
   const categoryName = (e.category && typeof e.category === "object" ? e.category.name : null) || e.category_name || (typeof e.category === "string" ? e.category : null) || "General";
-  const mapLocation = e.city ? `${e.city}${e.country ? ', ' + e.country : ''}` : e.country || e.location || e.venue_name || 'Location TBA';
+  const mapLocation = e.venue_name || (e.city ? `${e.city}${e.country ? ', ' + e.country : ''}` : e.country || e.location || 'Location TBA');
 
   const base = {
     id: e.id,
@@ -55,8 +67,15 @@ export const mapEvent = (e) => {
     formattedDate: formattedDate,
     rawStartDate: rawStartDate,
     status: resolvedStatus,
+    workflowStatus,
+    timeState: timeState || 'upcoming',
+    isToday,
+    isPast,
     time: e.start_time,
+    endDate: e.end_date,
+    endTime: e.end_time,
     location: mapLocation,
+    venueName: e.venue_name || '',
     themeColor: e.theme_color || "#02338D",
     accentColor: e.accent_color || "#7C3AED",
     attendeeCount: e.attendee_count || e.ticketsSold || 0,
@@ -64,6 +83,7 @@ export const mapEvent = (e) => {
     revenue: e.total_revenue || e.revenue || 0,
     capacity: e.capacity || null,
     isFeatured: e.is_featured || false,
+    displayPriority: e.display_priority || 0,
     stickers: e.stickers || [],
     format: e.format || "in_person",
     coverImage: e.cover_image || e.coverImage || null,
@@ -172,6 +192,10 @@ export const mapDetailEvent = (e) => {
     promoCodes: e.promo_codes || [],
     enableWaitlist: e.enable_waitlist ?? false,
     sendReminders: e.send_reminders ?? true,
+    approvalRequestedAt: e.approval_requested_at || null,
+    reviewedAt: e.reviewed_at || null,
+    reviewedByName: e.reviewed_by_name || null,
+    reviewNotes: e.review_notes || '',
     speakers,
     mc: e.mc ? {
       ...e.mc,
@@ -201,6 +225,14 @@ export const mapDetailEvent = (e) => {
         : [],
   };
 };
+
+const mapReviewEvent = (e) => ({
+  ...mapEvent(e),
+  approvalRequestedAt: e.approval_requested_at || null,
+  reviewedAt: e.reviewed_at || null,
+  reviewNotes: e.review_notes || '',
+  organizerEmail: e.organizer?.email || '',
+});
 
 // ── Fetch Events ──────────────────────────────────────────────────────────
 export const buildEventDetailPlaceholderFromList = (event) => {
@@ -332,6 +364,22 @@ export const fetchEventSchedule = async (slug) => {
 export const fetchEventSponsors = async (slug) => {
   const data = await api.get(`/api/events/${slug}/sponsors/`);
   return Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
+};
+
+export const fetchPendingEventReviews = async (status = 'pending') => {
+  const data = await api.get(`/api/events/reviews/?status=${encodeURIComponent(status)}`);
+  const items = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+  return items.map(mapReviewEvent);
+};
+
+export const approveEventReview = async (slug) => {
+  const data = await api.patch(`/api/events/reviews/${slug}/approve/`, {});
+  return mapDetailEvent(data);
+};
+
+export const rejectEventReview = async (slug, reason) => {
+  const data = await api.patch(`/api/events/reviews/${slug}/reject/`, { reason });
+  return mapDetailEvent(data);
 };
 
 // ── Notifications ───────────────────────────────────────────────────────────

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import traceback
+import logging
 from typing import Any
 
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
+
+logger = logging.getLogger(__name__)
 
 
 def _to_error_payload(code: str, message: str, details: Any | None = None) -> dict[str, Any]:
@@ -19,15 +21,27 @@ def eventhub_exception_handler(exc, context):
     try:
         response = exception_handler(exc, context)
         if response is None:
+            logger.exception("Unhandled API exception.", exc_info=exc)
             return Response(
-                {"success": False, "error": {"code": "SERVER_ERROR", "message": f"{exc.__class__.__name__}: {str(exc)}"}},
+                {
+                    "success": False,
+                    "error": {"code": "SERVER_ERROR", "message": "An unexpected server error occurred."},
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         
         data = response.data
         code = "ERROR"
         message = "Request failed"
-        details = data
+        details = data if response.status_code < 500 else None
+
+        if response.status_code >= 500:
+            logger.exception("DRF returned a 5xx API response.", exc_info=exc)
+            response.data = {
+                "success": False,
+                "error": {"code": "SERVER_ERROR", "message": "An unexpected server error occurred."},
+            }
+            return response
         
         if isinstance(data, dict):
             if "detail" in data:
@@ -52,6 +66,12 @@ def eventhub_exception_handler(exc, context):
             "error": {"code": code, "message": message, "details": details}
         }
         return response
-    except Exception as e:
-        return Response({"success": False, "error": {"code": "FATAL", "message": f"Exception handler crashed: {str(e)}"}}, status=500)
-
+    except Exception:
+        logger.exception("API exception handler crashed.")
+        return Response(
+            {
+                "success": False,
+                "error": {"code": "SERVER_ERROR", "message": "An unexpected server error occurred."},
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

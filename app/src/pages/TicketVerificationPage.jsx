@@ -42,9 +42,17 @@ const TicketVerificationPage = () => {
     const handleCheckIn = async () => {
         if (!ticketData || !ticketData.event) return;
 
-        // Safety check - button should only appear for organizers/admins anyway
-        if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
-            toast.error('Only event organizers and admins can check-in tickets.');
+        const assignedEvents = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
+        const isOwner = String(user?.id) === String(ticketData.event.organizer_id);
+        const isAdmin = Boolean(user?.is_staff || user?.role === 'admin');
+        const isCheckinStaff = user?.role === 'staff' || user?.role === 'checkin';
+        const isAssigned = !assignedEvents.length || assignedEvents.some((value) => (
+            String(value) === String(ticketData.event.id) || String(value) === String(ticketData.event.slug)
+        ));
+        const canManageCheckin = Boolean(user && (isAdmin || isOwner || (isCheckinStaff && isAssigned)));
+
+        if (!canManageCheckin) {
+            toast.error('You do not have permission to check in this ticket.');
             return;
         }
 
@@ -103,10 +111,16 @@ const TicketVerificationPage = () => {
         );
     }
 
+    const isExpired = ticketData.status === 'expired' || ticketData.event?.time_state === 'past';
     const isUsed = ticketData.status === 'used';
-    const isOwner = user && String(user.id) === String(ticketData.event.organizer_id);
-    const isStaff = user && user.is_staff;
-    const canCheckIn = !isUsed && (isOwner || isStaff);
+    const assignedEvents = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
+    const isOwner = Boolean(user && String(user.id) === String(ticketData.event.organizer_id));
+    const isAdmin = Boolean(user && (user.is_staff || user.role === 'admin'));
+    const isCheckinStaff = Boolean(user && (user.role === 'staff' || user.role === 'checkin'));
+    const isAssigned = !assignedEvents.length || assignedEvents.some((value) => (
+        String(value) === String(ticketData.event.id) || String(value) === String(ticketData.event.slug)
+    ));
+    const canCheckIn = !isUsed && !isExpired && Boolean(user && (isAdmin || isOwner || (isCheckinStaff && isAssigned)));
 
     return (
         <PageWrapper>
@@ -114,19 +128,19 @@ const TicketVerificationPage = () => {
                 <div className="max-w-xl mx-auto">
 
                     {/* Header Banner */}
-                    <div className={`rounded-t-3xl p-6 text-center ${isUsed ? 'bg-amber-500' : 'bg-green-600'} text-white relative overflow-hidden`}>
+                    <div className={`rounded-t-3xl p-6 text-center ${isExpired ? 'bg-slate-600' : isUsed ? 'bg-amber-500' : 'bg-green-600'} text-white relative overflow-hidden`}>
                         <div className="absolute top-0 right-0 opacity-10 scale-150 transform translate-x-4 -translate-y-4">
-                            {isUsed ? <AlertCircle className="w-48 h-48" /> : <ShieldCheck className="w-48 h-48" />}
+                            {isExpired || isUsed ? <AlertCircle className="w-48 h-48" /> : <ShieldCheck className="w-48 h-48" />}
                         </div>
 
                         <div className="relative z-10">
-                            {isUsed ? (
+                            {isExpired || isUsed ? (
                                 <AlertCircle className="w-16 h-16 mx-auto mb-4" />
                             ) : (
                                 <ShieldCheck className="w-16 h-16 mx-auto mb-4" />
                             )}
                             <h1 className="text-3xl font-extrabold tracking-tight mb-2">
-                                {isUsed ? 'Ticket Already Used' : 'Valid Entry Pass'}
+                                {isExpired ? 'Ticket Expired' : isUsed ? 'Ticket Already Used' : 'Valid Entry Pass'}
                             </h1>
                             <p className="text-white/80 font-medium">
                                 {ticketData.ticket_type_name}
@@ -168,12 +182,17 @@ const TicketVerificationPage = () => {
                         </div>
 
                         {/* Status Box */}
-                        <div className={`mt-8 p-4 rounded-xl border-2 flex items-start gap-4 ${isUsed ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
-                            <Clock className={`w-6 h-6 shrink-0 mt-0.5 ${isUsed ? 'text-amber-500' : 'text-green-500'}`} />
+                        <div className={`mt-8 p-4 rounded-xl border-2 flex items-start gap-4 ${isExpired ? 'bg-slate-50 border-slate-200' : isUsed ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+                            <Clock className={`w-6 h-6 shrink-0 mt-0.5 ${isExpired ? 'text-slate-500' : isUsed ? 'text-amber-500' : 'text-green-500'}`} />
                             <div>
-                                <p className={`font-bold ${isUsed ? 'text-amber-800' : 'text-green-800'}`}>
-                                    {isUsed ? 'Checked-In' : 'Ready for Scanning'}
+                                <p className={`font-bold ${isExpired ? 'text-slate-800' : isUsed ? 'text-amber-800' : 'text-green-800'}`}>
+                                    {isExpired ? 'Event Ended' : isUsed ? 'Checked-In' : 'Ready for Scanning'}
                                 </p>
+                                {isExpired && (
+                                    <p className="text-sm text-slate-700 mt-1">
+                                        This event has already ended, so the ticket is no longer valid for entry.
+                                    </p>
+                                )}
                                 {isUsed && ticketData.checked_in_at && (
                                     <p className="text-sm text-amber-700 mt-1">
                                         Scanned on: {new Date(ticketData.checked_in_at).toLocaleString()}
@@ -199,13 +218,13 @@ const TicketVerificationPage = () => {
                                     )}
                                 </motion.button>
                                 <p className="text-center text-xs text-[#94A3B8] mt-3">
-                                    Visible to organizers only.
+                                    Visible to authorized check-in staff.
                                 </p>
                             </div>
                         )}
 
                         {/* Unauthorized View Message */}
-                        {(!isOwner && !isStaff && !isUsed) && (
+                        {(!canCheckIn && !isUsed && !isExpired) && (
                             <div className="mt-8 pt-6 border-t border-gray-100 text-center">
                                 <p className="text-sm text-[#64748B]">
                                     Present this screen or your QR code to the event staff at the entrance.

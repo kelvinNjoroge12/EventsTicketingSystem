@@ -138,6 +138,7 @@ const AppRoutes = ({ onLocationKey }) => {
   const location = useLocation();
   const { user } = useAuth();
   const organizerRoles = ['organizer', 'admin'];
+  const adminRoles = ['admin'];
   const staffRoles = ['organizer', 'admin', 'checkin', 'staff'];
   const isOrganizerRoute =
     /^\/organizer-dashboard\/?$/.test(location.pathname) ||
@@ -185,6 +186,11 @@ const AppRoutes = ({ onLocationKey }) => {
         <Route path="/" element={<HomePage />} />
         <Route path="/events" element={<Suspense fallback={<PageLoader />}><EventsPage /></Suspense>} />
         <Route path="/events/:slug" element={<Suspense fallback={<EventDetailChunkLoader />}><EventDetailPage /></Suspense>} />
+        <Route path="/admin/event-reviews/:slug" element={
+          <RequireAuth roles={adminRoles}>
+            <Suspense fallback={<EventDetailChunkLoader />}><EventDetailPage /></Suspense>
+          </RequireAuth>
+        } />
         <Route path="/checkout/:slug" element={<Suspense fallback={<PageLoader />}><CheckoutPage /></Suspense>} />
         <Route path="/confirmation/:orderId" element={<Suspense fallback={<PageLoader />}><ConfirmationPage /></Suspense>} />
         <Route path="/search" element={<Suspense fallback={<PageLoader />}><SearchResultsPage /></Suspense>} />

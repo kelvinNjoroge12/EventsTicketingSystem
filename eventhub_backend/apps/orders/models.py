@@ -107,6 +107,7 @@ class Ticket(TimeStampedModel):
     STATUS_CHOICES = [
         ("valid", "Valid"),
         ("used", "Used"),
+        ("expired", "Expired"),
         ("cancelled", "Cancelled"),
         ("refunded", "Refunded"),
     ]

@@ -10,6 +10,9 @@ const TicketBox = ({
   themeColor,
 }) => {
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
+  const isPastEvent = event.isPast || event.timeState === 'past' || event.status === 'completed';
+  const workflowStatus = event.workflowStatus || event.status;
+  const isUnavailableForSale = !['published', 'completed'].includes(workflowStatus);
   const registrationCategories = Array.isArray(event.registrationCategories)
     ? event.registrationCategories
     : Array.isArray(event.registration_categories)
@@ -71,6 +74,7 @@ const TicketBox = ({
   const fromCents = (value) => Number((value / 100).toFixed(2));
 
   const handleQuantityChange = (ticketId, delta) => {
+    if (isPastEvent || isUnavailableForSale) return;
     setQuantities(prev => {
       const ticket = event.tickets.find(t => t.id === ticketId);
       const current = prev[ticketId] || 0;
@@ -81,11 +85,13 @@ const TicketBox = ({
   };
 
   const handleCategoryChange = (categoryId) => {
+    if (isPastEvent || isUnavailableForSale) return;
     setSelectedCategoryId(categoryId);
     setQuantities(buildQuantitiesForCategory(categoryId));
   };
 
   const handleApplyPromo = () => {
+    if (isPastEvent || isUnavailableForSale) return;
     setPromoError('');
     setPromoSuccess('');
 
@@ -137,7 +143,7 @@ const TicketBox = ({
 
   const { subtotal, discount, serviceFee, total } = calculatePrice();
   const allSoldOut = displayedTickets.length > 0 ? displayedTickets.every((ticket) => (ticket.remaining ?? 0) <= 0) : true;
-  const waitlistAllowed = allSoldOut && (event.enableWaitlist ?? event.enable_waitlist) && event.slug;
+  const waitlistAllowed = !isPastEvent && !isUnavailableForSale && allSoldOut && (event.enableWaitlist ?? event.enable_waitlist) && event.slug;
 
   const handleWaitlistSubmit = async () => {
     setWaitlistStatus({ loading: false, error: '', success: '' });
@@ -165,6 +171,7 @@ const TicketBox = ({
   };
 
   const handleGetTickets = () => {
+    if (isPastEvent || isUnavailableForSale) return;
     const selectedCategory = categoryOptions.find((cat) => String(cat.id) === String(selectedCategoryId));
     const registration = selectedCategory ? {
       categoryId: selectedCategory.id,
@@ -204,6 +211,17 @@ const TicketBox = ({
       style={{ borderTop: `4px solid ${themeColor}` }}
     >
       <div className="p-6 pb-16 lg:pb-24">
+        {isPastEvent && (
+          <div className="mb-6 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm text-[#475569]">
+            Ticket sales are closed because this event has already passed. You can still view the event details below.
+          </div>
+        )}
+        {!isPastEvent && isUnavailableForSale && (
+          <div className="mb-6 rounded-xl border border-[#FDE68A] bg-[#FFF7E6] p-4 text-sm text-[#8A620E]">
+            Ticket sales are unavailable until this event is approved and published.
+          </div>
+        )}
+
         {/* Ticket Category Selector */}
         {hasCategoryTickets && categoryOptions.length > 0 && (
           <div className="mb-6">
@@ -217,6 +235,7 @@ const TicketBox = ({
                   <button
                     key={cat.id}
                     onClick={() => handleCategoryChange(cat.id)}
+                    disabled={isPastEvent || isUnavailableForSale}
                     className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                       active ? 'bg-white shadow text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'
                     }`}
@@ -277,7 +296,7 @@ const TicketBox = ({
                       <>
                         <button
                           onClick={() => handleQuantityChange(ticket.id, -1)}
-                          disabled={qty <= 0}
+                          disabled={isPastEvent || isUnavailableForSale || qty <= 0}
                           className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           aria-label={`Decrease ${ticket.type || ticket.name} quantity`}
                         >
@@ -286,7 +305,7 @@ const TicketBox = ({
                         <span className="w-8 text-center font-semibold text-sm">{qty}</span>
                         <button
                           onClick={() => handleQuantityChange(ticket.id, 1)}
-                          disabled={qty >= Math.min(10, ticket.remaining)}
+                          disabled={isPastEvent || isUnavailableForSale || qty >= Math.min(10, ticket.remaining)}
                           className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           aria-label={`Increase ${ticket.type || ticket.name} quantity`}
                         >
@@ -321,6 +340,7 @@ const TicketBox = ({
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value)}
               placeholder="Enter promo code"
+              disabled={isPastEvent || isUnavailableForSale}
               className={`
                 flex-1 px-3 py-2.5 bg-white border rounded-lg text-sm
                 focus:outline-none focus:ring-2 focus:ring-[#02338D]
@@ -331,6 +351,7 @@ const TicketBox = ({
               variant="outline"
               size="sm"
               onClick={handleApplyPromo}
+              disabled={isPastEvent || isUnavailableForSale}
             >
               Apply
             </CustomButton>
@@ -482,13 +503,17 @@ const TicketBox = ({
           variant="primary"
           fullWidth
           onClick={handleGetTickets}
-          disabled={totalQuantity === 0}
+          disabled={isPastEvent || isUnavailableForSale || totalQuantity === 0}
           className="py-4"
           style={{ backgroundColor: themeColor }}
         >
           <span className="flex items-center justify-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            {totalQuantity === 0
+            {isPastEvent
+              ? 'Event Has Passed'
+              : isUnavailableForSale
+              ? 'Awaiting Approval'
+              : totalQuantity === 0
               ? 'Select Tickets'
               : `Get ${totalQuantity} Ticket${totalQuantity > 1 ? 's' : ''}`
             }

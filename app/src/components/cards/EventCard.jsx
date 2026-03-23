@@ -90,6 +90,13 @@ const EventCard = ({
   };
 
   const badge = getBadge();
+  const stateBadge = event.isPast
+    ? { text: 'Past Event', className: 'bg-white/90 text-slate-700' }
+    : event.timeState === 'live'
+      ? { text: 'Live Now', className: 'bg-emerald-500 text-white' }
+      : event.isToday
+        ? { text: 'Today', className: 'bg-sky-500 text-white' }
+        : null;
 
   return (
     <Link
@@ -173,6 +180,11 @@ const EventCard = ({
             >
               {badge.text}
             </span>
+            {stateBadge && (
+              <span className={`px-1.5 py-0.5 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-tighter ${stateBadge.className}`}>
+                {stateBadge.text}
+              </span>
+            )}
             {event.isFeatured && (
               <span className="px-1.5 py-0.5 rounded text-[8px] md:text-[10px] font-bold bg-amber-400 text-amber-950 uppercase tracking-tighter">
                 Featured

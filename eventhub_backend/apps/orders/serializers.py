@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import F
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.events.models import Event
@@ -56,6 +57,8 @@ class OrderCreateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         event = get_object_or_404(Event, slug=attrs["event_slug"], status="published")
+        if event.has_ended():
+            raise serializers.ValidationError({"event_slug": "This event has already ended."})
         attrs["event"] = event
         items = attrs["items"]
         if not items:
@@ -406,3 +409,76 @@ class OrderPublicDetailSerializer(serializers.ModelSerializer):
         name_part, domain_part = email.split("@", 1)
         prefix = name_part[:2]
         return f"{prefix}***@{domain_part}"
+
+
+class AttendeeTicketSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source="order.order_number", read_only=True)
+    purchased_at = serializers.DateTimeField(source="order.created_at", read_only=True)
+    ticket_type_name = serializers.SerializerMethodField()
+    qr_image_url = serializers.SerializerMethodField()
+    ticket_url = serializers.SerializerMethodField()
+    event = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "order_number",
+            "status",
+            "ticket_type_name",
+            "attendee_name",
+            "attendee_email",
+            "qr_code_data",
+            "qr_image_url",
+            "ticket_url",
+            "checked_in_at",
+            "purchased_at",
+            "is_expired",
+            "event",
+        ]
+
+    def get_ticket_type_name(self, obj: Ticket):
+        return obj.ticket_type.name if obj.ticket_type else obj.order_item.ticket_type_name
+
+    def get_qr_image_url(self, obj: Ticket):
+        request = self.context.get("request")
+        relative_url = f"/api/orders/qr/{obj.qr_code_data}/"
+        if request:
+            return request.build_absolute_uri(relative_url)
+        return relative_url
+
+    def get_ticket_url(self, obj: Ticket):
+        request = self.context.get("request")
+        relative_url = f"/t/{obj.qr_code_data}"
+        if request:
+            return request.build_absolute_uri(relative_url)
+        return relative_url
+
+    def get_is_expired(self, obj: Ticket):
+        if obj.status == "expired":
+            return True
+
+        event = obj.event
+        if not event:
+            return False
+        end_datetime = event.get_end_datetime()
+        return bool(end_datetime and end_datetime <= timezone.now())
+
+    def get_event(self, obj: Ticket):
+        event = obj.event
+        if not event:
+            return None
+
+        return {
+            "id": str(event.id),
+            "slug": event.slug,
+            "title": event.title,
+            "venue_name": event.venue_name,
+            "start_date": event.start_date,
+            "start_time": event.start_time,
+            "end_date": event.end_date,
+            "end_time": event.end_time,
+            "timezone": event.timezone,
+            "cover_image": event.cover_image.url if getattr(event, "cover_image", None) else None,
+        }

@@ -13,6 +13,7 @@ import Modal from '../components/ui/Modal';
 import { api } from '../lib/apiClient';
 import { fetchCategories, fetchEvent } from '../lib/eventsApi';
 import eventQueryKeys from '../lib/eventQueryKeys';
+import { useAuth } from '../context/AuthContext';
 import {
   BasicInfoStep,
   DateLocationStep,
@@ -77,10 +78,14 @@ const createDefaultRegistrationCategories = () =>
 const CreateEventPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManagePriority = user?.role === 'admin' || user?.is_staff;
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState('forward');
   const [completedSteps, setCompletedSteps] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [submittedEventSlug, setSubmittedEventSlug] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
@@ -226,6 +231,7 @@ const CreateEventPage = () => {
             customRefundPolicy: eventData.customRefundPolicy || '',
             enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
             sendReminders: eventData.sendReminders ?? eventData.send_reminders ?? true,
+            displayPriority: eventData.displayPriority || 0,
           });
           setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
           setInitialSubresources({
@@ -280,6 +286,7 @@ const CreateEventPage = () => {
     customRefundPolicy: '',
     enableWaitlist: false,
     sendReminders: true,
+    displayPriority: 0,
   });
 
   const [errors, setErrors] = useState({});
@@ -382,6 +389,7 @@ const CreateEventPage = () => {
       accent_color: formData.accentColor || '#7C3AED',
       enable_waitlist: Boolean(formData.enableWaitlist),
       send_reminders: Boolean(formData.sendReminders),
+      ...(canManagePriority ? { display_priority: Number(formData.displayPriority) || 0 } : {}),
       ...(status === 'draft' && { status: 'draft' }),
     };
 
@@ -680,10 +688,11 @@ const CreateEventPage = () => {
       const payload = buildPayload();
       const event = await createEventAndTickets(payload);
       try {
-        await api.patch(`/api/events/${event.slug}/publish/`);
-        navigate(`/events/${event.slug}`);
+        const submittedEvent = await api.patch(`/api/events/${event.slug}/publish/`, {});
+        setSubmittedEventSlug(submittedEvent?.slug || event.slug);
+        setShowSubmissionModal(true);
       } catch (publishErr) {
-        setPublishError(`Event saved as a draft. ${getErrorMessage(publishErr)}`);
+        setPublishError(`Your event was saved as a draft. ${getErrorMessage(publishErr)}`);
       }
     } catch (err) {
       setPublishError(getErrorMessage(err));
@@ -725,7 +734,7 @@ const CreateEventPage = () => {
     }
 
     switch (currentStep) {
-      case 0: return <BasicInfoStep data={formData} onChange={handleChange} errors={errors} categories={categories} />;
+      case 0: return <BasicInfoStep data={formData} onChange={handleChange} errors={errors} categories={categories} canManagePriority={canManagePriority} />;
       case 1: return <DateLocationStep data={formData} onChange={handleChange} errors={errors} />;
       case 2: return <DescriptionStep data={formData} onChange={handleChange} errors={errors} />;
       case 3: return <SpeakersStep data={formData} onChange={handleChange} />;
@@ -737,7 +746,7 @@ const CreateEventPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-[#0F172A]">Review & Preview</h2>
-              <p className="text-[#64748B]">This is how your event will appear to attendees.</p>
+              <p className="text-[#64748B]">This is how your event will appear to attendees once it is approved.</p>
             </div>
           </div>
 
@@ -850,6 +859,14 @@ const CreateEventPage = () => {
                       <p className="text-sm text-[#64748B]">No tickets set</p>
                     )}
                   </div>
+                  {canManagePriority && (
+                    <div className="pt-4 border-t border-[#E2E8F0]">
+                      <p className="text-[10px] text-[#64748B] uppercase font-bold tracking-tight mb-2">Homepage Priority</p>
+                      <p className="text-xl font-black text-[#0F172A]">
+                        {Number(formData.displayPriority) || 0}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {formData.sponsors.length > 0 && (
@@ -945,7 +962,7 @@ const CreateEventPage = () => {
               </CustomButton>
             ) : (
               <CustomButton variant="primary" onClick={handlePublish} isLoading={isPublishing} rightIcon={Check}>
-                Publish Now
+                Submit for Review
               </CustomButton>
             )}
           </div>
@@ -965,6 +982,47 @@ const CreateEventPage = () => {
           <div className="flex gap-3">
             <CustomButton variant="outline" fullWidth onClick={() => setShowScheduleModal(false)}>Cancel</CustomButton>
             <CustomButton variant="primary" fullWidth onClick={handleSchedulePublish} isLoading={isPublishing}>Schedule</CustomButton>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showSubmissionModal}
+        onClose={() => {
+          setShowSubmissionModal(false);
+          navigate(submittedEventSlug ? `/events/${submittedEventSlug}` : '/organizer-dashboard?tab=events');
+        }}
+        title="Event Submitted"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-[#475569]">
+            Your event has been submitted for publication and you will be notified once it is approved.
+          </p>
+          <p className="text-sm leading-6 text-[#475569]">
+            We have also sent the same confirmation to your email.
+          </p>
+          <div className="flex gap-3">
+            <CustomButton
+              variant="outline"
+              fullWidth
+              onClick={() => {
+                setShowSubmissionModal(false);
+                navigate('/organizer-dashboard?tab=events');
+              }}
+            >
+              Go To My Events
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              fullWidth
+              onClick={() => {
+                setShowSubmissionModal(false);
+                navigate(submittedEventSlug ? `/events/${submittedEventSlug}` : '/organizer-dashboard?tab=events');
+              }}
+            >
+              View Event
+            </CustomButton>
           </div>
         </div>
       </Modal>

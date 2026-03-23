@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Menu, X, User, Plus, LogOut, Settings, LayoutDashboard,
+  Search, Menu, X, User, LogOut, Settings, LayoutDashboard,
   Home, Ticket, TicketCheck
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
@@ -21,6 +21,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
 
   const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
   const isCheckInStaff = user?.role === 'checkin' || user?.role === 'staff';
+  const canRequestOrganizer = isAuthenticated && !isOrganizer && !isCheckInStaff;
 
   useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
 
@@ -64,16 +65,67 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
     }
   };
 
-  const navLinks = [
-    { name: 'Home', path: '/', icon: Home },
-    { name: 'Create Event', path: isOrganizer ? '/create-event' : '/sell-tickets', icon: Plus },
-    ...(isAuthenticated ?
-      [{ name: 'My Tickets', path: '/my-tickets', icon: Ticket }] :
-      [{ name: 'Search for My Ticket', path: '/find-ticket', icon: Search }]),
+  const primaryNavItems = [
+    { name: 'Home', path: '/', icon: Home, type: 'link' },
+    ...(isAuthenticated
+      ? [{ name: 'My Tickets', path: '/my-tickets', icon: Ticket, type: 'link' }]
+      : [{ name: 'Search for My Ticket', path: '/find-ticket', icon: Search, type: 'link' }]),
+    ...(canRequestOrganizer
+      ? [{ name: 'Request Organizer Access', icon: LayoutDashboard, type: 'action', onClick: handleRequestOrganizer }]
+      : []),
     ...(isAuthenticated && isCheckInStaff
-      ? [{ name: 'Check-In', path: '/organizer-checkin', icon: TicketCheck }]
+      ? [{ name: 'Check-In', path: '/organizer-checkin', icon: TicketCheck, type: 'link' }]
       : []),
   ];
+
+  const profileMenuItems = [
+    ...(isOrganizer
+      ? [{ name: 'Dashboard', path: '/organizer-dashboard', icon: LayoutDashboard, type: 'link' }]
+      : []),
+    { name: 'Settings', path: '/settings', icon: Settings, type: 'link' },
+  ];
+
+  const renderNavItem = (item, className, onAfterClick = () => {}) => {
+    const Icon = item.icon;
+    const isLink = item.type !== 'action';
+    const active = Boolean(item.path) && isActive(item.path);
+
+    if (isLink) {
+      return (
+        <Link
+          key={item.name}
+          to={item.path}
+          onClick={onAfterClick}
+          className={className(active)}
+        >
+          {Icon && <Icon className="w-4 h-4" />}
+          {item.name}
+          {active && item.name !== 'Home' && (
+            <motion.div
+              layoutId="attendeeNavUnderline"
+              className="absolute bottom-1 left-2 right-2 h-0.5 bg-white rounded-full"
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            />
+          )}
+        </Link>
+      );
+    }
+
+    return (
+      <button
+        key={item.name}
+        type="button"
+        onClick={() => {
+          item.onClick?.();
+          onAfterClick();
+        }}
+        className={className(false)}
+      >
+        {Icon && <Icon className="w-4 h-4" />}
+        {item.name}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -121,28 +173,17 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1 flex-shrink-0" role="navigation">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className={`
+              {primaryNavItems.map((item) =>
+                renderNavItem(
+                  item,
+                  (active) => `
                     relative px-4 py-2 text-sm font-medium transition-all rounded-full flex items-center gap-1.5
-                    ${isActive(link.path)
+                    ${active
                       ? 'text-white bg-white/15'
                       : 'text-white/80 hover:text-white hover:bg-white/10'}
-                  `}
-                >
-                  {link.icon && <link.icon className="w-4 h-4" />}
-                  {link.name}
-                  {isActive(link.path) && (
-                    <motion.div
-                      layoutId="attendeeNavUnderline"
-                      className="absolute bottom-1 left-2 right-2 h-0.5 bg-white rounded-full"
-                      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    />
-                  )}
-                </Link>
-              ))}
+                  `
+                )
+              )}
             </nav>
 
             {/* Right Actions */}
@@ -176,21 +217,20 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
                           <p className="font-bold text-[#0F172A] text-sm truncate">{user.name}</p>
                           <p className="text-xs text-[#64748B] capitalize">{user.role}</p>
                         </div>
-                        {isOrganizer ? (
-                          <Link to="/organizer-dashboard" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
-                            <LayoutDashboard className="w-4 h-4 text-[#02338D]" /> Dashboard
-                          </Link>
-                        ) : (
-                          <button onClick={() => { setShowProfileMenu(false); handleRequestOrganizer(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
-                            <LayoutDashboard className="w-4 h-4 text-[#02338D]" /> Request Organizer Access
-                          </button>
-                        )}
-                        <Link to="/my-tickets" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
-                          <Ticket className="w-4 h-4 text-[#02338D]" /> My Tickets
-                        </Link>
-                        <Link to="/settings" onClick={() => setShowProfileMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]">
-                          <Settings className="w-4 h-4 text-[#64748B]" /> Settings
-                        </Link>
+                        {profileMenuItems.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={item.name}
+                              to={item.path}
+                              onClick={() => setShowProfileMenu(false)}
+                              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F8FAFC]"
+                            >
+                              <Icon className={`w-4 h-4 ${item.name === 'Dashboard' ? 'text-[#02338D]' : 'text-[#64748B]'}`} />
+                              {item.name}
+                            </Link>
+                          );
+                        })}
                         <div className="h-px bg-[#F1F5F9] my-1" />
                         <button
                           onClick={() => { handleLogout(); setShowProfileMenu(false); }}
@@ -240,23 +280,17 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
               className="md:hidden border-t border-white/10 bg-[#02338D] overflow-hidden"
             >
               <nav className="px-4 py-4 space-y-1">
-                {/* 1. Home Link */}
-                {navLinks.filter(l => l.name === 'Home').map((link) => (
-                  <Link
-                    key={link.name}
-                    to={link.path}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`
+                {primaryNavItems.map((item) =>
+                  renderNavItem(
+                    item,
+                    (active) => `
                       flex items-center gap-3 px-5 py-3 rounded-full text-base font-medium transition-colors
-                      ${isActive(link.path) ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}
-                    `}
-                  >
-                    {link.icon && <link.icon className="w-5 h-5" />}
-                    {link.name}
-                  </Link>
-                ))}
+                      ${active ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}
+                    `,
+                    () => setIsMobileMenuOpen(false)
+                  )
+                )}
 
-                {/* 2. Mobile Search */}
                 <form onSubmit={(e) => { handleSearch(e); setIsMobileMenuOpen(false); }} className="py-2">
                   <div className="relative">
                     <input
@@ -272,37 +306,23 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
                   </div>
                 </form>
 
-                {/* 3. The rest of the navLinks */}
-                {navLinks.filter(l => l.name !== 'Home').map((link) => (
-                  <Link
-                    key={link.name}
-                    to={link.path}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`
-                      flex items-center gap-3 px-5 py-3 rounded-full text-base font-medium transition-colors
-                      ${isActive(link.path) ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}
-                    `}
-                  >
-                    {link.icon && <link.icon className="w-5 h-5" />}
-                    {link.name}
-                  </Link>
-                ))}
-
                 <div className="pt-4 mt-2 border-t border-white/10 space-y-2">
                   {isAuthenticated ? (
                     <div className="flex flex-col gap-1">
-                      {isOrganizer ? (
-                        <Link to="/organizer-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors">
-                          <LayoutDashboard className="w-5 h-5" /> Dashboard
-                        </Link>
-                      ) : (
-                        <button onClick={() => { setIsMobileMenuOpen(false); handleRequestOrganizer(); }} className="flex items-center gap-3 px-5 py-3 text-left w-full text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors">
-                          <LayoutDashboard className="w-5 h-5" /> Request Organizer Access
-                        </button>
-                      )}
-                      <Link to="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors">
-                        <Settings className="w-5 h-5" /> Settings
-                      </Link>
+                      {profileMenuItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.path}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex items-center gap-3 px-5 py-3 text-white/80 font-medium rounded-full hover:bg-white/10 transition-colors"
+                          >
+                            <Icon className="w-5 h-5" />
+                            {item.name}
+                          </Link>
+                        );
+                      })}
                       <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 w-full px-5 py-3 text-left text-white/80 font-medium rounded-full hover:bg-red-500/20 transition-colors">
                         <LogOut className="w-5 h-5" /> Logout
                       </button>

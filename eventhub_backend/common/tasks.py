@@ -3,14 +3,26 @@ import os
 import logging
 import urllib.request
 import urllib.error
+from datetime import timedelta
 from PIL import Image
 from celery import shared_task
 from django.apps import apps
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+_EVENT_CACHE_VERSION_KEY = "events:cache_version"
+
+
+def _bump_event_cache_version():
+    current = cache.get(_EVENT_CACHE_VERSION_KEY)
+    if not isinstance(current, int) or current < 1:
+        current = 1
+    cache.set(_EVENT_CACHE_VERSION_KEY, current + 1, None)
 
 @shared_task
 def keep_alive_ping_task():
@@ -95,3 +107,55 @@ def optimize_image_task(app_label, model_name, instance_id, field_name, max_widt
         
     except Exception as e:
         logger.error(f"Failed to optimize image in background for {app_label}.{model_name}.{field_name}: {e}")
+
+
+@shared_task(name="common.tasks.sync_event_lifecycle_task")
+def sync_event_lifecycle_task():
+    from apps.events.models import Event
+    from apps.orders.models import Ticket
+
+    now = timezone.now()
+    retention_hours = max(0, int(getattr(settings, "EXPIRED_TICKET_RETENTION_HOURS", 72)))
+    retention_window = timedelta(hours=retention_hours)
+
+    completed_event_ids = []
+    expired_ticket_ids = []
+    purge_ticket_ids = []
+
+    for event in Event.objects.filter(status="published").only(
+        "id",
+        "status",
+        "start_date",
+        "start_time",
+        "end_date",
+        "end_time",
+        "timezone",
+    ):
+        if event.has_ended(now):
+            completed_event_ids.append(event.id)
+
+    if completed_event_ids:
+        Event.objects.filter(id__in=completed_event_ids).update(status="completed")
+        _bump_event_cache_version()
+
+    for ticket in Ticket.objects.select_related("event").filter(status="valid", event__isnull=False):
+        if ticket.event and ticket.event.has_ended(now):
+            expired_ticket_ids.append(ticket.id)
+
+    if expired_ticket_ids:
+        Ticket.objects.filter(id__in=expired_ticket_ids, status="valid").update(status="expired")
+
+    if retention_window:
+        for ticket in Ticket.objects.select_related("event").filter(status="expired", event__isnull=False):
+            event_end = ticket.event.get_end_datetime() if ticket.event else None
+            if event_end and event_end + retention_window <= now:
+                purge_ticket_ids.append(ticket.id)
+
+    if purge_ticket_ids:
+        Ticket.objects.filter(id__in=purge_ticket_ids).delete()
+
+    return {
+        "completed_events": len(completed_event_ids),
+        "expired_tickets": len(expired_ticket_ids),
+        "purged_tickets": len(purge_ticket_ids),
+    }

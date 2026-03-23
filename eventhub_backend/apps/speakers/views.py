@@ -6,6 +6,14 @@ from .models import Speaker
 from .serializers import SpeakerSerializer, SpeakerCreateSerializer
 
 
+def _can_view_unpublished_event(user, slug: str) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_staff or getattr(user, "role", None) == "admin":
+        return True
+    return Event.objects.filter(slug=slug, organizer=user).exists()
+
+
 class SpeakerListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/events/{slug}/speakers/   → list speakers (public)
@@ -26,7 +34,10 @@ class SpeakerListCreateView(generics.ListCreateAPIView):
         return generics.get_object_or_404(Event, slug=self.kwargs["slug"])
 
     def get_queryset(self):
-        return Speaker.objects.filter(event__slug=self.kwargs["slug"])
+        queryset = Speaker.objects.filter(event__slug=self.kwargs["slug"])
+        if _can_view_unpublished_event(self.request.user, self.kwargs["slug"]):
+            return queryset
+        return queryset.filter(event__status="published")
 
     def perform_create(self, serializer):
         event = self.get_event()
@@ -48,7 +59,10 @@ class SpeakerDetailView(generics.RetrieveUpdateDestroyAPIView):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        return Speaker.objects.filter(event__slug=self.kwargs["slug"])
+        queryset = Speaker.objects.filter(event__slug=self.kwargs["slug"])
+        if _can_view_unpublished_event(self.request.user, self.kwargs["slug"]):
+            return queryset
+        return queryset.filter(event__status="published")
 
     def get_serializer_class(self):
         if self.request.method in ("PUT", "PATCH"):

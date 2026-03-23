@@ -230,8 +230,11 @@ class FreeOrderConfirmView(APIView):
 
         try:
             order, created = _confirm_order_and_issue_tickets(order)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response(
+                {"detail": "Order cannot be confirmed in its current state."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if created:
             _notify_and_email(order, title="Your free tickets are confirmed! 🎉")
@@ -262,8 +265,11 @@ class SimulatePaymentConfirmView(APIView):
 
         try:
             order, created = _confirm_order_and_issue_tickets(order)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response(
+                {"detail": "Order cannot be confirmed in its current state."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if created:
             _notify_and_email(order, title="Your tickets are confirmed! 🎉")
@@ -327,8 +333,12 @@ class MpesaInitiateView(APIView):
         try:
             payment = service.stk_push(order, phone_number=phone)
             return Response({"checkout_request_id": payment.mpesa_checkout_request_id}, status=status.HTTP_200_OK)
-        except Exception as exc:
-            return Response({"detail": f"Mpesa Service unavailable: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("M-Pesa STK push failed for order %s", order.order_number)
+            return Response(
+                {"detail": "M-Pesa service is currently unavailable. Please try again shortly."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
 
 @csrf_exempt

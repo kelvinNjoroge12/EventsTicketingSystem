@@ -181,6 +181,7 @@ const OrganizerSettings = ({ events = [] }) => {
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'checkin', eventId: 'none' });
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorSupported, setTwoFactorSupported] = useState(false);
 
   const allowedSettingsTabs = useMemo(
     () => ['profile', 'notifications', 'payment', 'team', 'integrations', 'security'],
@@ -270,6 +271,7 @@ const OrganizerSettings = ({ events = [] }) => {
     if (securityData) {
       const enabled = securityData.two_factor_enabled ?? securityData.enabled ?? false;
       setTwoFactorEnabled(Boolean(enabled));
+      setTwoFactorSupported(Boolean(securityData.two_factor_supported));
     }
   }, [securityData]);
 
@@ -400,11 +402,13 @@ const OrganizerSettings = ({ events = [] }) => {
 
   const twoFactorMutation = useMutation({
     mutationFn: (enabled) => updateTwoFactor(enabled),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setTwoFactorEnabled(Boolean(data?.two_factor_enabled));
       queryClient.invalidateQueries({ queryKey: ['settings_security'] });
       toast.success('Two-factor settings updated.');
     },
     onError: (error) => {
+      queryClient.invalidateQueries({ queryKey: ['settings_security'] });
       toast.error(error?.message || 'Failed to update two-factor settings.');
     },
   });
@@ -1079,12 +1083,16 @@ const OrganizerSettings = ({ events = [] }) => {
                   <div className="flex items-center justify-between p-3 lg:p-4 border border-gray-200 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-700 text-sm lg:text-base">Enable 2FA</p>
-                      <p className="text-xs lg:text-sm text-gray-500">Add an extra layer of security</p>
+                      <p className="text-xs lg:text-sm text-gray-500">
+                        {twoFactorSupported
+                          ? 'Add an extra layer of security'
+                          : 'Coming soon. 2FA setup is not available yet.'}
+                      </p>
                     </div>
                     <Switch
                       checked={twoFactorEnabled}
+                      disabled={!twoFactorSupported || twoFactorMutation.isLoading}
                       onCheckedChange={(checked) => {
-                        setTwoFactorEnabled(checked);
                         twoFactorMutation.mutate(checked);
                       }}
                     />

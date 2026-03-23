@@ -94,10 +94,14 @@ const HomePage = () => {
   const touchStartX = useRef(0);
 
   const { data: allEventsData, isLoading } = useQuery({
-    queryKey: eventQueryKeys.list({ ordering: 'start_date', page_size: 12 }),
-    queryFn: () => fetchEvents({ ordering: 'start_date', page_size: 12 })
+    queryKey: eventQueryKeys.list({ page_size: 12 }),
+    queryFn: () => fetchEvents({ page_size: 12 })
   });
   const allEvents = allEventsData?.results || [];
+  const availableEvents = useMemo(
+    () => allEvents.filter((event) => !event.isPast),
+    [allEvents]
+  );
 
   useEffect(() => {
     let timer;
@@ -172,27 +176,27 @@ const HomePage = () => {
   // Compute dynamic counts per category
   const categoryCounts = useMemo(() => {
     const counts = {};
-    allEvents.forEach((evt) => {
+    availableEvents.forEach((evt) => {
       if (!evt.category) return;
       const key = normalizeCategory(evt.category);
       counts[key] = (counts[key] || 0) + 1;
     });
     return counts;
-  }, [allEvents]);
+  }, [availableEvents]);
 
   // Derived filtered events
   const filteredEvents = useMemo(() => {
     if (activeCategory === 'All') {
-      return allEvents;
+      return availableEvents;
     }
     const normActive = normalizeCategory(activeCategory);
-    const fe = allEvents.filter((e) => normalizeCategory(e.category) === normActive);
+    const fe = availableEvents.filter((e) => normalizeCategory(e.category) === normActive);
 
     if (categoryCounts[normActive] > 0 && fe.length === 0) {
       console.warn('Category mismatch:', activeCategory, 'count', categoryCounts[normActive], 'filtered 0');
     }
     return fe;
-  }, [allEvents, activeCategory, categoryCounts]);
+  }, [availableEvents, activeCategory, categoryCounts]);
 
   const updateTrackPosition = () => {
     if (!trackRef.current) return;

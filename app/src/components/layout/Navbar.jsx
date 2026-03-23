@@ -15,7 +15,8 @@ const Navbar = () => {
   const isOrganizerArea = isOrganizer && (
     location.pathname.startsWith('/organizer-dashboard') ||
     location.pathname.startsWith('/create-event') ||
-    location.pathname.startsWith('/edit-event')
+    location.pathname.startsWith('/edit-event') ||
+    location.pathname.startsWith('/admin/event-reviews')
   );
 
   useEffect(() => {

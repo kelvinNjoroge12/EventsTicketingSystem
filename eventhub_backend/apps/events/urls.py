@@ -4,15 +4,18 @@ from django.urls import path
 
 from .views import (
     CategoryListView,
+    EventApproveView,
     EventCreateView,
     EventDeleteView,
     EventDetailView,
     EventListView,
     EventPublishView,
+    EventRejectView,
+    EventReviewQueueView,
     EventUpdateView,
     FeaturedEventsView,
-    OrganizerEventListView,
     MyEventsListView,
+    OrganizerEventListView,
     related_events,
 )
 
@@ -24,6 +27,9 @@ urlpatterns = [
     path("create/", EventCreateView.as_view(), name="event-create"),
     path("categories/", CategoryListView.as_view(), name="event-categories"),
     path("featured/", FeaturedEventsView.as_view(), name="event-featured"),
+    path("reviews/", EventReviewQueueView.as_view(), name="event-review-queue"),
+    path("reviews/<slug:slug>/approve/", EventApproveView.as_view(), name="event-review-approve"),
+    path("reviews/<slug:slug>/reject/", EventRejectView.as_view(), name="event-review-reject"),
 
     # Generic list and organizer list
     path("", EventListView.as_view(), name="event-list"),
@@ -36,4 +42,3 @@ urlpatterns = [
     path("<slug:slug>/delete/", EventDeleteView.as_view(), name="event-delete"),
     path("<slug:slug>/related/", related_events, name="event-related"),
 ]
-

@@ -86,6 +86,7 @@ const OrganizerHeader = ({
           time: item.time || formatRelativeTime(createdAt),
           createdAt,
           read: item.read ?? item.is_read ?? false,
+          actionUrl: item.action_url || item.actionUrl || '',
         };
       })
       .filter((item) => item.title || item.message);
@@ -247,7 +248,12 @@ const OrganizerHeader = ({
                   <DropdownMenuItem
                     key={notification.id}
                     className={cn('flex flex-col items-start gap-1 p-3 cursor-pointer', !notification.read && 'bg-[#C58B1A]/5')}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => {
+                      markAsRead(notification.id);
+                      if (notification.actionUrl) {
+                        navigate(notification.actionUrl);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-2 w-full">
                       <span className="text-sm font-medium flex-1">{notification.title}</span>

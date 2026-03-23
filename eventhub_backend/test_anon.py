@@ -5,16 +5,20 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 import django
 django.setup()
 
+import pytest
 from django.test import RequestFactory
+from django.contrib.auth.models import AnonymousUser
 from apps.events.models import Event
 from apps.orders.views import OrderCreateView
 
-def test_view():
+
+def test_view(db):
     event = Event.objects.first()
+    if not event:
+        pytest.skip("No events available in test database.")
     tt = event.ticket_types.first()
     if not tt:
-        print("No ticket types found")
-        return
+        pytest.skip("No ticket types available for selected event.")
 
     factory = RequestFactory()
     data = {
@@ -31,18 +35,11 @@ def test_view():
         "attendee_email": "guest@example.com",
     }
     django_request = factory.post("/api/orders/create/", data, content_type="application/json")
-    
-    # We must explicitly instantiate the AnonymousUser since the view does NOT have AuthenticationMiddleware attached for RequestFactory
-    from django.contrib.auth.models import AnonymousUser
     django_request.user = AnonymousUser()
 
     view = OrderCreateView.as_view()
-    try:
-        response = view(django_request)
-        print("Response:", response.status_code, response.data)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
+    response = view(django_request)
+    assert response.status_code in {200, 201, 400, 403, 409}
 
 if __name__ == "__main__":
     test_view()

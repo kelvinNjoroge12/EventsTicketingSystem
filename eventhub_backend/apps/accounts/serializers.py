@@ -47,6 +47,41 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ("is_approved", "is_verified", "total_events", "total_attendees", "stripe_account_id")
 
 
+class PublicOrganizerProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizerProfile
+        fields = [
+            "organization_name",
+            "organization_bio",
+            "website",
+            "logo",
+            "brand_color",
+            "is_approved",
+            "is_verified",
+            "twitter",
+            "linkedin",
+            "instagram",
+            "total_events",
+            "total_attendees",
+        ]
+        read_only_fields = fields
+
+
+class PublicOrganizerSerializer(serializers.ModelSerializer):
+    organizer_profile = PublicOrganizerProfileSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "avatar",
+            "organizer_profile",
+        ]
+        read_only_fields = fields
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     organizer_profile = OrganizerProfileSerializer(read_only=True)
     organization_name = serializers.CharField(
@@ -74,6 +109,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "phone_number",
             "avatar",
             "role",
+            "is_staff",
             "is_email_verified",
             "must_reset_password",
             "organizer_profile",
@@ -87,6 +123,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = (
             "role",
+            "is_staff",
             "is_email_verified",
             "must_reset_password",
             "organizer_profile",
@@ -363,5 +400,6 @@ class UserSessionSerializer(serializers.Serializer):
 
 class SecuritySettingsSerializer(serializers.Serializer):
     two_factor_enabled = serializers.BooleanField()
+    two_factor_supported = serializers.BooleanField(default=False)
 
 

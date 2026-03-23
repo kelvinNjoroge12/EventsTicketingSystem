@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Menu, X, User, Plus, CalendarDays, LogOut, Settings, Home, Ticket
+  Menu, X, User, Plus, CalendarDays, LogOut, Settings, Home, Ticket, Eye
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ const OrganizerNavbar = ({ isScrolled, isActive }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const profileRef = useRef(null);
+  const isAdminUser = user?.role === 'admin' || user?.is_staff;
 
   useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
 
@@ -37,6 +38,7 @@ const OrganizerNavbar = ({ isScrolled, isActive }) => {
   const orgLinks = [
     { name: 'Home', path: '/organizer-dashboard?tab=overview', icon: Home },
     { name: 'My Events', path: '/organizer-dashboard?tab=events', icon: CalendarDays },
+    ...(isAdminUser ? [{ name: 'Review Events', path: '/organizer-dashboard?tab=reviews', icon: Eye }] : []),
     { name: 'Check-In', path: '/organizer-dashboard?tab=checkin', icon: Ticket },
   ];
 

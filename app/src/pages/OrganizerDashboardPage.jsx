@@ -24,10 +24,12 @@ import OrganizerHeader from '../components/organizer/OrganizerHeader';
 import OrganizerDashboardOverview from '../components/dashboard/Overview';
 import OrganizerMyEvents from '../components/dashboard/MyEvents';
 import OrganizerEventDetail from '../components/dashboard/EventDetail';
+import EventReviewQueue from '../components/dashboard/EventReviewQueue';
 import FinanceOverview from '../components/dashboard/FinanceOverview';
 import OrganizerSettings from '../components/dashboard/Settings';
+import OrganizerAttendeesModule from '../components/dashboard/AttendeesModule';
 import { api } from '../lib/apiClient';
-import { fetchEvent } from '../lib/eventsApi';
+import { fetchEvent, fetchPendingEventReviews } from '../lib/eventsApi';
 import { toast } from 'sonner';
 
 import ExpenseFormModal from '../components/dashboard/ExpenseFormModal';
@@ -65,6 +67,7 @@ const EMPTY_STATS = {
   totalExpenses: 0,
   netProfit: 0,
 };
+const CURRENT_ANALYTICS_YEAR = new Date().getFullYear();
 
 const apiList = (value) => (Array.isArray(value) ? value : value?.results || []);
 const formatDate = (value) => {
@@ -77,6 +80,9 @@ const formatDate = (value) => {
 const resolveStatus = (event) => {
   const raw = event.status || (event.is_published ? 'published' : 'draft');
   if (raw === 'draft') return 'draft';
+  if (raw === 'pending') return 'pending';
+  if (raw === 'rejected') return 'rejected';
+  if (raw === 'cancelled') return 'cancelled';
   if (raw === 'completed') return 'completed';
   const eventDate = new Date(event.start_date || event.date || event.startDate || '');
   if (!Number.isNaN(eventDate.getTime())) {
@@ -224,6 +230,7 @@ const normalizeEvent = (event) => {
   const totalTickets = event.capacity || event.total_tickets || event.totalTickets || 0;
   const revenue = event.revenue || event.total_revenue || 0;
   const image = event.cover_image || event.banner_image || event.image || event.coverImage || '';
+  const parsedDate = parseDateValue(date);
   return {
     id: event.id,
     slug: event.slug,
@@ -240,6 +247,7 @@ const normalizeEvent = (event) => {
     revenue,
     image,
     category,
+    year: parsedDate ? parsedDate.getFullYear() : null,
   };
 };
 const OrganizerDashboardPage = () => {
@@ -255,8 +263,10 @@ const OrganizerDashboardPage = () => {
   const [entryView, setEntryView] = useState('all');
   const [analyticsFilters, setAnalyticsFilters] = useState({
     eventId: '',
+    year: String(CURRENT_ANALYTICS_YEAR),
     graduationYear: '',
     courseId: '',
+    schoolId: '',
     location: '',
   });
   const [financeRange, setFinanceRange] = useState('month');
@@ -265,6 +275,7 @@ const OrganizerDashboardPage = () => {
   const mainScrollRef = useRef(null);
 
   const isStaffUser = user && (user.role === 'checkin' || user.role === 'staff');
+  const isAdminUser = user && (user.role === 'admin' || user.is_staff);
   const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
 
   useEffect(() => {
@@ -277,8 +288,12 @@ const OrganizerDashboardPage = () => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
     if (!tab) return;
-    const allowed = ['dashboard', 'events', 'checkin', 'create', 'settings', 'event', 'finance'];
+    const allowed = ['dashboard', 'events', 'attendees', 'reviews', 'checkin', 'create', 'settings', 'event', 'finance'];
     if (!allowed.includes(tab)) return;
+    if (tab === 'reviews' && !isAdminUser) {
+      setCurrentPage('dashboard');
+      return;
+    }
 
     if (tab === 'event') {
       const eventParam = params.get('event');
@@ -292,7 +307,7 @@ const OrganizerDashboardPage = () => {
     }
 
     setCurrentPage(tab);
-  }, [location.search]);
+  }, [isAdminUser, location.search]);
 
   const syncTabToUrl = useCallback((tab, extras = {}) => {
     const params = new URLSearchParams(location.search);
@@ -360,11 +375,20 @@ const OrganizerDashboardPage = () => {
     staleTime: 2 * 60 * 1000,
   });
 
+  const { data: reviewQueue = [], isLoading: isLoadingReviewQueue } = useQuery({
+    queryKey: ['admin_event_reviews', 'pending'],
+    queryFn: () => fetchPendingEventReviews('pending'),
+    enabled: !!isAdminUser && currentPage === 'reviews',
+    staleTime: 30 * 1000,
+  });
+
   const analyticsParams = useMemo(() => {
     const params = new URLSearchParams();
     if (analyticsFilters.eventId) params.set('event_id', analyticsFilters.eventId);
+    if (analyticsFilters.year) params.set('year', analyticsFilters.year);
     if (analyticsFilters.graduationYear) params.set('graduation_year', analyticsFilters.graduationYear);
     if (analyticsFilters.courseId) params.set('course_id', analyticsFilters.courseId);
+    if (analyticsFilters.schoolId) params.set('school_id', analyticsFilters.schoolId);
     if (analyticsFilters.location) params.set('location', analyticsFilters.location);
     return params.toString();
   }, [analyticsFilters]);
@@ -532,7 +556,7 @@ const OrganizerDashboardPage = () => {
     navigate(`/organizer/events/${eventItem.slug}/checkin`);
   };
 
-  const handlePageChange = (page) => {
+  const handlePageChange = useCallback((page) => {
     if (page === 'create') {
       navigate('/create-event');
       return;
@@ -540,6 +564,15 @@ const OrganizerDashboardPage = () => {
     setCurrentPage(page);
     if (page === 'checkin') {
       syncTabToUrl('checkin', { event: null });
+      return;
+    }
+    if (page === 'reviews') {
+      if (!isAdminUser) {
+        setCurrentPage('dashboard');
+        syncTabToUrl('dashboard', { event: null });
+        return;
+      }
+      syncTabToUrl('reviews', { event: null });
       return;
     }
     if (page === 'settings') {
@@ -550,6 +583,10 @@ const OrganizerDashboardPage = () => {
       syncTabToUrl('events', { event: null });
       return;
     }
+    if (page === 'attendees') {
+      syncTabToUrl('attendees', { event: null });
+      return;
+    }
     if (page === 'dashboard') {
       syncTabToUrl('dashboard', { event: null });
       return;
@@ -558,7 +595,7 @@ const OrganizerDashboardPage = () => {
       syncTabToUrl('finance', { event: null });
       return;
     }
-  };
+  }, [isAdminUser, navigate, syncTabToUrl]);
 
   useEffect(() => {
     const container = mainScrollRef.current;
@@ -574,6 +611,10 @@ const OrganizerDashboardPage = () => {
         return 'Dashboard';
       case 'events':
         return 'My Events';
+      case 'attendees':
+        return 'Attendees';
+      case 'reviews':
+        return 'Event Reviews';
       case 'event-detail':
         return '';
       case 'checkin':
@@ -612,7 +653,12 @@ const OrganizerDashboardPage = () => {
               filters={analyticsFilters}
               filterOptions={analyticsData?.filters || {}}
               onFilterChange={(field, value) => {
-                setAnalyticsFilters((prev) => ({ ...prev, [field]: value }));
+                setAnalyticsFilters((prev) => {
+                  if (field === 'year') {
+                    return { ...prev, year: value, eventId: '' };
+                  }
+                  return { ...prev, [field]: value };
+                });
               }}
               onEventClick={openEventDetail}
               onViewAll={() => {
@@ -665,6 +711,8 @@ const OrganizerDashboardPage = () => {
               }}
             />
           );
+        case 'attendees':
+          return <OrganizerAttendeesModule events={events} />;
         case 'events':
           return (
             <OrganizerMyEvents
@@ -676,6 +724,14 @@ const OrganizerDashboardPage = () => {
             onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}
             onCheckInEvent={openCheckinForEvent}
             isLoading={isLoadingEvents}
+          />
+        );
+      case 'reviews':
+        return (
+          <EventReviewQueue
+            events={reviewQueue}
+            isLoading={isLoadingReviewQueue}
+            onReviewEvent={(eventItem) => navigate(`/admin/event-reviews/${eventItem.slug}`)}
           />
         );
       case 'event-detail':

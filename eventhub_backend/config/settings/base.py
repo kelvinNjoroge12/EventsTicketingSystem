@@ -167,6 +167,7 @@ REST_FRAMEWORK = {
         "order_lookup": "30/minute", # Throttle for order detail lookups (anti brute-force)
         "qr_generation": "30/minute", # Throttle for QR generation
         "resend_email": "5/minute",  # Throttle for email resending
+        "frontend_error": "30/minute",  # Throttle for frontend crash telemetry ingestion
     },
 }
 
@@ -216,6 +217,7 @@ FILE_UPLOAD_ALLOWED_EXTENSIONS = ("jpeg", "jpg", "png", "webp", "gif")
 
 # Redis cache / Celery
 REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
+EXPIRED_TICKET_RETENTION_HOURS = env.int("EXPIRED_TICKET_RETENTION_HOURS", default=72)
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -291,6 +293,10 @@ CELERY_BEAT_SCHEDULE = {
     "send_daily_event_reminders": {
         "task": "send_event_reminders",
         "schedule": crontab(minute=0, hour='*'),  # Runs every hour
+    },
+    "sync_event_lifecycle": {
+        "task": "common.tasks.sync_event_lifecycle_task",
+        "schedule": crontab(minute="*/15"),
     },
 }
 

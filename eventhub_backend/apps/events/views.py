@@ -2,24 +2,34 @@ from __future__ import annotations
 
 from django.core.cache import cache
 from django.db import models
-from django.db.models import Exists, OuterRef, Prefetch, Q, Subquery
+from django.db.models import Case, Exists, IntegerField, OuterRef, Prefetch, Q, Subquery, Value, When
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 
-from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
+from apps.accounts.permissions import IsAdmin, IsOrganizerRole
 from apps.schedules.models import ScheduleItem
 from apps.speakers.models import Speaker
 from apps.sponsors.models import Sponsor
 from apps.tickets.models import PromoCode, TicketType
 from .filters import EventFilter
 from .models import Category, Event
-from .serializers import CategorySerializer, EventCreateSerializer, EventDetailSerializer, EventListSerializer, EventStatusSerializer
+from .serializers import (
+    CategorySerializer,
+    EventCreateSerializer,
+    EventDetailSerializer,
+    EventListSerializer,
+    EventReviewQueueSerializer,
+    EventReviewRejectSerializer,
+    EventStatusSerializer,
+)
+from .services import approve_event_submission, reject_event_submission, submit_event_for_review
 
 
 def _with_list_optimizations(queryset):
@@ -89,6 +99,48 @@ def _with_detail_optimizations(queryset, exclude_fields: set[str] | None = None)
     )
 
 
+def _apply_public_event_ordering(queryset):
+    today = timezone.localdate()
+    current_time = timezone.localtime().time()
+
+    return queryset.annotate(
+        priority_override=models.Case(
+            When(display_priority__gt=0, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        ),
+        public_time_bucket=Case(
+            When(
+                Q(status="completed")
+                | Q(end_date__lt=today)
+                | Q(end_date=today, end_time__lte=current_time),
+                then=Value(2),
+            ),
+            When(
+                Q(start_date=today) | Q(start_date__lt=today, end_date__gte=today),
+                then=Value(0),
+            ),
+            default=Value(1),
+            output_field=IntegerField(),
+        ),
+    ).order_by(
+        "priority_override",
+        "public_time_bucket",
+        "-display_priority",
+        "start_date",
+        "start_time",
+        "-published_at",
+    )
+
+
+def _is_admin_user(user) -> bool:
+    return bool(
+        user
+        and user.is_authenticated
+        and (getattr(user, "role", None) == "admin" or getattr(user, "is_staff", False))
+    )
+
+
 _CACHE_VERSION_KEY = "events:cache_version"
 
 
@@ -115,7 +167,8 @@ class EventListView(generics.ListAPIView):
     filterset_class = EventFilter
 
     def get_queryset(self):
-        return _with_list_optimizations(Event.objects.filter(status="published"))
+        queryset = Event.objects.filter(status__in=["published", "completed"])
+        return _apply_public_event_ordering(_with_list_optimizations(queryset))
 
     def list(self, request, *args, **kwargs):
         version = _get_cache_version()
@@ -139,11 +192,15 @@ class EventDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         """Allow organizers to view their own draft/pending events."""
         user = self.request.user
-        status_filter = Q(status__in=["published", "completed"])
-        if user.is_authenticated:
-            status_filter |= Q(organizer=user, status__in=["draft", "pending"])
+        if _is_admin_user(user):
+            base_queryset = Event.objects.all()
+        else:
+            status_filter = Q(status__in=["published", "completed"])
+            if user.is_authenticated:
+                status_filter |= Q(organizer=user, status__in=["draft", "pending", "rejected"])
+            base_queryset = Event.objects.filter(status_filter).distinct()
         exclude_fields = self._get_exclude_fields()
-        return _with_detail_optimizations(Event.objects.filter(status_filter).distinct(), exclude_fields=exclude_fields)
+        return _with_detail_optimizations(base_queryset, exclude_fields=exclude_fields)
 
     def _get_exclude_fields(self) -> set[str]:
         raw = self.request.query_params.get("exclude", "")
@@ -185,7 +242,7 @@ class EventDetailView(generics.RetrieveAPIView):
         if not request.user.is_authenticated:
             raise PermissionDenied("Authentication required.")
 
-        if request.user.is_staff or request.user.role == "admin":
+        if _is_admin_user(request.user):
             qs = Event.objects.all()
         else:
             if request.user.role != "organizer":
@@ -204,11 +261,7 @@ class EventCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def perform_create(self, serializer):
-        status = serializer.validated_data.get('status', 'draft')
-        if status == 'published' and not self.request.user.is_superuser:
-            serializer.save(status='pending')
-        else:
-            serializer.save()
+        serializer.save()
         _bump_cache_version()
 
 
@@ -241,7 +294,7 @@ class EventDeleteView(generics.DestroyAPIView):
 
 class EventPublishView(generics.UpdateAPIView):
     serializer_class = EventStatusSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
     lookup_field = "slug"
 
     def get_queryset(self):
@@ -249,15 +302,66 @@ class EventPublishView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         event = self.get_object()
-        if event.status != "published":
-            if request.user.is_superuser:
-                event.status = "published"
-            else:
-                event.status = "pending"
-            event.save(update_fields=["status"])
-            _bump_cache_version()
+        submit_event_for_review(event, request.user)
+        _bump_cache_version()
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(serializer.data)
+
+
+class EventReviewQueueView(generics.ListAPIView):
+    serializer_class = EventReviewQueueSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        raw_status = self.request.query_params.get("status", "pending")
+        requested = [item.strip() for item in raw_status.split(",") if item.strip()]
+        allowed = {"pending", "published", "rejected", "draft", "cancelled", "completed"}
+        statuses = [item for item in requested if item in allowed] or ["pending"]
+        return (
+            Event.objects.filter(status__in=statuses)
+            .select_related("organizer", "organizer__organizer_profile", "category")
+            .order_by("-approval_requested_at", "-created_at")
+        )
+
+
+class EventApproveView(generics.UpdateAPIView):
+    serializer_class = EventDetailSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    lookup_field = "slug"
+
+    def get_queryset(self):
+        return Event.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        event = self.get_object()
+        if event.status in {"cancelled", "completed"}:
+            raise ValidationError("This event can no longer be approved.")
+        approve_event_submission(event, request.user)
+        _bump_cache_version()
+        serializer = EventDetailSerializer(event, context=self.get_serializer_context())
+        return Response(serializer.data)
+
+
+class EventRejectView(generics.UpdateAPIView):
+    serializer_class = EventReviewRejectSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    lookup_field = "slug"
+
+    def get_queryset(self):
+        return Event.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        event = self.get_object()
+        if event.status == "published":
+            raise ValidationError("Published events cannot be rejected from the review screen.")
+        if event.status in {"cancelled", "completed"}:
+            raise ValidationError("This event can no longer be rejected.")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reject_event_submission(event, request.user, serializer.validated_data["reason"])
+        _bump_cache_version()
+        detail_serializer = EventDetailSerializer(event, context=self.get_serializer_context())
+        return Response(detail_serializer.data)
 
 
 class OrganizerEventListView(generics.ListAPIView):
@@ -267,7 +371,7 @@ class OrganizerEventListView(generics.ListAPIView):
     def get_queryset(self):
         organizer_id = self.kwargs["id"]
         return _with_list_optimizations(
-            Event.objects.filter(organizer_id=organizer_id, status="published")
+            Event.objects.filter(organizer_id=organizer_id, status__in=["published", "completed"])
         )
 
 
@@ -346,4 +450,3 @@ def related_events(request, slug: str):
     serializer = EventListSerializer(qs, many=True, context={"request": request})
     cache.set(cache_key, serializer.data, 900)  # 15 minutes
     return Response(serializer.data)
-

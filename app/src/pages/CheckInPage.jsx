@@ -636,10 +636,13 @@ const CheckInPage = () => {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => toggleCheckIn(guest)}
-                                  disabled={!guest.scanCode}
-                                  className="border-[#C58B1A] text-[#C58B1A] hover:bg-[#C58B1A] hover:text-white text-xs h-7 lg:h-8"
+                                  className={`text-xs h-7 lg:h-8 ${
+                                    guest.scanCode
+                                      ? 'border-[#C58B1A] text-[#C58B1A] hover:bg-[#C58B1A] hover:text-white'
+                                      : 'border-[#02338D] text-[#02338D] hover:bg-[#02338D] hover:text-white'
+                                  }`}
                                 >
-                                  Check In
+                                  {guest.scanCode ? 'Check In' : 'Manual Check-In'}
                                 </Button>
                               )}
                             </div>

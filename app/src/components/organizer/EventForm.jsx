@@ -96,7 +96,7 @@ const ImageUploader = ({ label, preview, onFile, size = 'md', hint }) => {
 };
 
 // â”€â”€ Step 1: Basic Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
+export const BasicInfoStep = ({ data, onChange, errors, categories = [], canManagePriority = false }) => (
   <div className="space-y-6">
     <CustomInput
       label="Event Title"
@@ -181,6 +181,22 @@ export const BasicInfoStep = ({ data, onChange, errors, categories = [] }) => (
         </select>
       </div>
     </div>
+
+    {canManagePriority && (
+      <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+        <label className="block text-sm font-medium text-[#0F172A] mb-2">Homepage Priority</label>
+        <input
+          type="number"
+          min="0"
+          value={data.displayPriority ?? 0}
+          onChange={(e) => onChange('displayPriority', Math.max(0, Number(e.target.value) || 0))}
+          className="w-full px-4 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] bg-white"
+        />
+        <p className="mt-2 text-xs text-[#64748B]">
+          Higher numbers pin an event higher on the public listings before the normal today and upcoming flow.
+        </p>
+      </div>
+    )}
 
     {/* Brand Colors */}
     <div className="p-5 bg-gradient-to-r from-[#F8FAFC] to-[#EFF6FF] rounded-xl border border-[#E2E8F0]">

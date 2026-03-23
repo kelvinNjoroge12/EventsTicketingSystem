@@ -156,6 +156,8 @@ const OrganizerMyEvents = ({
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="live">Live</SelectItem>
                     <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="pending">Pending Review</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="draft">Draft</SelectItem>
                   </SelectContent>

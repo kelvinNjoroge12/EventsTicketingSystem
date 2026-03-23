@@ -124,6 +124,9 @@ const OrganizerDashboardOverview = ({
 
   const filteredEvents = useMemo(() => {
     let list = events;
+    if (filters?.year) {
+      list = list.filter((eventItem) => String(eventItem.year || '') === String(filters.year));
+    }
     if (filters?.eventId) {
       list = list.filter((eventItem) =>
         String(eventItem.id) === String(filters.eventId) ||
@@ -137,7 +140,12 @@ const OrganizerDashboardOverview = ({
       );
     }
     return list;
-  }, [events, filters?.eventId, filters?.location]);
+  }, [events, filters?.year, filters?.eventId, filters?.location]);
+
+  const eventOptions = useMemo(() => {
+    if (!filters?.year) return events;
+    return events.filter((eventItem) => String(eventItem.year || '') === String(filters.year));
+  }, [events, filters?.year]);
 
   const recentEvents = filteredEvents.slice(0, 4);
 
@@ -194,14 +202,25 @@ const OrganizerDashboardOverview = ({
       </div>
 
       <div className="bg-white border border-[#E2E8F0] rounded-2xl p-1.5 lg:p-2">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 lg:gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-1.5 lg:gap-2">
+          <select
+            value={filters?.year || ''}
+            onChange={handleFilter('year')}
+            className="w-full px-3 py-1.5 lg:py-2 border border-[#E2E8F0] rounded-full text-[11px] lg:text-xs bg-gray-50/50 focus:bg-white focus:ring-1 focus:ring-[#02338D] outline-none hover:bg-white transition-colors cursor-pointer"
+          >
+            {(options.years || []).map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+            {(!options.years || options.years.length === 0) && <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>}
+          </select>
+
           <select
             value={filters?.eventId || ''}
             onChange={handleFilter('eventId')}
             className="w-full px-3 py-1.5 lg:py-2 border border-[#E2E8F0] rounded-full text-[11px] lg:text-xs bg-gray-50/50 focus:bg-white focus:ring-1 focus:ring-[#02338D] outline-none hover:bg-white transition-colors cursor-pointer"
           >
             <option value="">All Events</option>
-            {events.map((eventItem) => (
+            {eventOptions.map((eventItem) => (
               <option key={eventItem.id} value={eventItem.id}>{eventItem.name}</option>
             ))}
           </select>
@@ -226,6 +245,19 @@ const OrganizerDashboardOverview = ({
             {(options.courses || []).map((course) => (
               <option key={course.course_id || course.id} value={course.course_id || course.id}>
                 {course.course__name || course.name || 'Course'}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filters?.schoolId || ''}
+            onChange={handleFilter('schoolId')}
+            className="w-full px-3 py-1.5 lg:py-2 border border-[#E2E8F0] rounded-full text-[11px] lg:text-xs bg-gray-50/50 focus:bg-white focus:ring-1 focus:ring-[#02338D] outline-none hover:bg-white transition-colors cursor-pointer"
+          >
+            <option value="">All Schools</option>
+            {(options.schools || []).map((school) => (
+              <option key={school.school_id || school.id} value={school.school_id || school.id}>
+                {school.school__name || school.name || 'School'}
               </option>
             ))}
           </select>

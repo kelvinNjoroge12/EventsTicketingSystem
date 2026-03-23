@@ -81,7 +81,22 @@ class OrganizerMiniSerializer(serializers.ModelSerializer):
         return profile.total_attendees if profile else 0
 
 
-class EventListSerializer(serializers.ModelSerializer):
+class EventTimeStateMixin:
+    time_state = serializers.SerializerMethodField()
+    is_today = serializers.SerializerMethodField()
+    is_past = serializers.SerializerMethodField()
+
+    def get_time_state(self, obj: Event):
+        return obj.get_time_state()
+
+    def get_is_today(self, obj: Event) -> bool:
+        return obj.get_time_state() in {"today", "live"}
+
+    def get_is_past(self, obj: Event) -> bool:
+        return obj.get_time_state() == "past"
+
+
+class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     organizer = OrganizerMiniSerializer(read_only=True)
     lowest_ticket_price = serializers.SerializerMethodField()
@@ -93,9 +108,13 @@ class EventListSerializer(serializers.ModelSerializer):
             "id",
             "slug",
             "title",
+            "description",
             "cover_image",
             "start_date",
             "start_time",
+            "end_date",
+            "end_time",
+            "venue_name",
             "city",
             "country",
             "format",
@@ -105,6 +124,10 @@ class EventListSerializer(serializers.ModelSerializer):
             "attendee_count",
             "is_featured",
             "status",
+            "display_priority",
+            "time_state",
+            "is_today",
+            "is_past",
             "organizer",
             "stickers",
             "theme_color",
@@ -167,7 +190,7 @@ class TicketTypeSerializer(serializers.ModelSerializer):
         ]
 
 
-class EventDetailSerializer(serializers.ModelSerializer):
+class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     organizer = OrganizerMiniSerializer(read_only=True)
@@ -181,6 +204,10 @@ class EventDetailSerializer(serializers.ModelSerializer):
     speakers_count = serializers.IntegerField(read_only=True)
     schedule_count = serializers.IntegerField(read_only=True)
     sponsors_count = serializers.IntegerField(read_only=True)
+    approval_requested_at = serializers.SerializerMethodField()
+    reviewed_at = serializers.SerializerMethodField()
+    reviewed_by_name = serializers.SerializerMethodField()
+    review_notes = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         exclude_fields = kwargs.pop("exclude_fields", None)
@@ -188,6 +215,13 @@ class EventDetailSerializer(serializers.ModelSerializer):
         if exclude_fields:
             for field in exclude_fields:
                 self.fields.pop(field, None)
+
+    def _can_view_review_data(self, obj: Event) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        return bool(user.is_staff or getattr(user, "role", None) == "admin" or obj.organizer_id == user.id)
 
     class Meta:
         model = Event
@@ -201,6 +235,10 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "event_type",
             "format",
             "status",
+            "display_priority",
+            "time_state",
+            "is_today",
+            "is_past",
             "cover_image",
             "gallery_images",
             "start_date",
@@ -224,6 +262,10 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "stickers",
             "published_at",
             "scheduled_publish_at",
+            "approval_requested_at",
+            "reviewed_at",
+            "reviewed_by_name",
+            "review_notes",
             "attendee_count",
             "view_count",
             "organizer",
@@ -240,6 +282,20 @@ class EventDetailSerializer(serializers.ModelSerializer):
             "send_reminders",
             "enable_waitlist",
         ]
+
+    def get_approval_requested_at(self, obj: Event):
+        return obj.approval_requested_at if self._can_view_review_data(obj) else None
+
+    def get_reviewed_at(self, obj: Event):
+        return obj.reviewed_at if self._can_view_review_data(obj) else None
+
+    def get_reviewed_by_name(self, obj: Event):
+        if not self._can_view_review_data(obj) or not obj.reviewed_by:
+            return None
+        return obj.reviewed_by.get_full_name() or obj.reviewed_by.email
+
+    def get_review_notes(self, obj: Event):
+        return obj.review_notes if self._can_view_review_data(obj) and obj.review_notes else None
 
     def get_tickets(self, obj: Event):
         prefetched = getattr(obj, "prefetched_ticket_types_active", None)
@@ -347,6 +403,7 @@ class EventCreateSerializer(serializers.ModelSerializer):
             "streaming_link",
             "capacity",
             "is_featured",
+            "display_priority",
             "theme_color",
             "accent_color",
             "refund_policy",
@@ -380,6 +437,23 @@ class EventCreateSerializer(serializers.ModelSerializer):
         allowed_statuses = {"draft", "pending"}
         if "status" in attrs and attrs["status"] not in allowed_statuses:
             raise serializers.ValidationError({"status": "Status can only be draft or pending."})
+
+        request = self.context.get("request")
+        requested_priority = attrs.get("display_priority")
+        current_priority = getattr(self.instance, "display_priority", 0)
+        if requested_priority is not None:
+            if requested_priority < 0:
+                raise serializers.ValidationError({"display_priority": "Priority must be zero or a positive number."})
+
+            can_manage_priority = bool(
+                request
+                and request.user.is_authenticated
+                and (request.user.is_staff or getattr(request.user, "role", None) == "admin")
+            )
+            if not can_manage_priority and requested_priority != current_priority:
+                raise serializers.ValidationError(
+                    {"display_priority": "Only admins can change homepage priority."}
+                )
 
         start_date = attrs.get("start_date") or getattr(self.instance, "start_date", None)
         end_date = attrs.get("end_date") or getattr(self.instance, "end_date", None)
@@ -420,7 +494,7 @@ class EventCreateSerializer(serializers.ModelSerializer):
         request = self.context["request"]
         user = request.user
         tags_data = validated_data.pop("tags", [])
-        status = validated_data.pop("status", "pending")
+        status = validated_data.pop("status", "draft")
         
         event = Event.objects.create(organizer=user, status=status, **validated_data)
         
@@ -435,11 +509,6 @@ class EventCreateSerializer(serializers.ModelSerializer):
                 )
                 event.tags.add(tag)
 
-        if not getattr(request, "auto_approve_events", False):
-            pass
-        else:
-            event.status = "published"
-            event.save(update_fields=["status"])
         return event
 
 
@@ -476,3 +545,39 @@ class EventStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = ["status"]
+
+
+class EventReviewQueueSerializer(serializers.ModelSerializer):
+    organizer = OrganizerMiniSerializer(read_only=True)
+
+    class Meta:
+        model = Event
+        fields = [
+            "id",
+            "slug",
+            "title",
+            "cover_image",
+            "start_date",
+            "start_time",
+            "end_date",
+            "end_time",
+            "venue_name",
+            "city",
+            "country",
+            "format",
+            "status",
+            "approval_requested_at",
+            "reviewed_at",
+            "review_notes",
+            "organizer",
+        ]
+
+
+class EventReviewRejectSerializer(serializers.Serializer):
+    reason = serializers.CharField(trim_whitespace=True)
+
+    def validate_reason(self, value):
+        reason = (value or "").strip()
+        if not reason:
+            raise serializers.ValidationError("Please provide a reason for rejecting this event.")
+        return reason

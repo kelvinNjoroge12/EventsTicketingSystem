@@ -6,6 +6,14 @@ from .models import ScheduleItem
 from .serializers import ScheduleItemSerializer, ScheduleItemCreateSerializer
 
 
+def _can_view_unpublished_event(user, slug: str) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_staff or getattr(user, "role", None) == "admin":
+        return True
+    return Event.objects.filter(slug=slug, organizer=user).exists()
+
+
 class ScheduleListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/events/{slug}/schedule/   → list all schedule items (public)
@@ -26,7 +34,10 @@ class ScheduleListCreateView(generics.ListCreateAPIView):
         return generics.get_object_or_404(Event, slug=self.kwargs["slug"])
 
     def get_queryset(self):
-        return ScheduleItem.objects.filter(event__slug=self.kwargs["slug"]).select_related("speaker")
+        queryset = ScheduleItem.objects.filter(event__slug=self.kwargs["slug"]).select_related("speaker")
+        if _can_view_unpublished_event(self.request.user, self.kwargs["slug"]):
+            return queryset
+        return queryset.filter(event__status="published")
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
@@ -54,7 +65,10 @@ class ScheduleItemDetailView(generics.RetrieveUpdateDestroyAPIView):
         return ScheduleItemSerializer
 
     def get_queryset(self):
-        return ScheduleItem.objects.filter(event__slug=self.kwargs["slug"]).select_related("speaker")
+        queryset = ScheduleItem.objects.filter(event__slug=self.kwargs["slug"]).select_related("speaker")
+        if _can_view_unpublished_event(self.request.user, self.kwargs["slug"]):
+            return queryset
+        return queryset.filter(event__status="published")
 
     def check_object_permissions(self, request, obj):
         super().check_object_permissions(request, obj)

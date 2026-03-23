@@ -55,7 +55,7 @@ const EventsPage = () => {
     dateTo: undefined,
     price: 'all', // all, free, paid
     format: 'all', // all, in-person, online
-    sort: 'popular', // popular, upcoming, newest, price-low, price-high
+    sort: 'default', // default, upcoming, newest, price-low, price-high
   });
   const [isSlowLoad, setIsSlowLoad] = useState(false);
 
@@ -68,8 +68,8 @@ const EventsPage = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: eventQueryKeys.listInfinite({ ordering: 'start_date', page_size: PAGE_SIZE }),
-    queryFn: ({ pageParam = 1 }) => fetchEvents({ ordering: 'start_date', page: pageParam, page_size: PAGE_SIZE }),
+    queryKey: eventQueryKeys.listInfinite({ page_size: PAGE_SIZE }),
+    queryFn: ({ pageParam = 1 }) => fetchEvents({ page: pageParam, page_size: PAGE_SIZE }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) => {
       if (!lastPage?.next) return undefined;
@@ -134,7 +134,6 @@ const EventsPage = () => {
     };
   }, [allEvents, queryClient]);
 
-  // Filter and sort events
   const filteredEvents = useMemo(() => {
     let result = [...allEvents];
 
@@ -179,7 +178,12 @@ const EventsPage = () => {
       );
     }
 
-    // Sort
+    return result;
+  }, [filters, allEvents]);
+
+  const sortEvents = (events, { past = false } = {}) => {
+    const result = [...events];
+
     switch (filters.sort) {
       case 'upcoming':
         result.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -193,12 +197,24 @@ const EventsPage = () => {
       case 'price-high':
         result.sort((a, b) => b.price - a.price);
         break;
-      default: // popular
-        result.sort((a, b) => (b.attendeeCount || 0) - (a.attendeeCount || 0));
+      default:
+        if (past) {
+          result.sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
     }
 
     return result;
-  }, [filters, allEvents]);
+  };
+
+  const activeEvents = useMemo(
+    () => sortEvents(filteredEvents.filter((event) => !event.isPast)),
+    [filteredEvents, filters.sort]
+  );
+
+  const pastEvents = useMemo(
+    () => sortEvents(filteredEvents.filter((event) => event.isPast), { past: true }),
+    [filteredEvents, filters.sort]
+  );
 
   const clearFilters = () => {
             setFilters({
@@ -208,7 +224,7 @@ const EventsPage = () => {
               dateTo: undefined,
               price: 'all',
               format: 'all',
-              sort: 'popular',
+              sort: 'default',
     });
   };
 
@@ -353,7 +369,7 @@ const EventsPage = () => {
                 onChange={(e) => setFilters(prev => ({ ...prev, sort: e.target.value }))}
                 className="w-full bg-transparent outline-none focus:text-[#0F172A] cursor-pointer text-[#334155] truncate"
               >
-                <option value="popular">Most Popular</option>
+                <option value="default">Live Order</option>
                 <option value="upcoming">Upcoming</option>
                 <option value="newest">Newest</option>
                 <option value="price-low">Price: Low to High</option>
@@ -383,28 +399,77 @@ const EventsPage = () => {
               )}
             </div>
           ) : filteredEvents.length > 0 ? (
-            <motion.div
-              className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
-              layout
-            >
-              <AnimatePresence mode="popLayout">
-                {filteredEvents.map((event, index) => (
+            <div className="space-y-12">
+              {activeEvents.length > 0 && (
+                <section>
+                  <div className="mb-5 flex items-end justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-[#0F172A]">Happening Now and Upcoming</h2>
+                      <p className="text-sm text-[#64748B] mt-1">
+                        Today's events stay at the top automatically, with admin-prioritized events pinned first.
+                      </p>
+                    </div>
+                  </div>
+
                   <motion.div
-                    key={event.id}
-                    layoutId={String(event.id)}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
+                    className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
+                    layout
                   >
-                    <EventCard
-                      event={event}
-                      index={index}
-                    />
+                    <AnimatePresence mode="popLayout">
+                      {activeEvents.map((event, index) => (
+                        <motion.div
+                          key={event.id}
+                          layoutId={String(event.id)}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <EventCard
+                            event={event}
+                            index={index}
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+                </section>
+              )}
+
+              {pastEvents.length > 0 && (
+                <section className="border-t border-[#E2E8F0] pt-8">
+                  <div className="mb-5">
+                    <h2 className="text-xl font-semibold text-[#0F172A]">Past Events</h2>
+                    <p className="text-sm text-[#64748B] mt-1">
+                      Events automatically move here once their end time has passed.
+                    </p>
+                  </div>
+
+                  <motion.div
+                    className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
+                    layout
+                  >
+                    <AnimatePresence mode="popLayout">
+                      {pastEvents.map((event, index) => (
+                        <motion.div
+                          key={event.id}
+                          layoutId={`past-${event.id}`}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <EventCard
+                            event={event}
+                            index={index}
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </motion.div>
+                </section>
+              )}
+            </div>
           ) : (
             <div className="text-center py-20 bg-[#F8FAFC] rounded-3xl border border-[#E2E8F0]">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white shadow-sm flex items-center justify-center">

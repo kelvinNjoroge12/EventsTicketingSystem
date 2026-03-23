@@ -54,6 +54,11 @@ class QRScanView(APIView):
         event = get_object_or_404(Event, slug=slug)
         if not _can_manage_checkin(request.user, event):
             raise PermissionDenied("Only assigned staff can perform check-ins.")
+        if event.has_ended():
+            return Response(
+                {"detail": "Check-in is closed because this event has already ended."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = QRScanSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -199,9 +204,10 @@ class ResendTicketEmailView(APIView):
 
         try:
             send_ticket_email(order)
-        except Exception as e:
+        except Exception:
+            logger.exception("Ticket resend failed for order %s", order.order_number)
             return Response(
-                {"detail": f"Email resend failed: {e.__class__.__name__} - {e}"},
+                {"detail": "Unable to resend the ticket email right now. Please try again shortly."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -240,9 +246,10 @@ class RetrieveTicketView(APIView):
 
         try:
             send_ticket_email(order)
-        except Exception as e:
+        except Exception:
+            logger.exception("Public ticket retrieval resend failed for order %s", order.order_number)
             return Response(
-                {"detail": f"Could not send email: {e.__class__.__name__} - {e}"},
+                {"detail": "Unable to resend the ticket email right now. Please try again shortly."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

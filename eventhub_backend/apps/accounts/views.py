@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+import logging
 
 import stripe
 
@@ -28,6 +29,7 @@ from .serializers import (
     EmailVerificationSerializer,
     ForgotPasswordSerializer,
     LoginSerializer,
+    PublicOrganizerSerializer,
     RegisterSerializer,
     ResendVerificationSerializer,
     ResetPasswordSerializer,
@@ -49,6 +51,7 @@ from apps.notifications.models import Notification
 from .tasks import send_password_reset_email, send_verification_email, send_welcome_email
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _ensure_organizer_profile(user: User) -> OrganizerProfile:
@@ -139,6 +142,61 @@ def _clear_auth_cookies(response: Response) -> None:
     response.delete_cookie(refresh_cookie, domain=domain, samesite=samesite)
 
 
+def _client_ip_from_request(request: Request) -> str | None:
+    forwarded = (request.META.get("HTTP_X_FORWARDED_FOR") or "").strip()
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    remote = (request.META.get("REMOTE_ADDR") or "").strip()
+    return remote or None
+
+
+def _record_user_session(user: User, refresh_token: str | None, request: Request) -> None:
+    jti = _extract_refresh_jti(refresh_token or "")
+    if not jti:
+        return
+    UserSession.objects.update_or_create(
+        user=user,
+        refresh_jti=jti,
+        defaults={
+            "ip_address": _client_ip_from_request(request),
+            "user_agent": (request.META.get("HTTP_USER_AGENT") or "")[:500],
+            "device": _device_from_user_agent(request.META.get("HTTP_USER_AGENT", "")),
+            "last_seen": timezone.now(),
+            "revoked_at": None,
+        },
+    )
+
+
+def _blacklist_refresh_jtis(jtis: list[str]) -> None:
+    if not jtis:
+        return
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+
+        for token in OutstandingToken.objects.filter(jti__in=jtis):
+            BlacklistedToken.objects.get_or_create(token=token)
+    except Exception:  # pragma: no cover - best effort
+        logger.exception("Failed to blacklist one or more refresh tokens.")
+
+
+def _revoke_user_sessions(user: User, exclude_jti: str | None = None) -> int:
+    sessions = UserSession.objects.filter(user=user, revoked_at__isnull=True)
+    if exclude_jti:
+        sessions = sessions.exclude(refresh_jti=exclude_jti)
+
+    jtis = list(sessions.values_list("refresh_jti", flat=True))
+    _blacklist_refresh_jtis([jti for jti in jtis if jti])
+    revoked_count = sessions.update(revoked_at=timezone.now())
+    return revoked_count
+
+
+def _enqueue_task(task, *args) -> None:
+    try:
+        task.delay(*args)
+    except Exception:  # pragma: no cover - depends on broker availability
+        logger.exception("Background task dispatch failed for %s", getattr(task, "name", task))
+
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
@@ -153,13 +211,14 @@ class RegisterView(generics.CreateAPIView):
         data = serializer.data
         response = Response(data, status=status.HTTP_201_CREATED, headers=self.get_success_headers(data))
 
+        user = User.objects.get(id=data["user"]["id"])
         tokens = data.get("tokens", {}) if isinstance(data, dict) else {}
+        _record_user_session(user, tokens.get("refresh"), request)
         _set_auth_cookies(response, tokens.get("access"), tokens.get("refresh"))
 
-        user = User.objects.get(id=data["user"]["id"])
-        send_verification_email.delay(str(user.id))
+        _enqueue_task(send_verification_email, str(user.id))
         if user.role == "organizer":
-            send_welcome_email.delay(str(user.id))
+            _enqueue_task(send_welcome_email, str(user.id))
         get_token(request)  # ensure CSRF cookie is set
         return response
 
@@ -180,16 +239,7 @@ class LoginView(APIView):
         data = serializer.data
 
         refresh_token = data.get("tokens", {}).get("refresh")
-        jti = _extract_refresh_jti(refresh_token) if refresh_token else None
-        if jti:
-            UserSession.objects.create(
-                user=user,
-                refresh_jti=jti,
-                ip_address=request.META.get("REMOTE_ADDR"),
-                user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
-                device=_device_from_user_agent(request.META.get("HTTP_USER_AGENT", "")),
-                last_seen=timezone.now(),
-            )
+        _record_user_session(user, refresh_token, request)
 
         response = Response(data, status=status.HTTP_200_OK)
         tokens = data.get("tokens", {}) if isinstance(data, dict) else {}
@@ -234,8 +284,50 @@ class TokenRefreshView(SimpleJWTTokenRefreshView):
             data["refresh"] = request.COOKIES.get(
                 getattr(settings, "JWT_REFRESH_COOKIE", "eventhub_refresh")
             )
+
+        refresh_token = data.get("refresh")
+        session = None
+        if refresh_token:
+            try:
+                refresh_obj = RefreshToken(refresh_token)
+                incoming_jti = refresh_obj.get("jti")
+                user_id = refresh_obj.get("user_id")
+            except Exception:
+                incoming_jti = None
+                user_id = None
+
+            if incoming_jti and user_id:
+                session = (
+                    UserSession.objects.filter(
+                        user_id=user_id,
+                        refresh_jti=incoming_jti,
+                        revoked_at__isnull=True,
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+
+            if not session:
+                response = Response(
+                    {"detail": "Session is no longer active. Please sign in again."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+                _clear_auth_cookies(response)
+                return response
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
+
+        new_refresh = serializer.validated_data.get("refresh") or refresh_token
+        new_jti = _extract_refresh_jti(new_refresh) if new_refresh else None
+        if session:
+            session.last_seen = timezone.now()
+            update_fields = ["last_seen"]
+            if new_jti and new_jti != session.refresh_jti:
+                session.refresh_jti = new_jti
+                update_fields.append("refresh_jti")
+            session.save(update_fields=update_fields)
+
         response = Response(serializer.validated_data, status=status.HTTP_200_OK)
         _set_auth_cookies(
             response,
@@ -266,12 +358,13 @@ class ChangePasswordView(APIView):
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        try:
-            request.user.must_reset_password = False
-            request.user.save(update_fields=["must_reset_password"])
-        except Exception:
-            pass
-        return Response({"message": "Password updated successfully."})
+        request.user.must_reset_password = False
+        request.user.save(update_fields=["must_reset_password"])
+        _revoke_user_sessions(request.user)
+
+        response = Response({"message": "Password updated successfully. Please sign in again."})
+        _clear_auth_cookies(response)
+        return response
 
 
 class ForgotPasswordView(APIView):
@@ -292,7 +385,7 @@ class ForgotPasswordView(APIView):
 
         # Memory-less token is generated implicitly in the notification service/task. 
         # We don't save anything to the DB anymore.
-        send_password_reset_email.delay(str(user.id))
+        _enqueue_task(send_password_reset_email, str(user.id))
         return Response({"message": "If that account exists, you will receive an email shortly."})
 
 
@@ -302,8 +395,9 @@ class ResetPasswordView(APIView):
     def post(self, request: Request):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Password has been reset successfully."})
+        user = serializer.save()
+        _revoke_user_sessions(user)
+        return Response({"message": "Password has been reset successfully. Please sign in with your new password."})
 
 
 class EmailVerificationView(APIView):
@@ -332,17 +426,20 @@ class ResendVerificationView(APIView):
         if user.is_email_verified:
             return Response({"message": "Email already verified."})
 
-        send_verification_email.delay(str(user.id))
+        _enqueue_task(send_verification_email, str(user.id))
         return Response({"message": "Verification email sent."})
 
 
 class OrganizerProfileView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
-    serializer_class = UserProfileSerializer
+    serializer_class = PublicOrganizerSerializer
     lookup_url_kwarg = "id"
 
     def get_queryset(self):
-        return User.objects.filter(role="organizer", organizer_profile__is_approved=True)
+        return User.objects.select_related("organizer_profile").filter(
+            role="organizer",
+            organizer_profile__is_approved=True,
+        )
 
 
 class SecuritySettingsView(APIView):
@@ -350,7 +447,15 @@ class SecuritySettingsView(APIView):
 
     def get(self, request: Request):
         settings_obj, _ = UserSecuritySettings.objects.get_or_create(user=request.user)
-        serializer = SecuritySettingsSerializer({"two_factor_enabled": settings_obj.two_factor_enabled})
+        if settings_obj.two_factor_enabled:
+            settings_obj.two_factor_enabled = False
+            settings_obj.save(update_fields=["two_factor_enabled"])
+        serializer = SecuritySettingsSerializer(
+            {
+                "two_factor_enabled": False,
+                "two_factor_supported": False,
+            }
+        )
         return Response(serializer.data)
 
 
@@ -360,9 +465,23 @@ class TwoFactorToggleView(APIView):
     def post(self, request: Request):
         enabled = bool(request.data.get("enabled", False))
         settings_obj, _ = UserSecuritySettings.objects.get_or_create(user=request.user)
-        settings_obj.two_factor_enabled = enabled
-        settings_obj.save(update_fields=["two_factor_enabled"])
-        return Response({"two_factor_enabled": settings_obj.two_factor_enabled})
+        if enabled:
+            if settings_obj.two_factor_enabled:
+                settings_obj.two_factor_enabled = False
+                settings_obj.save(update_fields=["two_factor_enabled"])
+            return Response(
+                {
+                    "detail": "Two-factor authentication setup is not available yet.",
+                    "two_factor_enabled": False,
+                    "two_factor_supported": False,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if settings_obj.two_factor_enabled:
+            settings_obj.two_factor_enabled = False
+            settings_obj.save(update_fields=["two_factor_enabled"])
+        return Response({"two_factor_enabled": False, "two_factor_supported": False})
 
 
 class SessionListView(APIView):
@@ -392,6 +511,7 @@ class SessionRevokeView(APIView):
     def post(self, request: Request, pk):
         session = generics.get_object_or_404(UserSession, pk=pk, user=request.user)
         if session.revoked_at is None:
+            _blacklist_refresh_jtis([session.refresh_jti])
             session.revoked_at = timezone.now()
             session.save(update_fields=["revoked_at"])
         return Response({"revoked": True})
@@ -732,7 +852,7 @@ class OrganizerTeamInviteView(APIView):
         serializer = OrganizerTeamMemberSerializer(team_member)
         response = serializer.data
         if temp_password:
-            response["temporary_password"] = temp_password
+            response["temporary_password_sent"] = True
         return Response(response, status=status.HTTP_201_CREATED)
 
 

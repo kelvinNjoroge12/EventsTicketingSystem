@@ -230,7 +230,7 @@ class OrganizerAnalyticsDashboardView(APIView):
     """
     GET /api/analytics/organizer/summary/
     Organizer-only analytics across their events with optional filters.
-    Query params: event_id, event_slug, graduation_year, course_id, location, category.
+    Query params: event_id, event_slug, year, graduation_year, course_id, school_id, location, category.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -239,14 +239,24 @@ class OrganizerAnalyticsDashboardView(APIView):
         if request.user.role not in ("organizer", "admin") and not request.user.is_staff:
             raise PermissionDenied("Only organizers can view analytics.")
 
+        organizer_events_qs = Event.objects.filter(organizer=request.user)
+        available_years = sorted(
+            {year for year in organizer_events_qs.values_list("start_date__year", flat=True) if year},
+            reverse=True,
+        )
+
         event_id = request.query_params.get("event_id") or request.query_params.get("event")
         event_slug = request.query_params.get("event_slug")
+        year = _safe_int(request.query_params.get("year"))
+        if year is None:
+            year = timezone.now().year
         graduation_year = _safe_int(request.query_params.get("graduation_year"))
         course_id = _safe_uuid(request.query_params.get("course_id") or request.query_params.get("course"))
+        school_id = _safe_uuid(request.query_params.get("school_id") or request.query_params.get("school"))
         location = (request.query_params.get("location") or "").strip()
         category = (request.query_params.get("category") or "").strip().lower()
 
-        events_qs = Event.objects.filter(organizer=request.user)
+        events_qs = organizer_events_qs
         if event_id:
             events_qs = events_qs.filter(id=event_id)
         if event_slug:
@@ -257,9 +267,12 @@ class OrganizerAnalyticsDashboardView(APIView):
             for part in parts or [location]:
                 location_query |= Q(city__icontains=part) | Q(country__icontains=part) | Q(venue_name__icontains=part)
             events_qs = events_qs.filter(location_query)
+        events_qs = events_qs.filter(start_date__year=year)
 
         event_ids = list(events_qs.values_list("id", flat=True))
         if not event_ids:
+            if not available_years:
+                available_years = [year]
             return Response({
                 "kpis": {
                     "total_events": 0,
@@ -285,10 +298,13 @@ class OrganizerAnalyticsDashboardView(APIView):
                     },
                 },
                 "filters": {
+                    "years": available_years,
                     "graduation_years": [],
                     "courses": [],
+                    "schools": [],
                     "locations": [],
                 },
+                "selected_year": year,
             })
 
         tickets_qs = Ticket.objects.filter(event_id__in=event_ids).exclude(status__in=["cancelled", "refunded"])
@@ -298,6 +314,8 @@ class OrganizerAnalyticsDashboardView(APIView):
             reg_filters["order__registration__graduation_year"] = graduation_year
         if course_id:
             reg_filters["order__registration__course_id"] = course_id
+        if school_id:
+            reg_filters["order__registration__school_id"] = school_id
         if category in ("student", "alumni", "guest"):
             reg_filters["order__registration__category"] = category
 
@@ -365,8 +383,7 @@ class OrganizerAnalyticsDashboardView(APIView):
 
         # Engagement over time (monthly, current vs previous year)
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        now = timezone.now()
-        current_year = now.year
+        current_year = year
         previous_year = current_year - 1
 
         def _year_counts(qs, year):
@@ -431,6 +448,12 @@ class OrganizerAnalyticsDashboardView(APIView):
             .distinct()
             .order_by("course__name")
         )
+        schools = list(
+            reg_base.exclude(school__isnull=True)
+            .values("school_id", "school__name")
+            .distinct()
+            .order_by("school__name")
+        )
         locations = []
         for row in events_qs.values("city", "country").distinct():
             city = (row.get("city") or "").strip()
@@ -438,6 +461,9 @@ class OrganizerAnalyticsDashboardView(APIView):
             label = ", ".join(part for part in [city, country] if part)
             if label:
                 locations.append({"label": label, "city": city, "country": country})
+
+        if not available_years:
+            available_years = [year]
 
         return Response({
             "kpis": {
@@ -475,8 +501,11 @@ class OrganizerAnalyticsDashboardView(APIView):
             },
             "most_engaged_schools": most_engaged_schools,
             "filters": {
+                "years": available_years,
                 "graduation_years": graduation_years,
                 "courses": courses,
+                "schools": schools,
                 "locations": locations,
             },
+            "selected_year": year,
         })

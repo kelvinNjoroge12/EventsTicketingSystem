@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db import DatabaseError, transaction
 from django.db.models import F
+from django.db.models import Q
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status, throttling
@@ -14,8 +15,8 @@ from rest_framework.response import Response
 
 from apps.tickets.models import TicketType
 from apps.waitlist.models import WaitlistEntry
-from .models import Order
-from .serializers import OrderCreateSerializer, OrderDetailSerializer, OrderPublicDetailSerializer
+from .models import Order, Ticket
+from .serializers import AttendeeTicketSerializer, OrderCreateSerializer, OrderDetailSerializer, OrderPublicDetailSerializer
 from .utils import send_ticket_email
 
 logger = logging.getLogger(__name__)
@@ -155,6 +156,26 @@ class OrderListView(generics.ListAPIView):
         return Order.objects.filter(attendee=self.request.user).order_by("-created_at")
 
 
+class AttendeeTicketListView(generics.ListAPIView):
+    serializer_class = AttendeeTicketSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return (
+            Ticket.objects.select_related("event", "ticket_type", "order", "order_item")
+            .filter(order__status="confirmed")
+            .filter(
+                Q(order__attendee=user)
+                | Q(attendee_email__iexact=user.email)
+                | Q(order__attendee_email__iexact=user.email)
+            )
+            .exclude(status__in=["cancelled", "refunded", "expired"])
+            .order_by("event__start_date", "event__start_time", "-created_at")
+            .distinct()
+        )
+
+
 class OrderCancelView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = "order_number"
@@ -275,10 +296,14 @@ class TicketVerificationDetailView(generics.GenericAPIView):
         else:
             masked_email = "Unknown"
 
+        effective_status = ticket.status
+        if ticket.status == "valid" and event and event.has_ended():
+            effective_status = "expired"
+
         return Response({
             "id": str(ticket.id),
             "qr_code_data": str(ticket.qr_code_data),
-            "status": ticket.status,
+            "status": effective_status,
             "attendee_name": ticket.attendee_name if can_view_pii else mask_name(ticket.attendee_name),
             "attendee_email_masked": masked_email,
             "attendee_email": ticket.attendee_email if can_view_pii else None,
@@ -291,7 +316,10 @@ class TicketVerificationDetailView(generics.GenericAPIView):
                 "title": event.title,
                 "start_date": event.start_date,
                 "start_time": event.start_time,
+                "end_date": event.end_date,
+                "end_time": event.end_time,
                 "venue_name": event.venue_name,
                 "organizer_id": str(event.organizer_id),
+                "time_state": event.get_time_state(),
             }
         })

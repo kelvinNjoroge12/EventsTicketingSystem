@@ -65,8 +65,16 @@ const ConfirmationPage = () => {
   }, [stateData, orderId]);
 
   const finalOrder = stateData ? stateData : order;
-  const event = stateData?.event || null; // API doesn't fully embed event right now, we can show basic details from order or fetch it too
+  const event = stateData?.event || finalOrder?.event || null;
   const isHydrated = !!finalOrder;
+  const eventDateValue = event?.date || event?.start_date || null;
+  const eventStartTimeValue = event?.time || event?.start_time || null;
+  const eventEndTimeValue = event?.endTime || event?.end_time || null;
+  const eventTitle = event?.title || 'Your Event';
+  const eventDescription = event?.description || '';
+  const eventLocation = event?.location || event?.venue_name || '';
+  const hasCalendarActions = Boolean(eventDateValue && eventStartTimeValue && eventEndTimeValue && eventTitle);
+  const hasShareActions = Boolean(eventTitle);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -79,21 +87,23 @@ const ConfirmationPage = () => {
   };
 
   const handleAddToCalendar = (type) => {
-    const eventDate = new Date(event.date);
-    const startTime = event.time.split(':');
+    if (!hasCalendarActions) return;
+
+    const eventDate = new Date(eventDateValue);
+    const startTime = String(eventStartTimeValue).split(':');
     eventDate.setHours(parseInt(startTime[0]), parseInt(startTime[1]));
 
-    const endDate = new Date(event.date);
-    const endTime = event.endTime.split(':');
+    const endDate = new Date(eventDateValue);
+    const endTime = String(eventEndTimeValue).split(':');
     endDate.setHours(parseInt(endTime[0]), parseInt(endTime[1]));
 
     if (type === 'google') {
       const params = new URLSearchParams({
         action: 'TEMPLATE',
-        text: event.title,
+        text: eventTitle,
         dates: `${eventDate.toISOString().replace(/[-:]/g, '').split('.')[0]}/${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}`,
-        details: event.description,
-        location: event.location,
+        details: eventDescription,
+        location: eventLocation,
       });
       window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
     } else {
@@ -103,9 +113,9 @@ VERSION:2.0
 BEGIN:VEVENT
 DTSTART:${eventDate.toISOString().replace(/[-:]/g, '').split('.')[0]}
 DTEND:${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}
-SUMMARY:${event.title}
-DESCRIPTION:${event.description}
-LOCATION:${event.location}
+SUMMARY:${eventTitle}
+DESCRIPTION:${eventDescription}
+LOCATION:${eventLocation}
 END:VEVENT
 END:VCALENDAR`;
 
@@ -113,15 +123,16 @@ END:VCALENDAR`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${event.slug}.ics`;
+      a.download = `${event?.slug || 'event'}.ics`;
       a.click();
       URL.revokeObjectURL(url);
     }
   };
 
   const handleShare = (platform) => {
+    if (!hasShareActions) return;
     const url = window.location.href;
-    const text = `I'm going to ${event.title}!`;
+    const text = `I'm going to ${eventTitle}!`;
 
     const shareUrls = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`,
@@ -163,8 +174,8 @@ END:VCALENDAR`;
   }
 
   // Use event from state if available, otherwise just use order data
-  const displayTitle = event ? event.title : 'Your Event';
-  const displayDate = event ? formatDate(event.date) : formatDate(finalOrder.created_at || new Date());
+  const displayTitle = eventTitle;
+  const displayDate = eventDateValue ? formatDate(eventDateValue) : formatDate(finalOrder.created_at || new Date());
   const emailDisplay =
     stateData?.attendeeData?.email ||
     finalOrder?.attendee_email ||
@@ -249,53 +260,55 @@ END:VCALENDAR`;
           </p>
         </motion.div>
 
-        {/* Calendar Buttons */}
-        <motion.div
-          className="flex flex-wrap items-center justify-center gap-2.5 mb-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9 }}
-        >
-          <CustomButton
-            variant="outline"
-            size="sm"
-            leftIcon={Calendar}
-            onClick={() => handleAddToCalendar('google')}
-            className="min-w-[120px]"
+        {hasCalendarActions && (
+          <motion.div
+            className="flex flex-wrap items-center justify-center gap-2.5 mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9 }}
           >
-            Google
-          </CustomButton>
-          <CustomButton
-            variant="outline"
-            size="sm"
-            leftIcon={Calendar}
-            onClick={() => handleAddToCalendar('apple')}
-            className="min-w-[120px]"
-          >
-            Apple
-          </CustomButton>
-        </motion.div>
+            <CustomButton
+              variant="outline"
+              size="sm"
+              leftIcon={Calendar}
+              onClick={() => handleAddToCalendar('google')}
+              className="min-w-[120px]"
+            >
+              Google
+            </CustomButton>
+            <CustomButton
+              variant="outline"
+              size="sm"
+              leftIcon={Calendar}
+              onClick={() => handleAddToCalendar('apple')}
+              className="min-w-[120px]"
+            >
+              Apple
+            </CustomButton>
+          </motion.div>
+        )}
 
-        {/* Share Section */}
-        <motion.div
-          className="text-center mb-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 }}
-        >
-          <p className="text-xs text-[#64748B] mb-3">Share this event</p>
-          <div className="flex justify-center gap-2.5">
-            {['whatsapp', 'twitter', 'linkedin', 'facebook'].map((platform) => (
-              <button
-                key={platform}
-                onClick={() => handleShare(platform)}
-                className="p-2.5 rounded-full bg-[#F1F5F9] hover:bg-[#E2E8F0] transition-colors capitalize text-xs"
-              >
-                {platform}
-              </button>
-            ))}
-          </div>
-        </motion.div>
+        {hasShareActions && (
+          <motion.div
+            className="text-center mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1 }}
+          >
+            <p className="text-xs text-[#64748B] mb-3">Share this event</p>
+            <div className="flex justify-center gap-2.5">
+              {['whatsapp', 'twitter', 'linkedin', 'facebook'].map((platform) => (
+                <button
+                  key={platform}
+                  onClick={() => handleShare(platform)}
+                  className="p-2.5 rounded-full bg-[#F1F5F9] hover:bg-[#E2E8F0] transition-colors capitalize text-xs"
+                >
+                  {platform}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Browse More */}
         <motion.div

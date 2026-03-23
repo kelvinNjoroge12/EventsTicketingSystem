@@ -38,6 +38,16 @@ const SearchResultsPage = () => {
     };
   }, [query, location, date]);
 
+  const activeResults = useMemo(
+    () => results.filter((event) => !event.isPast),
+    [results]
+  );
+
+  const pastResults = useMemo(
+    () => results.filter((event) => event.isPast),
+    [results]
+  );
+
   const getSearchTitle = () => {
     if (query && location) {
       return `Events matching "${query}" in ${location}`;
@@ -138,17 +148,45 @@ const SearchResultsPage = () => {
           </div>
         ) : results.length > 0 ? (
           <motion.div
-            className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
+            className="space-y-10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            {results.map((event, index) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                index={index}
-              />
-            ))}
+            {activeResults.length > 0 && (
+              <section>
+                <div className="mb-5">
+                  <h2 className="text-xl font-semibold text-[#0F172A]">Matching Events</h2>
+                  <p className="text-sm text-[#64748B] mt-1">Current and upcoming events appear first.</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  {activeResults.map((event, index) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {pastResults.length > 0 && (
+              <section className="border-t border-[#E2E8F0] pt-8">
+                <div className="mb-5">
+                  <h2 className="text-xl font-semibold text-[#0F172A]">Past Events</h2>
+                  <p className="text-sm text-[#64748B] mt-1">Older events are grouped here automatically.</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  {pastResults.map((event, index) => (
+                    <EventCard
+                      key={`past-${event.id}`}
+                      event={event}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </motion.div>
         ) : (
           <div className="text-center py-16">

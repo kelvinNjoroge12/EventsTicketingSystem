@@ -48,7 +48,11 @@ class IsAdmin(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(user and user.is_authenticated and getattr(user, "role", None) == "admin")
+        return bool(
+            user
+            and user.is_authenticated
+            and (getattr(user, "role", None) == "admin" or getattr(user, "is_staff", False))
+        )
 
 
 class IsAttendee(BasePermission):
@@ -76,4 +80,3 @@ class IsEmailVerified(BasePermission):
     def has_permission(self, request, view):
         user = request.user
         return bool(user and user.is_authenticated and getattr(user, "is_email_verified", False))
-

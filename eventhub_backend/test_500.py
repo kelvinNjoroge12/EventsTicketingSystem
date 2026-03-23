@@ -6,10 +6,11 @@ import django
 django.setup()
 
 from django.test import RequestFactory
-from rest_framework.request import Request
+from django.contrib.auth.models import AnonymousUser
 from apps.orders.views import OrderCreateView
 
-def test_view():
+
+def test_view(db):
     factory = RequestFactory()
     data = {
         "event_slug": "startup-pitch-night-east-africa-575ab640",
@@ -25,13 +26,10 @@ def test_view():
         "attendee_email": "test@example.com",
     }
     django_request = factory.post("/api/orders/create/", data, content_type="application/json")
+    django_request.user = AnonymousUser()
     view = OrderCreateView.as_view()
-    try:
-        response = view(django_request)
-        print("Response:", response.status_code, response.data)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
+    response = view(django_request)
+    assert response.status_code in {400, 403, 404, 409}
 
 if __name__ == "__main__":
     test_view()
