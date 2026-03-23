@@ -75,6 +75,22 @@ const createDefaultRegistrationCategories = () =>
     questions: Array.isArray(cat.questions) ? [...cat.questions] : [],
   }));
 
+const normalizeEventPayload = (payload, routeSlug = '') => {
+  const candidates = [payload, payload?.event, payload?.data, payload?.data?.event, payload?.event?.data]
+    .filter((value) => value && typeof value === 'object');
+  const bestMatch = candidates.find((value) => value.slug || value.id) || candidates[0] || {};
+  if (!bestMatch.slug && routeSlug) {
+    return { ...bestMatch, slug: routeSlug };
+  }
+  return { ...bestMatch };
+};
+
+const getEventIdentifiers = (eventPayload, routeSlug = '') => {
+  const event = normalizeEventPayload(eventPayload, routeSlug);
+  const rawIdentifiers = [event.slug, routeSlug, event.id];
+  return [...new Set(rawIdentifiers.filter((value) => typeof value === 'string' && value.trim().length > 0))];
+};
+
 const CreateEventPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -423,7 +439,12 @@ const CreateEventPage = () => {
         : await api.post('/api/events/create/', payload);
     }
 
-    const eventSlug = event.slug || slug;
+    event = normalizeEventPayload(event, slug);
+    const eventSlug = event.slug || slug || event.id;
+    if (!eventSlug) {
+      throw new Error('Event saved, but no event identifier was returned. Please refresh and try again.');
+    }
+
     const ticketClassMap = {
       'Standard': 'paid',
       'VIP': 'vip',
@@ -664,6 +685,27 @@ const CreateEventPage = () => {
     return event;
   };
 
+  const submitEventForReview = async (eventPayload) => {
+    const identifiers = getEventIdentifiers(eventPayload, slug);
+    if (identifiers.length === 0) {
+      throw new Error('Unable to submit for review because the event identifier is missing.');
+    }
+
+    let notFoundError = null;
+    for (const identifier of identifiers) {
+      try {
+        return await api.patch(`/api/events/${identifier}/publish/`, {});
+      } catch (err) {
+        if (err?.status !== 404) {
+          throw err;
+        }
+        notFoundError = err;
+      }
+    }
+
+    throw notFoundError || new Error('Unable to submit this event for review right now.');
+  };
+
   const getErrorMessage = (err) =>
     err?.response?.detail || err?.response?.message || err?.message || 'Something went wrong. Please try again.';
 
@@ -673,7 +715,11 @@ const CreateEventPage = () => {
     try {
       const payload = buildPayload('draft');
       const event = await createEventAndTickets(payload);
-      navigate(`/events/${event.slug}`);
+      if (event?.slug) {
+        navigate(`/events/${event.slug}`);
+      } else {
+        navigate('/organizer-dashboard?tab=events');
+      }
     } catch (err) {
       setPublishError(getErrorMessage(err));
     } finally {
@@ -688,10 +734,17 @@ const CreateEventPage = () => {
       const payload = buildPayload();
       const event = await createEventAndTickets(payload);
       try {
-        const submittedEvent = await api.patch(`/api/events/${event.slug}/publish/`, {});
-        setSubmittedEventSlug(submittedEvent?.slug || event.slug);
+        const submittedEvent = await submitEventForReview(event);
+        const submitted = normalizeEventPayload(submittedEvent, event?.slug || slug);
+        setSubmittedEventSlug(submitted?.slug || event?.slug || slug || '');
         setShowSubmissionModal(true);
       } catch (publishErr) {
+        const alreadyPending = String(event?.status || '').toLowerCase() === 'pending';
+        if (alreadyPending && publishErr?.status === 404) {
+          setSubmittedEventSlug(event?.slug || slug || '');
+          setShowSubmissionModal(true);
+          return;
+        }
         setPublishError(`Your event was saved as a draft. ${getErrorMessage(publishErr)}`);
       }
     } catch (err) {
@@ -711,7 +764,11 @@ const CreateEventPage = () => {
       else payload.scheduled_publish_at = scheduledDate;
       const event = await createEventAndTickets(payload);
       setShowScheduleModal(false);
-      navigate(`/events/${event.slug}`);
+      if (event?.slug) {
+        navigate(`/events/${event.slug}`);
+      } else {
+        navigate('/organizer-dashboard?tab=events');
+      }
     } catch (err) {
       setPublishError(getErrorMessage(err));
     } finally {

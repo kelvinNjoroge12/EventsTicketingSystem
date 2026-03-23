@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from django.core.cache import cache
 from django.db import models
 from django.db.models import Case, Exists, IntegerField, OuterRef, Prefetch, Q, Subquery, Value, When
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
@@ -299,6 +302,27 @@ class EventPublishView(generics.UpdateAPIView):
 
     def get_queryset(self):
         return Event.objects.filter(organizer=self.request.user)
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_field)
+        resolved = None
+
+        if lookup_value:
+            resolved = queryset.filter(slug=lookup_value).first()
+            if resolved is None:
+                try:
+                    parsed_uuid = UUID(str(lookup_value))
+                except (TypeError, ValueError):
+                    parsed_uuid = None
+                if parsed_uuid:
+                    resolved = queryset.filter(id=parsed_uuid).first()
+
+        if resolved is None:
+            raise Http404("No Event matches the given query.")
+
+        self.check_object_permissions(self.request, resolved)
+        return resolved
 
     def update(self, request, *args, **kwargs):
         event = self.get_object()

@@ -366,10 +366,44 @@ export const fetchEventSponsors = async (slug) => {
   return Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
 };
 
+const REVIEW_QUEUE_ENDPOINTS = [
+  '/api/events/reviews/',
+  '/api/events/review-queue/',
+  '/api/events/review/',
+];
+let preferredReviewQueueEndpoint = null;
+let reviewQueueEndpointMissing = false;
+
 export const fetchPendingEventReviews = async (status = 'pending') => {
-  const data = await api.get(`/api/events/reviews/?status=${encodeURIComponent(status)}`);
-  const items = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
-  return items.map(mapReviewEvent);
+  if (reviewQueueEndpointMissing) return [];
+
+  const endpointsToTry = preferredReviewQueueEndpoint
+    ? [preferredReviewQueueEndpoint]
+    : REVIEW_QUEUE_ENDPOINTS;
+  const encodedStatus = encodeURIComponent(status);
+  let lastNotFoundError = null;
+
+  for (const endpoint of endpointsToTry) {
+    try {
+      const data = await api.get(`${endpoint}?status=${encodedStatus}`);
+      preferredReviewQueueEndpoint = endpoint;
+      const items = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+      return items.map(mapReviewEvent);
+    } catch (err) {
+      if (err?.status !== 404) {
+        throw err;
+      }
+      lastNotFoundError = err;
+      if (preferredReviewQueueEndpoint) {
+        preferredReviewQueueEndpoint = null;
+      }
+    }
+  }
+
+  if (lastNotFoundError) {
+    reviewQueueEndpointMissing = true;
+  }
+  return [];
 };
 
 export const approveEventReview = async (slug) => {
