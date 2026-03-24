@@ -14,6 +14,21 @@ from apps.sponsors.serializers import SponsorSerializer
 from .models import Category, Event, Tag
 
 
+def _safe_media_url(file_obj, request=None):
+    if not file_obj:
+        return None
+    try:
+        raw_url = file_obj.url
+    except Exception:
+        return None
+    if request:
+        try:
+            return request.build_absolute_uri(raw_url)
+        except Exception:
+            return raw_url
+    return raw_url
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -59,22 +74,7 @@ class OrganizerMiniSerializer(serializers.ModelSerializer):
             image = profile.logo
         elif obj.avatar:
             image = obj.avatar
-        
-        if not image:
-            return None
-
-        try:
-            raw_url = image.url
-        except Exception:
-            return None
-
-        request = self.context.get("request")
-        if request:
-            try:
-                return request.build_absolute_uri(raw_url)
-            except Exception:
-                return raw_url
-        return raw_url
+        return _safe_media_url(image, self.context.get("request"))
 
     def get_brand_color(self, obj):
         profile: OrganizerProfile | None = getattr(obj, "organizer_profile", None)
@@ -118,6 +118,7 @@ class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
     organizer = OrganizerMiniSerializer(read_only=True)
     lowest_ticket_price = serializers.SerializerMethodField()
     is_free = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -172,6 +173,9 @@ class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
         except Exception:
             return False
 
+    def get_cover_image(self, obj: Event):
+        return _safe_media_url(getattr(obj, "cover_image", None), self.context.get("request"))
+
 
 class TicketTypeSerializer(serializers.ModelSerializer):
     quantity_available = serializers.IntegerField(read_only=True)
@@ -217,6 +221,7 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     organizer = OrganizerMiniSerializer(read_only=True)
+    cover_image = serializers.SerializerMethodField()
     tickets = serializers.SerializerMethodField()
     promo_codes = serializers.SerializerMethodField()
     mc = serializers.SerializerMethodField()
@@ -319,6 +324,9 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
 
     def get_review_notes(self, obj: Event):
         return obj.review_notes if self._can_view_review_data(obj) and obj.review_notes else None
+
+    def get_cover_image(self, obj: Event):
+        return _safe_media_url(getattr(obj, "cover_image", None), self.context.get("request"))
 
     def get_tickets(self, obj: Event):
         prefetched = getattr(obj, "prefetched_ticket_types_active", None)
