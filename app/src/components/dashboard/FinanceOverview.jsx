@@ -28,16 +28,16 @@ import { EXPENSE_CATEGORIES, REVENUE_SOURCES } from './dashboardUtils';
 const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
 
 const StatCard = ({ title, value, icon: Icon, subtitle, accent }) => (
-  <Card className="border border-[#E2E8F0]">
-    <CardContent className="p-4 lg:p-6">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs text-gray-500">{title}</p>
-          <p className="text-xl lg:text-2xl font-bold text-[#0F172A]">{value}</p>
+  <Card className="border border-[#E2E8F0] shadow-none h-full">
+    <CardContent className="px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="space-y-0.5 min-w-0">
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide">{title}</p>
+          <p className="text-sm lg:text-base font-bold text-[#0F172A] whitespace-nowrap">{value}</p>
           {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
         </div>
-        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', accent || 'bg-[#02338D]')}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', accent || 'bg-[#02338D]')}>
+          <Icon className="w-3.5 h-3.5 text-white" />
         </div>
       </div>
     </CardContent>
@@ -49,10 +49,6 @@ const FinanceOverview = ({
   stats,
   expenseBreakdown,
   revenueSeries,
-  range,
-  onRangeChange,
-  eventId,
-  onEventChange,
   expenses,
   revenues,
   isLoadingStats,
@@ -146,74 +142,35 @@ const FinanceOverview = ({
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-        <div>
-          <h2 className="text-lg lg:text-xl font-bold text-[#0F172A]">Finance Overview</h2>
-          <p className="text-sm text-gray-500">Transparent tracking of revenue and expenses across your events.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={onOpenExpense} className="text-xs lg:text-sm">
+    <div className="space-y-3 lg:space-y-4">
+      <Card className="border border-[#E2E8F0] shadow-none">
+        <CardContent className="px-2.5 py-1.5">
+          <div className="flex items-center justify-end gap-1.5">
+            <Button variant="outline" onClick={onOpenExpense} className="h-8 px-2.5 text-[11px]">
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Expense
           </Button>
-          <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white text-xs lg:text-sm" onClick={onOpenRevenue}>
+            <Button className="h-8 px-2.5 bg-[#C58B1A] hover:bg-[#A56F14] text-white text-[11px]" onClick={onOpenRevenue}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Revenue
           </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Finance Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Event</label>
-            <select
-              value={eventId}
-              onChange={(event) => onEventChange(event.target.value)}
-              className="w-full px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm bg-white"
-            >
-              <option value="">All Events</option>
-              {events.map((eventItem) => (
-                <option key={eventItem.id} value={eventItem.id}>{eventItem.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Range</label>
-            <div className="flex flex-wrap gap-2">
-              {['week', 'month', 'year'].map((option) => (
-                <Button
-                  key={option}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onRangeChange(option)}
-                  className={cn('text-xs capitalize', range === option && 'bg-[#02338D] text-white border-[#02338D]')}
-                >
-                  {option}
-                </Button>
-              ))}
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {statsCards.map((stat) => (
           <StatCard key={stat.title} {...stat} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Revenue Trend</CardTitle>
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-3">
+        <Card className="xl:col-span-3">
+          <CardHeader className="pb-2 px-4 pt-3">
+            <CardTitle className="text-sm lg:text-base font-bold text-[#0F172A]">Revenue Trend</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-52 lg:h-64">
+          <CardContent className="px-4 pb-3">
+            <div className="h-44 lg:h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueSeriesData}>
                   <defs>
@@ -234,19 +191,19 @@ const FinanceOverview = ({
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Expense Breakdown</CardTitle>
+          <CardHeader className="pb-2 px-4 pt-3">
+            <CardTitle className="text-sm lg:text-base font-bold text-[#0F172A]">Expense Breakdown</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2 px-4 pb-3">
             {expensesByCategory.length > 0 ? expensesByCategory.map((item) => {
               const percent = totalExpenseAmount > 0 ? Math.round((Number(item.amount || 0) / totalExpenseAmount) * 100) : 0;
               return (
                 <div key={item.category} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-600">{expenseCategoryLabel(item.category)}</span>
                     <span className="font-semibold text-[#0F172A]">{formatMoney(item.amount)}</span>
                   </div>
-                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${percent}%`, backgroundColor: expenseCategoryColor(item.category) }}

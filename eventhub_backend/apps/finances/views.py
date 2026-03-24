@@ -179,7 +179,7 @@ class OrganizerRevenueDetailView(generics.RetrieveUpdateDestroyAPIView):
 class OrganizerDashboardStatsView(APIView):
     """
     GET /api/finances/dashboard-stats/
-    Combined stats for the global organizer dashboard.
+    Combined stats for the organizer dashboard (current year window).
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -190,9 +190,6 @@ class OrganizerDashboardStatsView(APIView):
             raise PermissionDenied("This account is limited to assigned event check-in.")
 
         event_id = request.query_params.get('event_id')
-        range_key = request.query_params.get('range')
-        apply_range = range_key in ["week", "month", "year"] and not event_id
-
         events_qs = Event.objects.filter(organizer=request.user)
         if event_id:
             events_qs = events_qs.filter(id=event_id)
@@ -201,10 +198,9 @@ class OrganizerDashboardStatsView(APIView):
         if not event_ids:
             return Response({"kpis": _build_kpis(events_qs, []), "expenseBreakdown": []})
 
-        period = None
-        if apply_range:
-            period = _get_period_bounds(range_key)
-
+        # Global finance overview is fixed to a yearly window (current calendar year).
+        # Event-scoped detail requests keep full-event totals.
+        period = None if event_id else _get_period_bounds("year")
         kpis = _build_kpis(events_qs, event_ids, period=period)
 
         expenses_qs = Expense.objects.filter(event_id__in=event_ids)
@@ -223,10 +219,10 @@ class OrganizerDashboardStatsView(APIView):
             "expenseBreakdown": expenses_by_cat,
         }
 
-        if apply_range and period:
-            prev_period = _get_previous_bounds(range_key, period[0])
+        if period:
+            response["year"] = start.year
+            prev_period = _get_previous_bounds("year", period[0])
             previous_kpis = _build_kpis(events_qs, event_ids, period=prev_period)
-
             response["previous_kpis"] = previous_kpis
             response["changes"] = {
                 "total_events": _percent_change(kpis["totalEvents"], previous_kpis["totalEvents"]),
@@ -242,8 +238,8 @@ class OrganizerDashboardStatsView(APIView):
 
 class OrganizerRevenueSeriesView(APIView):
     """
-    GET /api/finances/revenue-series/?range=week|month|year
-    Returns revenue totals grouped by the selected range.
+    GET /api/finances/revenue-series/
+    Returns monthly revenue totals for the current calendar year.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -254,7 +250,6 @@ class OrganizerRevenueSeriesView(APIView):
         if user_requires_assigned_event_scope(request.user):
             raise PermissionDenied("This account is limited to assigned event check-in.")
 
-        range_key = request.query_params.get("range", "month")
         event_id = request.query_params.get("event_id")
 
         events_qs = Event.objects.filter(organizer=request.user)
@@ -264,10 +259,7 @@ class OrganizerRevenueSeriesView(APIView):
         if not event_ids:
             return Response([])
 
-        if range_key not in ["week", "month", "year"]:
-            range_key = "month"
-
-        start, end = _get_period_bounds(range_key)
+        start, end = _get_period_bounds("year")
 
         order_rows = (
             Order.objects.filter(
@@ -302,24 +294,13 @@ class OrganizerRevenueSeriesView(APIView):
                 totals[day] = totals.get(day, 0) + float(row.get("total") or 0)
 
         series = []
-        if range_key == "week":
-            labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-            for idx, label in enumerate(labels):
-                day = start + timedelta(days=idx)
-                series.append({"name": label, "revenue": totals.get(day, 0)})
-        elif range_key == "year":
-            month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-            month_totals = {i + 1: 0 for i in range(12)}
-            for day, amount in totals.items():
-                if day.year == start.year:
-                    month_totals[day.month] += amount
-            for month in range(1, 13):
-                series.append({"name": month_labels[month - 1], "revenue": month_totals[month]})
-        else:
-            days_in_month = (end - start).days
-            for offset in range(days_in_month):
-                day = start + timedelta(days=offset)
-                series.append({"name": str(day.day), "revenue": totals.get(day, 0)})
+        month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        month_totals = {i + 1: 0 for i in range(12)}
+        for day, amount in totals.items():
+            if day.year == start.year:
+                month_totals[day.month] += amount
+        for month in range(1, 13):
+            series.append({"name": month_labels[month - 1], "revenue": month_totals[month]})
 
         return Response(series)
 

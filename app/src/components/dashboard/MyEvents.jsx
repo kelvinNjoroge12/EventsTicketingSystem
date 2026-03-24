@@ -67,6 +67,7 @@ const OrganizerMyEvents = ({
   onEditEvent,
   onDeleteEvent,
   onCheckInEvent,
+  headerMessage = '',
   showSearch = true,
   showStatusFilter = true,
   showCategoryFilter = true,
@@ -79,6 +80,7 @@ const OrganizerMyEvents = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
   const isCheckinVariant = variant === 'checkin';
+  const compactToolbar = isCheckinVariant && !!headerMessage;
 
   const categories = useMemo(() => {
     const items = events.map((event) => event.category).filter(Boolean);
@@ -131,26 +133,47 @@ const OrganizerMyEvents = ({
   );
 
   return (
-    <div className="space-y-4 lg:space-y-6">
-      {(showSearch || showStatusFilter || showCategoryFilter) && (
-        <Card>
-          <CardContent className="p-3 lg:p-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 flex-nowrap">
+    <div className={cn(isCheckinVariant ? 'space-y-3' : 'space-y-4 lg:space-y-6')}>
+      {(headerMessage || showSearch || showStatusFilter || showCategoryFilter) && (
+        <Card className={cn(compactToolbar && 'border-[#E2E8F0] shadow-none')}>
+          <CardContent className={cn(compactToolbar ? 'px-2.5 py-1.5' : 'p-3 lg:p-4')}>
+            <div className={cn(
+              'flex items-center gap-2 overflow-x-auto pb-1 flex-nowrap',
+              compactToolbar && 'gap-1.5',
+              compactToolbar && 'pb-0'
+            )}>
+              {headerMessage && (
+                <div className="inline-flex items-center gap-1 text-[11px] text-gray-600 whitespace-nowrap">
+                  <QrCode className="w-3 h-3 text-[#C58B1A]" />
+                  <span>{headerMessage}</span>
+                </div>
+              )}
               {showSearch && (
-                <div className="relative min-w-[200px] flex-shrink-0">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <div className={cn(
+                  'relative flex-shrink-0',
+                  compactToolbar ? 'min-w-[180px] flex-1 max-w-[340px]' : 'min-w-[200px]'
+                )}>
+                  <Search className={cn(
+                    'absolute left-3 top-1/2 -translate-y-1/2 text-gray-400',
+                    compactToolbar ? 'left-2 w-3 h-3' : 'w-4 h-4'
+                  )} />
                   <Input
                     type="text"
                     placeholder="Search events..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-[200px]"
+                    className={cn(
+                      compactToolbar ? 'h-7 text-[11px] pl-7 w-full' : 'pl-10 w-[200px]'
+                    )}
                   />
                 </div>
               )}
               {showStatusFilter && (
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="min-w-[140px] flex-shrink-0">
+                  <SelectTrigger className={cn(
+                    'min-w-[140px] flex-shrink-0',
+                    compactToolbar && 'h-8 text-xs min-w-[120px]'
+                  )}>
                     <Filter className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -167,7 +190,10 @@ const OrganizerMyEvents = ({
               )}
               {showCategoryFilter && (
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="min-w-[150px] flex-shrink-0">
+                  <SelectTrigger className={cn(
+                    'min-w-[150px] flex-shrink-0',
+                    compactToolbar && 'h-8 text-xs min-w-[130px]'
+                  )}>
                     <Calendar className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>

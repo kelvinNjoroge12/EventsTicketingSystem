@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, MapPin, Clock, Users, Zap, Building2, Mic2 } from 'lucide-react';
@@ -91,7 +91,11 @@ const getEventIdentifiers = (eventPayload, routeSlug = '') => {
   return [...new Set(rawIdentifiers.filter((value) => typeof value === 'string' && value.trim().length > 0))];
 };
 
-const CreateEventPage = () => {
+const CreateEventPage = ({
+  embedded = false,
+  onExit = null,
+  onRequestScrollTop = null,
+} = {}) => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -307,6 +311,22 @@ const CreateEventPage = () => {
 
   const [errors, setErrors] = useState({});
 
+  const scrollToTop = useCallback(() => {
+    if (typeof onRequestScrollTop === 'function') {
+      onRequestScrollTop();
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+
+    if (typeof document !== 'undefined') {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [onRequestScrollTop]);
+
   const steps = [
     { id: 'basic', number: 1, label: 'Basic Info' },
     { id: 'datetime', number: 2, label: 'Date & Location' },
@@ -317,6 +337,10 @@ const CreateEventPage = () => {
     { id: 'tickets', number: 7, label: 'Tickets' },
     { id: 'review', number: 8, label: 'Review' },
   ];
+
+  useEffect(() => {
+    scrollToTop();
+  }, [currentStep, scrollToTop]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -366,6 +390,14 @@ const CreateEventPage = () => {
   const handleBack = () => {
     setDirection('backward');
     setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleHeaderBack = () => {
+    if (typeof onExit === 'function') {
+      onExit();
+      return;
+    }
+    navigate(-1);
   };
 
   const mapFormat = (fmt) => ({ 'In-Person': 'in_person', 'Online': 'online', 'Hybrid': 'hybrid' }[fmt] || 'in_person');
@@ -972,23 +1004,23 @@ const CreateEventPage = () => {
     }
   };
 
-  return (
-    <PageWrapper className="bg-[#F8FAFC]">
-      <OrganizerHeader title={pageTitle} showMenu={false} useSidebarOffset={false} />
-
-      <div className="pt-20">
-        {/* Header */}
-        <div className="bg-white border-b border-[#E2E8F0]">
+  const pageContent = (
+    <div className={embedded ? '' : 'pt-20'}>
+      <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
+        <div className="border-b border-[#E2E8F0]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center gap-4 mb-6">
-              <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#F1F5F9] text-[#64748B]">
+              <button
+                onClick={handleHeaderBack}
+                className="h-11 w-11 rounded-full border border-[#E2E8F0] bg-white text-[#02338D] shadow-sm hover:bg-[#F8FAFC] transition-colors flex items-center justify-center"
+                aria-label="Go back"
+              >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <div>
                 <p className="text-xs uppercase tracking-wider text-[#94A3B8]">Step {currentStep + 1} of {steps.length}</p>
                 <p className="text-sm text-[#64748B]">Complete your event details</p>
               </div>
-              {/* Color preview dots */}
               <div className="ml-auto flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: formData.themeColor }} />
                 <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: formData.accentColor }} />
@@ -999,7 +1031,6 @@ const CreateEventPage = () => {
           </div>
         </div>
 
-        {/* Form Content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <AnimatePresence mode="wait" custom={direction}>
             <FormStep key={currentStep} isActive={true} direction={direction}>
@@ -1007,7 +1038,6 @@ const CreateEventPage = () => {
             </FormStep>
           </AnimatePresence>
 
-          {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-8 border-t border-[#E2E8F0]">
             <CustomButton variant="ghost" onClick={handleBack} disabled={currentStep === 0} leftIcon={ChevronLeft}>
               Back
@@ -1083,6 +1113,17 @@ const CreateEventPage = () => {
           </div>
         </div>
       </Modal>
+    </div>
+  );
+
+  if (embedded) {
+    return pageContent;
+  }
+
+  return (
+    <PageWrapper className="bg-[#F8FAFC]">
+      <OrganizerHeader title={pageTitle} showMenu={false} useSidebarOffset={false} />
+      {pageContent}
     </PageWrapper>
   );
 };

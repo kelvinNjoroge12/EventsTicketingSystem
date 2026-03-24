@@ -14,7 +14,6 @@ import {
   Ticket,
   X,
   DollarSign,
-  QrCode,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PageWrapper from '../components/layout/PageWrapper';
@@ -28,6 +27,7 @@ import EventReviewQueue from '../components/dashboard/EventReviewQueue';
 import FinanceOverview from '../components/dashboard/FinanceOverview';
 import OrganizerSettings from '../components/dashboard/Settings';
 import OrganizerAttendeesModule from '../components/dashboard/AttendeesModule';
+import CreateEventPage from './CreateEventPage';
 import { api } from '../lib/apiClient';
 import { fetchEvent, fetchPendingEventReviews } from '../lib/eventsApi';
 import { toast } from 'sonner';
@@ -270,8 +270,6 @@ const OrganizerDashboardPage = () => {
     schoolId: '',
     location: '',
   });
-  const [financeRange, setFinanceRange] = useState('month');
-  const [financeEventId, setFinanceEventId] = useState('');
   const [modalEventId, setModalEventId] = useState('');
   const mainScrollRef = useRef(null);
   const scrollDashboardToTop = useCallback(() => {
@@ -487,32 +485,24 @@ const OrganizerDashboardPage = () => {
     staleTime: 60 * 1000,
   });
 
-  const financeParams = useMemo(() => {
-    const params = new URLSearchParams();
-    if (financeRange) params.set('range', financeRange);
-    if (financeEventId) params.set('event_id', financeEventId);
-    return params.toString();
-  }, [financeRange, financeEventId]);
-
   const { data: financeStatsData, isLoading: isLoadingFinanceStats } = useQuery({
-    queryKey: ['finance_stats', financeRange, financeEventId],
-    queryFn: () => api.get(`/api/finances/dashboard-stats/${financeParams ? `?${financeParams}` : ''}`),
+    queryKey: ['finance_stats'],
+    queryFn: () => api.get('/api/finances/dashboard-stats/'),
     enabled: !!hasAccess && currentPage === 'finance',
     staleTime: 60 * 1000,
   });
 
   const { data: financeRevenueSeriesData, isLoading: isLoadingFinanceSeries } = useQuery({
-    queryKey: ['finance_revenue_series', financeRange, financeEventId],
-    queryFn: () => api.get(`/api/finances/revenue-series/${financeParams ? `?${financeParams}` : ''}`),
+    queryKey: ['finance_revenue_series'],
+    queryFn: () => api.get('/api/finances/revenue-series/'),
     enabled: !!hasAccess && currentPage === 'finance',
     staleTime: 60 * 1000,
   });
 
   const { data: financeExpensesData, isLoading: isLoadingFinanceExpenses } = useQuery({
-    queryKey: ['finance_expenses', financeEventId],
+    queryKey: ['finance_expenses'],
     queryFn: async () => {
-      const params = financeEventId ? `?event_id=${financeEventId}` : '';
-      const data = await api.get(`/api/finances/expenses/${params}`);
+      const data = await api.get('/api/finances/expenses/');
       return apiList(data);
     },
     enabled: !!hasAccess && currentPage === 'finance',
@@ -520,10 +510,9 @@ const OrganizerDashboardPage = () => {
   });
 
   const { data: financeRevenuesData, isLoading: isLoadingFinanceRevenues } = useQuery({
-    queryKey: ['finance_revenues', financeEventId],
+    queryKey: ['finance_revenues'],
     queryFn: async () => {
-      const params = financeEventId ? `?event_id=${financeEventId}` : '';
-      const data = await api.get(`/api/finances/revenues/${params}`);
+      const data = await api.get('/api/finances/revenues/');
       return apiList(data);
     },
     enabled: !!hasAccess && currentPage === 'finance',
@@ -624,7 +613,8 @@ const OrganizerDashboardPage = () => {
   };
 
   const handleCreateEvent = () => {
-    navigate('/create-event');
+    setCurrentPage('create');
+    syncTabToUrl('create', { event: null });
   };
 
   const openPublicEvent = (eventItem) => {
@@ -645,7 +635,8 @@ const OrganizerDashboardPage = () => {
 
   const handlePageChange = useCallback((page) => {
     if (page === 'create') {
-      navigate('/create-event');
+      setCurrentPage('create');
+      syncTabToUrl('create', { event: null });
       return;
     }
     setCurrentPage(page);
@@ -682,7 +673,7 @@ const OrganizerDashboardPage = () => {
       syncTabToUrl('finance', { event: null });
       return;
     }
-  }, [isAdminUser, navigate, syncTabToUrl]);
+  }, [isAdminUser, syncTabToUrl]);
 
   useEffect(() => {
     scrollDashboardToTop();
@@ -757,21 +748,17 @@ const OrganizerDashboardPage = () => {
               stats={financeStats}
               expenseBreakdown={financeExpenseBreakdown}
               revenueSeries={financeRevenueSeries}
-              range={financeRange}
-              onRangeChange={setFinanceRange}
-              eventId={financeEventId}
-              onEventChange={setFinanceEventId}
               expenses={financeExpenses}
               revenues={financeRevenues}
               isLoadingStats={isLoadingFinanceStats || isLoadingFinanceSeries}
               isLoadingExpenses={isLoadingFinanceExpenses}
               isLoadingRevenues={isLoadingFinanceRevenues}
               onOpenExpense={() => {
-                setModalEventId(financeEventId || '');
+                setModalEventId('');
                 setShowExpenseForm(true);
               }}
               onOpenRevenue={() => {
-                setModalEventId(financeEventId || '');
+                setModalEventId('');
                 setShowRevenueForm(true);
               }}
               onDeleteExpense={async (id) => {
@@ -868,24 +855,29 @@ const OrganizerDashboardPage = () => {
         ) : null;
       case 'checkin':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600 bg-white border border-[#E2E8F0] rounded-xl px-4 py-3">
-              <QrCode className="w-4 h-4 text-[#C58B1A]" />
-              {hasCheckinAssignments
-                ? 'Choose one of your events or an event assigned to you to open check-in.'
-                : 'Choose an event below to open the check-in screen.'}
-            </div>
-            <OrganizerMyEvents
-              events={checkinEvents}
-              variant="checkin"
-              onEventClick={openCheckinForEvent}
-              onViewEvent={openPublicEvent}
-              onCheckInEvent={openCheckinForEvent}
-              showStatusFilter={false}
-              showCategoryFilter={false}
-              isLoading={isLoadingEvents}
-            />
-          </div>
+          <OrganizerMyEvents
+            events={checkinEvents}
+            variant="checkin"
+            headerMessage={
+              hasCheckinAssignments
+                ? 'Choose one of your events or assigned events to open check-in.'
+                : 'Choose an event below to open the check-in screen.'
+            }
+            onEventClick={openCheckinForEvent}
+            onViewEvent={openPublicEvent}
+            onCheckInEvent={openCheckinForEvent}
+            showStatusFilter={false}
+            showCategoryFilter={false}
+            isLoading={isLoadingEvents}
+          />
+        );
+      case 'create':
+        return (
+          <CreateEventPage
+            embedded
+            onExit={handleBackToEvents}
+            onRequestScrollTop={scrollDashboardToTop}
+          />
         );
       case 'settings':
         return <OrganizerSettings events={events} onTabChange={scrollDashboardToTop} />;
