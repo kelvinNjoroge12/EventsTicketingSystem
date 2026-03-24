@@ -51,16 +51,51 @@ CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# ── CSP Headers (issue #8) ────────────────────────────────────
+# Content-Security-Policy delivered via SecurityMiddleware custom header.
+# Protects against XSS by restricting what resources the browser can load.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+CSP_DEFAULT_SRC = "'self'"
+CSP_SCRIPT_SRC = "'self' https://js.stripe.com"
+CSP_STYLE_SRC = "'self' 'unsafe-inline' https://fonts.googleapis.com"
+CSP_IMG_SRC = "'self' data: https://*.supabase.co"
+CSP_FONT_SRC = "'self' https://fonts.gstatic.com"
+CSP_CONNECT_SRC = "'self' https://api.stripe.com https://*.safaricom.co.ke"
+CSP_FRAME_SRC = "'self' https://js.stripe.com"
+
 # Cross-site cookies for Vercel frontend
 JWT_COOKIE_SECURE = True
 JWT_COOKIE_SAMESITE = "None"
 
+# ── Connection handling (issue #4) ─────────────────────────────
 # CONN_MAX_AGE=0 is critical on Render because persistent connections
 # survive Gunicorn SIGKILL events (e.g. worker timeouts) and carry over
 # aborted/uncommitted transactions to the next request, causing row-lock
 # deadlocks and 30-second hangs for every subsequent request.
 CONN_MAX_AGE = 0
 DATABASES["default"]["CONN_MAX_AGE"] = 0  # noqa: F405
+
+# ── Redis Cache (issue #7) ─────────────────────────────────────
+# Replace LocMemCache with Redis so cache keys are shared across all
+# Gunicorn workers and rate limiting + M-Pesa token caching work properly.
+_redis_url = env("REDIS_URL", default="")  # noqa: F405
+if _redis_url:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+            "KEY_PREFIX": "eh",
+            "TIMEOUT": 300,
+        }
+    }
+    # With Redis available, run Celery tasks asynchronously
+    CELERY_TASK_ALWAYS_EAGER = False
+else:
+    # Fallback: no Redis — run tasks synchronously to avoid crashes (issue #2)
+    CELERY_TASK_ALWAYS_EAGER = True
+
+ENABLE_IMAGE_OPTIMIZATION = env.bool("ENABLE_IMAGE_OPTIMIZATION", default=False)  # noqa: F405
+ENABLE_KEEP_ALIVE_PING = env.bool("ENABLE_KEEP_ALIVE_PING", default=False)  # noqa: F405
 
 # ── SUPABASE STORAGE CONFIGURATION (S3-Compatible) ───────────
 # Use django-storages + boto3 to persist images to Supabase
@@ -71,12 +106,6 @@ AWS_SECRET_ACCESS_KEY = env("SB_STORAGE_SECRET_KEY", default="")
 AWS_STORAGE_BUCKET_NAME = env("SB_STORAGE_BUCKET", default="media")
 AWS_S3_ENDPOINT_URL = env("SB_STORAGE_ENDPOINT", default="https://cyrwfnkatnqtfasqsoau.supabase.co/storage/v1/s3")
 AWS_S3_REGION_NAME = env("SB_STORAGE_REGION", default="eu-west-1")
-
-# Because Render deployed without a Redis instance add-on defined natively in environment,
-# we need to execute Celery tasks (like email sending) synchronously during sign-ups to prevent 500 crashes
-CELERY_TASK_ALWAYS_EAGER = True
-ENABLE_IMAGE_OPTIMIZATION = env.bool("ENABLE_IMAGE_OPTIMIZATION", default=False)  # noqa: F405
-ENABLE_KEEP_ALIVE_PING = env.bool("ENABLE_KEEP_ALIVE_PING", default=False)  # noqa: F405
 
 # URL construction (no auth required for public links)
 AWS_DEFAULT_ACL = "public-read"

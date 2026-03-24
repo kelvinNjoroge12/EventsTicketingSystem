@@ -58,10 +58,23 @@ class OrderCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         request = self.context.get("request")
         user = getattr(request, "user", None)
-        if user and user.is_authenticated and not getattr(user, "is_verified", True):
+        
+        # 1. Enforce for authenticated users
+        if user and user.is_authenticated and not getattr(user, "is_email_verified", True):
             raise serializers.ValidationError(
                 {"attendee_email": "You must verify your email address before purchasing tickets."}
             )
+
+        # 2. Enforce for anonymous users trying to use an unverified registered email
+        attendee_email = attrs.get("attendee_email", "").strip().lower()
+        if not (user and user.is_authenticated) and attendee_email:
+            from apps.accounts.models import User
+            # If a user registered with this email but didn't verify, block checkout
+            # to prevent malicious squatting of event tickets.
+            if User.objects.filter(email__iexact=attendee_email, is_email_verified=False).exists():
+                raise serializers.ValidationError(
+                    {"attendee_email": "This email is registered but unverified. Please log in and verify your email, or use another email address."}
+                )
 
         event = get_object_or_404(Event, slug=attrs["event_slug"], status="published")
         if event.has_ended():

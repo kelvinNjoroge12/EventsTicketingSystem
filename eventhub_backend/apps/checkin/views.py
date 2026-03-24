@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import logging
 
@@ -146,6 +146,8 @@ class AttendanceDashboardView(APIView):
             total_tickets += len(tickets)
             checked_in += order_checked_in
 
+            from common.qr_security import generate_secure_qr_payload
+            
             rows.append({
                 "order_number": order.order_number,
                 "attendee_name": f"{order.attendee_first_name} {order.attendee_last_name}",
@@ -155,7 +157,7 @@ class AttendanceDashboardView(APIView):
                         "id": str(t.id),
                         "ticket_type": t.ticket_type.name if t.ticket_type else "-",
                         "status": t.status,
-                        "qr_code_data": str(t.qr_code_data),
+                        "qr_code_data": generate_secure_qr_payload(str(t.qr_code_data)),
                         "qr_code_uuid": str(t.qr_code_data),
                         "checked_in_at": t.checked_in_at.isoformat() if t.checked_in_at else None,
                     }

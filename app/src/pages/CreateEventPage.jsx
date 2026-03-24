@@ -715,6 +715,7 @@ const CreateEventPage = ({
       setPublishError(getErrorMessage(err));
     } finally {
       setIsPublishing(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -737,6 +738,7 @@ const CreateEventPage = ({
       setPublishError(getErrorMessage(err));
     } finally {
       setIsPublishing(false);
+      isSubmittingRef.current = false;
     }
   };
 

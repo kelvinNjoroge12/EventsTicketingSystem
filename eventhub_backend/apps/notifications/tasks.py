@@ -10,6 +10,24 @@ from .utils import should_send_email_notification, build_opt_out_link, is_email_
 
 logger = logging.getLogger(__name__)
 
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_ticket_email_task(self, order_id):
+    """
+    Celery task to send ticket confirmation email with automatic retry.
+    Replaces the fragile threading.Thread approach (issue #5).
+    """
+    from apps.orders.utils import send_ticket_email
+    try:
+        order = Order.objects.select_related("event").get(pk=order_id)
+        send_ticket_email(order)
+    except Order.DoesNotExist:
+        pass  # Order was deleted, nothing to send
+    except Exception as exc:
+        logger.error("Ticket email failed for order %s: %s", order_id, exc)
+        self.retry(exc=exc)
+
+
 @shared_task(name="send_event_reminders")
 def send_event_reminders():
     """

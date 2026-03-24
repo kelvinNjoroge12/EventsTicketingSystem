@@ -82,7 +82,10 @@ def _get_or_create_qr_url(ticket, frontend_url: str) -> str | None:
     fully-qualified public HTTPS URL for direct embedding in HTML email.
     The QR encodes the full ticket verification URL: /t/{uuid}
     """
-    ticket_url = f"{frontend_url}/t/{ticket.qr_code_data}"
+    from common.qr_security import generate_secure_qr_payload
+    
+    secure_payload = generate_secure_qr_payload(str(ticket.qr_code_data))
+    ticket_url = f"{frontend_url}/t/{secure_payload}"
 
     try:
         if not ticket.qr_code:
@@ -151,7 +154,9 @@ def send_ticket_email(order, tickets=None):
         type_name   = ticket.ticket_type.name if ticket.ticket_type else "General Admission"
         short_code  = _short_ticket_code(ticket.qr_code_data)
         qr_url      = _get_or_create_qr_url(ticket, frontend_url)
-        verify_link = f"{frontend_url}/t/{ticket.qr_code_data}"
+        from common.qr_security import generate_secure_qr_payload
+        secure_payload = generate_secure_qr_payload(str(ticket.qr_code_data))
+        verify_link = f"{frontend_url}/t/{secure_payload}"
         attendee    = ticket.attendee_name
 
         # ── QR Image block (200px, centred, clickable) ──────
@@ -381,26 +386,19 @@ def send_ticket_email(order, tickets=None):
         raise
 
 def _dispatch_ticket_email_async(order) -> None:
-    from apps.orders.models import Order
-    order_id = order.pk
-    order_number = order.order_number
+    """
+    Dispatch ticket email via Celery task instead of raw threads (issue #5).
+    Uses transaction.on_commit to avoid enqueueing before DB changes are visible.
+    """
+    from apps.notifications.tasks import send_ticket_email_task
 
-    def _send():
-        try:
-            fresh = Order.objects.select_related("event").get(pk=order_id)
-            send_ticket_email(fresh)
-        except Exception as exc:  # pragma: no cover
-            logger.error(
-                "Email failed for order %s: %s - %s",
-                order_number,
-                exc.__class__.__name__,
-                exc,
-            )
+    order_id = str(order.pk)
 
-    def _schedule():
-        threading.Thread(target=_send, daemon=True).start()
+    def _enqueue():
+        send_ticket_email_task.delay(order_id)
 
     try:
-        transaction.on_commit(_schedule)
+        transaction.on_commit(_enqueue)
     except RuntimeError:
-        _schedule()
+        # No transaction active — fire immediately
+        _enqueue()

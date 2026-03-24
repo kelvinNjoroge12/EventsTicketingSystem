@@ -162,28 +162,23 @@ def _notify_and_email(order: Order, title: str):
 
 
 def _dispatch_ticket_email_async(order: Order) -> None:
-    order_id = order.pk
-    order_number = order.order_number
+    """
+    Dispatch ticket email via Celery task instead of raw threads (issue #5).
+    Uses transaction.on_commit to avoid enqueueing before DB changes are visible.
+    """
+    from apps.notifications.tasks import send_ticket_email_task
 
-    def _send():
-        try:
-            fresh = Order.objects.select_related("event").get(pk=order_id)
-            send_ticket_email(fresh)
-        except Exception as exc:  # pragma: no cover
-            logger.error(
-                "Email failed for order %s: %s - %s",
-                order_number,
-                exc.__class__.__name__,
-                exc,
-            )
+    order_id = str(order.pk)
 
-    def _schedule():
-        threading.Thread(target=_send, daemon=True).start()
+    def _enqueue():
+        send_ticket_email_task.delay(order_id)
 
     try:
-        transaction.on_commit(_schedule)
+        transaction.on_commit(_enqueue)
     except RuntimeError:
-        _schedule()
+        # No transaction active — fire immediately
+        _enqueue()
+
 
 
 class StripeCreatePaymentIntentView(APIView):

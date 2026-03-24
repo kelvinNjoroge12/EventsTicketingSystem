@@ -27,5 +27,8 @@ class WaitlistJoinSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 
+    def validate_email(self, value):
+        return value.lower().strip()
+
     def validate_notes(self, value):
         return value or ""

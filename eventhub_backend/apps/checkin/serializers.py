@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import uuid
 
@@ -33,10 +33,26 @@ class QRScanSerializer(serializers.Serializer):
         ticket = None
         parsed_uuid = None
 
-        try:
-            parsed_uuid = uuid.UUID(raw_value)
-        except ValueError:
-            parsed_uuid = None
+        # Try to verify as secure time-bucketed QR payload (issue #9)
+        from common.qr_security import verify_secure_qr_payload
+        verified_uuid_str = verify_secure_qr_payload(raw_value)
+        
+        if verified_uuid_str:
+            try:
+                parsed_uuid = uuid.UUID(verified_uuid_str)
+            except ValueError:
+                parsed_uuid = None
+        else:
+            # If verify_secure_qr_payload returned None, it was a secure payload
+            # but fails validation (expired screenshot).
+            if ":" in raw_value:
+                raise serializers.ValidationError("QR code is expired. Please refresh your ticket.")
+            
+            # Allow fallback for manually typed UUIDs or Order Numbers
+            try:
+                parsed_uuid = uuid.UUID(raw_value)
+            except ValueError:
+                parsed_uuid = None
 
         if parsed_uuid:
             ticket = Ticket.objects.select_related("event", "order").filter(

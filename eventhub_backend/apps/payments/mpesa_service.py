@@ -123,6 +123,9 @@ class MpesaService:
         return resp.json()
 
     def handle_callback(self, data: dict[str, Any]) -> None:
+        import logging
+        logger = logging.getLogger(__name__)
+
         body = data.get("Body", {})
         stk = body.get("stkCallback", {})
         result_code = stk.get("ResultCode")
@@ -130,83 +133,101 @@ class MpesaService:
         try:
             payment = Payment.objects.select_related("order").get(mpesa_checkout_request_id=checkout_id)
         except Payment.DoesNotExist:
+            logger.warning("M-Pesa callback for unknown checkout_id: %s", checkout_id)
+            return
+
+        # ── IDEMPOTENCY GUARD (issue #3) ──────────────────────────
+        # Safaricom may retry callbacks. If already processed, exit early.
+        if payment.status in ("succeeded", "failed", "refunded"):
+            logger.info("M-Pesa callback replay ignored for payment %s (status=%s)", payment.id, payment.status)
             return
 
         if result_code == 0:
-            # success
+            # Extract metadata from callback
             callback_meta = stk.get("CallbackMetadata", {}).get("Item", [])
             tx_id = ""
+            paid_amount = None
             for item in callback_meta:
-                if item.get("Name") == "MpesaReceiptNumber":
+                name = item.get("Name")
+                if name == "MpesaReceiptNumber":
                     tx_id = item.get("Value", "")
-                    break
+                elif name == "Amount":
+                    try:
+                        paid_amount = Decimal(str(item.get("Value", 0)))
+                    except Exception:
+                        paid_amount = None
+
+            # ── AMOUNT VERIFICATION ───────────────────────────────
+            # Reject if Safaricom reports a lower amount than the order total
+            order = payment.order
+            if paid_amount is not None and paid_amount < order.total:
+                payment.status = "failed"
+                payment.failure_reason = f"Underpaid: received {paid_amount}, expected {order.total}"
+                payment.raw_response = data
+                payment.save(update_fields=["status", "failure_reason", "raw_response"])
+                logger.warning(
+                    "M-Pesa underpayment for order %s: paid=%s expected=%s",
+                    order.order_number, paid_amount, order.total,
+                )
+                # Log to audit trail
+                _audit_log("mpesa_underpaid", "Payment", payment.id, {
+                    "order_number": order.order_number,
+                    "paid_amount": str(paid_amount),
+                    "expected_amount": str(order.total),
+                })
+                return
+
+            # Mark payment as succeeded
             payment.status = "succeeded"
             payment.mpesa_transaction_id = tx_id
             payment.raw_response = data
             payment.save(update_fields=["status", "mpesa_transaction_id", "raw_response"])
-            order = payment.order
-            if order.status != "confirmed":
-                order.status = "confirmed"
-                order.save(update_fields=["status"])
-                
-                # Create Ticket rows for each item in the order
-                tickets_to_create = []
-                for item in order.items.all():
-                    for _ in range(item.quantity):
-                        tickets_to_create.append(
-                            Ticket(
-                                order=order,
-                                order_item=item,
-                                event=order.event,
-                                ticket_type=item.ticket_type,
-                                attendee_name=order.attendee_first_name + " " + order.attendee_last_name,
-                                attendee_email=order.attendee_email,
-                                status="valid",
-                                qr_code_data=uuid.uuid4(),
-                            )
-                        )
-                if tickets_to_create:
-                    Ticket.objects.bulk_create(tickets_to_create)
 
-                # Fire in-app notification
-                if order.attendee:
-                    create_notification(
-                        recipient=order.attendee,
-                        notification_type="ticket_confirmed",
-                        title="Your MPesa tickets are confirmed! 🎉",
-                        message=(
-                            f"Your order #{order.order_number} for "
-                            f"{order.event.title if order.event else 'the event'} has been confirmed. "
-                            f"Check your tickets below."
-                        ),
-                        event=order.event,
-                        action_url=f"/confirmation/{order.order_number}",
-                    )
+            # ── Use the shared idempotent order confirmation ──────
+            # This uses select_for_update() + atomic transaction to prevent
+            # double ticket creation even under concurrent callbacks
+            from apps.payments.views import _confirm_order_and_issue_tickets, _notify_and_email
+            try:
+                order, created = _confirm_order_and_issue_tickets(order)
+            except ValueError:
+                logger.warning("M-Pesa callback: order %s not in confirmable state", order.order_number)
+                return
 
-                if order.event and order.event.organizer and order.event.organizer != order.attendee:
-                    organizer = order.event.organizer
-                    create_notification(
-                        recipient=organizer,
-                        notification_type="ticket_confirmed",
-                        title="New ticket sale",
-                        message=(
-                            f"New order #{order.order_number} for "
-                            f"{order.event.title if order.event else 'your event'} "
-                            f"by {order.attendee_first_name} {order.attendee_last_name}."
-                        ),
-                        event=order.event,
-                        action_url=f"/organizer/events/{order.event.slug}",
-                    )
-                    try:
-                        if should_send_email_notification(organizer, "new_sales"):
-                            EmailService().send_new_sale_email(organizer, order)
-                    except Exception:
-                        pass
+            if created:
+                _notify_and_email(order, title="Your M-Pesa tickets are confirmed! 🎉")
 
-                # Dispatch email containing the tickets
-                send_ticket_email(order)
+            # Audit log
+            _audit_log("mpesa_payment_succeeded", "Payment", payment.id, {
+                "order_number": order.order_number,
+                "amount": str(payment.amount),
+                "mpesa_receipt": tx_id,
+            })
 
         else:
             payment.status = "failed"
+            payment.failure_reason = stk.get("ResultDesc", "")
             payment.raw_response = data
-            payment.save(update_fields=["status", "raw_response"])
+            payment.save(update_fields=["status", "failure_reason", "raw_response"])
+
+            # Audit log
+            _audit_log("mpesa_payment_failed", "Payment", payment.id, {
+                "order_number": payment.order.order_number,
+                "result_code": result_code,
+                "result_desc": stk.get("ResultDesc", ""),
+            })
+
+
+def _audit_log(action: str, entity_type: str, entity_id, metadata: dict | None = None):
+    """Best-effort write to audit log. Never raises."""
+    try:
+        from common.audit import log_action
+        log_action(
+            actor=None,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            metadata=metadata or {},
+        )
+    except Exception:
+        pass
+

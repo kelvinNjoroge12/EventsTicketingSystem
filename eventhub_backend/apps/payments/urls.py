@@ -11,6 +11,8 @@ from .views import (
     mpesa_callback,
     stripe_webhook,
 )
+from .refund_views import RefundOrderView
+
 
 urlpatterns = [
     path("stripe/create-intent/", StripeCreatePaymentIntentView.as_view(), name="stripe-create-intent"),
@@ -20,5 +22,18 @@ urlpatterns = [
     path("mpesa/callback/", mpesa_callback, name="mpesa-callback"),
     path("mpesa/query/", MpesaQueryView.as_view(), name="mpesa-query"),
     path("simulate/confirm/", SimulatePaymentConfirmView.as_view(), name="simulate-confirm"),
+    
+    # Refund endpoint (issue #6)
+    path("refund/", RefundOrderView.as_view(), name="refund-order"),
 ]
+
+# Queue endpoints (issue #1)
+from .queue_views import QueueJoinView, QueueStatusView, QueueAdminView
+queue_patterns = [
+    path("events/<slug:slug>/queue/status/", QueueStatusView.as_view(), name="queue-status"),
+    path("events/<slug:slug>/queue/join/", QueueJoinView.as_view(), name="queue-join"),
+    path("events/<slug:slug>/queue/admin/", QueueAdminView.as_view(), name="queue-admin"),
+]
+
+urlpatterns += queue_patterns
 

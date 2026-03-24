@@ -164,6 +164,35 @@ def _client_ip_from_request(request: Request) -> str | None:
     return remote or None
 
 
+def _get_location_from_ip(ip: str | None) -> str:
+    """
+    Fetch geographical location for an IP address (City, Country).
+    Results are cached to avoid API rate limits and speed up rendering.
+    """
+    if not ip or ip in ("127.0.0.1", "::1", "localhost"):
+        return "Local Network"
+        
+    cache_key = f"geo_ip:{ip}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+        
+    try:
+        # 45 requests per minute limit, but caching mostly avoids it
+        import requests
+        resp = requests.get(f"http://ip-api.com/json/{ip}", timeout=2)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("status") == "success":
+                loc = f"{data.get('city', '')}, {data.get('country', '')}".strip(" ,")
+                cache.set(cache_key, loc, timeout=604800)  # cache for 7 days
+                return loc
+    except Exception:
+        pass
+        
+    return "Unknown Location"
+
+
 def _record_user_session(user: User, refresh_token: str | None, request: Request) -> None:
     jti = _extract_refresh_jti(refresh_token or "")
     if not jti:
@@ -519,7 +548,7 @@ class SessionListView(APIView):
             {
                 "id": session.id,
                 "device": session.device or "Unknown device",
-                "location": "Location unknown",
+                "location": _get_location_from_ip(session.ip_address),
                 "ip_address": session.ip_address or "",
                 "revoked": session.revoked_at is not None,
                 "last_seen": session.last_seen.isoformat() if session.last_seen else None,

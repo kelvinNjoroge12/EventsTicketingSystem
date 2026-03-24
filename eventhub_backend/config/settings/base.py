@@ -77,6 +77,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "common.middleware.CSPMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -287,6 +288,9 @@ RATELIMIT_ENABLE = env.bool("RATELIMIT_ENABLE", default=True)
 ENABLE_SIMULATED_PAYMENTS = env.bool("ENABLE_SIMULATED_PAYMENTS", default=False)
 SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS = env.int("SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS", default=3600)
 
+# Reservation TTL: how long a pending order holds inventory before auto-cancel
+ORDER_RESERVATION_TTL_MINUTES = env.int("ORDER_RESERVATION_TTL_MINUTES", default=15)
+
 from celery.schedules import crontab
 
 CELERY_BEAT_SCHEDULE = {
@@ -302,6 +306,11 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup_abandoned_drafts": {
         "task": "apps.events.tasks.cleanup_abandoned_drafts",
         "schedule": crontab(minute=0, hour=3),  # 3 AM daily
+    },
+    # Release tickets stuck in pending orders (reservation TTL enforcement)
+    "cancel_stale_orders": {
+        "task": "apps.orders.tasks.cancel_stale_orders",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
     },
 }
 
