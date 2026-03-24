@@ -1,53 +1,86 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, ExternalLink, MapPin, TicketCheck } from 'lucide-react';
+import { Calendar, ExternalLink, MapPin, TicketCheck, RefreshCw } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import CheckInStaffHeader from '../components/organizer/CheckInStaffHeader';
-import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/apiClient';
 
 const OrganizerCheckInLanding = () => {
-  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshAttempted, setRefreshAttempted] = useState(false);
+  const [assignedEvents, setAssignedEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const assignedEvents = useMemo(() => {
-    const details = user?.assigned_event_details || user?.assignedEventDetails || [];
-    if (!Array.isArray(details)) return [];
-    return details.filter((event) => event && event.slug);
-  }, [user]);
+  // Fetch assigned check-in events from the dedicated backend endpoint.
+  // This endpoint ONLY returns events that were explicitly assigned to this
+  // user by an organizer for check-in. It is completely separate from the
+  // organizer dashboard and never leaks other organizers' event data.
+  const fetchAssignedEvents = () => {
+    setIsLoading(true);
+    setError(null);
+    api.get('/api/events/checkin/assigned/')
+      .then((data) => {
+        const results = data?.results || data || [];
+        setAssignedEvents(Array.isArray(results) ? results : []);
+      })
+      .catch((err) => {
+        setError(err?.message || 'Failed to load assigned events.');
+      })
+      .finally(() => setIsLoading(false));
+  };
 
   useEffect(() => {
-    if (!user || isRefreshing || refreshAttempted) return;
-    if (assignedEvents.length > 0) return;
-    setIsRefreshing(true);
-    setRefreshAttempted(true);
-    api.get('/api/auth/profile/')
-      .then((profile) => updateUser(profile))
-      .catch(() => {})
-      .finally(() => setIsRefreshing(false));
-  }, [user, assignedEvents.length, updateUser, isRefreshing, refreshAttempted]);
+    fetchAssignedEvents();
+  }, []);
 
   return (
     <PageWrapper className="bg-[#F8FAFC]">
       <CheckInStaffHeader />
       <div className="min-h-screen bg-[#F8FAFC] pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#02338D]/10 flex items-center justify-center">
-              <TicketCheck className="w-5 h-5 text-[#02338D]" />
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#02338D]/10 flex items-center justify-center">
+                <TicketCheck className="w-5 h-5 text-[#02338D]" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-[#0F172A]">Your Assigned Events</h1>
+                <p className="text-sm text-[#64748B]">Select an event to begin check-in.</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-[#0F172A]">Your Assigned Events</h1>
-              <p className="text-sm text-[#64748B]">Select an event to begin check-in.</p>
-            </div>
+            <button
+              onClick={fetchAssignedEvents}
+              disabled={isLoading}
+              className="p-2 rounded-xl hover:bg-[#F1F5F9] transition-colors disabled:opacity-50"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-4 h-4 text-[#64748B] ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
 
-          {assignedEvents.length === 0 ? (
+          {isLoading ? (
+            <div className="grid gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 animate-pulse">
+                  <div className="h-5 w-2/3 bg-[#F1F5F9] rounded-lg mb-3" />
+                  <div className="h-3 w-1/3 bg-[#F1F5F9] rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="bg-white rounded-2xl border border-red-100 p-6 text-center">
+              <p className="text-red-600 text-sm font-medium">{error}</p>
+              <button
+                onClick={fetchAssignedEvents}
+                className="mt-3 text-xs font-semibold text-[#02338D] hover:underline"
+              >
+                Try again
+              </button>
+            </div>
+          ) : assignedEvents.length === 0 ? (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 text-center">
               <p className="text-[#64748B]">No events are currently assigned to your account.</p>
-              <p className="text-xs text-[#94A3B8] mt-2">Please contact the organizer for access.</p>
+              <p className="text-xs text-[#94A3B8] mt-2">Please contact the event organizer for access.</p>
             </div>
           ) : (
             <div className="grid gap-4">
@@ -60,16 +93,16 @@ const OrganizerCheckInLanding = () => {
                     <div className="flex-1 min-w-0">
                       <h2 className="text-lg font-semibold text-[#0F172A] truncate">{event.title}</h2>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B] mt-2">
-                        {event.date && (
+                        {event.startDate && (
                           <span className="inline-flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
-                            {new Date(event.date).toLocaleDateString()}
+                            {new Date(event.startDate).toLocaleDateString()}
                           </span>
                         )}
-                        {event.time && (
+                        {event.venueName && (
                           <span className="inline-flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5" />
-                            {event.time}
+                            {event.venueName}
                           </span>
                         )}
                       </div>
@@ -101,4 +134,3 @@ const OrganizerCheckInLanding = () => {
 };
 
 export default OrganizerCheckInLanding;
-

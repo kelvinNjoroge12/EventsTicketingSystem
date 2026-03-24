@@ -15,6 +15,7 @@ from .views import (
     EventUpdateView,
     FeaturedEventsView,
     MyEventsListView,
+    AssignedCheckinEventsView,
     OrganizerEventListView,
     related_events,
 )
@@ -24,6 +25,8 @@ urlpatterns = [
     path("organizer/", MyEventsListView.as_view(), name="my-events"),
     # Alias for /organizer/ — kept for backwards-compat with old frontend builds
     path("my/", MyEventsListView.as_view(), name="my-events-alias"),
+    # Dedicated endpoint for check-in staff: returns ONLY events assigned to this user for check-in
+    path("checkin/assigned/", AssignedCheckinEventsView.as_view(), name="assigned-checkin-events"),
     path("create/", EventCreateView.as_view(), name="event-create"),
     path("categories/", CategoryListView.as_view(), name="event-categories"),
     path("featured/", FeaturedEventsView.as_view(), name="event-featured"),

@@ -421,19 +421,40 @@ class OrganizerEventListView(generics.ListAPIView):
 
 
 class MyEventsListView(generics.ListAPIView):
-    """Returns all events owned by the current authenticated organizer."""
+    """Returns all events created/owned by the current authenticated organizer.
+    This endpoint is EXCLUSIVELY for organizers to see their own events.
+    Check-in staff must use the /checkin/assigned-events/ endpoint instead.
+    """
     serializer_class = EventListSerializer
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def get_queryset(self):
-        if user_requires_assigned_event_scope(self.request.user):
-            assigned_events = get_active_assigned_checkin_events_for_user(self.request.user)
-            assigned_ids = [event.id for event in assigned_events]
-            return _with_list_optimizations(
-                Event.objects.filter(id__in=assigned_ids).order_by("start_date", "start_time", "title")
-            )
+        # Strict owner-only filter: regardless of any check-in assignments,
+        # this endpoint only ever shows events where request.user is the organizer.
         return _with_list_optimizations(
             Event.objects.filter(organizer=self.request.user).order_by("-created_at")
+        )
+
+
+class AssignedCheckinEventsView(generics.ListAPIView):
+    """Returns events that have been explicitly assigned to the current user for check-in.
+    This endpoint is EXCLUSIVELY for check-in staff.
+    It does NOT overlap with an organizer's own dashboard regardless of that user's role.
+    An organizer who is also assigned check-in for another organizer's event will:
+      - See THEIR OWN events on /api/events/organizer/ (their dashboard)
+      - See ONLY assigned events on this endpoint (check-in use only)
+    """
+    serializer_class = EventListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        assigned_events = get_active_assigned_checkin_events_for_user(self.request.user)
+        if not assigned_events:
+            return Event.objects.none()
+        assigned_ids = [event.id for event in assigned_events]
+        return _with_list_optimizations(
+            Event.objects.filter(id__in=assigned_ids, status__in=["published", "completed"])
+            .order_by("start_date", "start_time", "title")
         )
 
 

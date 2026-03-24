@@ -65,13 +65,21 @@ class ScheduleItemDetailView(generics.RetrieveUpdateDestroyAPIView):
         return ScheduleItemSerializer
 
     def get_queryset(self):
-        queryset = ScheduleItem.objects.filter(event__slug=self.kwargs["slug"]).select_related("speaker")
-        if _can_view_unpublished_event(self.request.user, self.kwargs["slug"]):
+        slug = self.kwargs["slug"]
+        user = self.request.user
+        # IDOR protection: For write operations, only return schedule items belonging to
+        # events owned by the requesting user. This prevents cross-organizer data tampering.
+        if self.request.method not in permissions.SAFE_METHODS and user.is_authenticated:
+            if not (user.is_staff or getattr(user, "role", None) == "admin"):
+                return ScheduleItem.objects.filter(event__slug=slug, event__organizer=user).select_related("speaker")
+        queryset = ScheduleItem.objects.filter(event__slug=slug).select_related("speaker")
+        if _can_view_unpublished_event(user, slug):
             return queryset
         return queryset.filter(event__status="published")
 
     def check_object_permissions(self, request, obj):
         super().check_object_permissions(request, obj)
         if request.method not in permissions.SAFE_METHODS:
-            if obj.event.organizer != request.user:
+            is_admin = request.user.is_staff or getattr(request.user, "role", None) == "admin"
+            if obj.event.organizer != request.user and not is_admin:
                 raise PermissionDenied("Only the event organizer can modify schedule items.")
