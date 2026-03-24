@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, MapPin, Clock, Users, Zap, Building2, Mic2 } from 'lucide-react';
@@ -98,6 +98,7 @@ const CreateEventPage = ({
 } = {}) => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const isSubmittingRef = useRef(false);
   const { user } = useAuth();
   const canManagePriority = user?.role === 'admin' || user?.is_staff;
   const [currentStep, setCurrentStep] = useState(0);
@@ -668,6 +669,8 @@ const CreateEventPage = ({
     err?.response?.detail || err?.response?.message || err?.message || 'Something went wrong. Please try again.';
 
   const handleSaveDraft = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsPublishing(true);
     setPublishError('');
     try {
@@ -682,10 +685,13 @@ const CreateEventPage = ({
       setPublishError(getErrorMessage(err));
     } finally {
       setIsPublishing(false);
+      isSubmittingRef.current = false;
     }
   };
 
   const handlePublish = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsPublishing(true);
     setPublishError('');
     try {

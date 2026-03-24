@@ -33,11 +33,13 @@ Design rules followed:
 
 import io
 import logging
+import threading
 
 import qrcode
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -377,3 +379,28 @@ def send_ticket_email(order, tickets=None):
             "Email send failed for order %s: %s", order.order_number, err
         )
         raise
+
+def _dispatch_ticket_email_async(order) -> None:
+    from apps.orders.models import Order
+    order_id = order.pk
+    order_number = order.order_number
+
+    def _send():
+        try:
+            fresh = Order.objects.select_related("event").get(pk=order_id)
+            send_ticket_email(fresh)
+        except Exception as exc:  # pragma: no cover
+            logger.error(
+                "Email failed for order %s: %s - %s",
+                order_number,
+                exc.__class__.__name__,
+                exc,
+            )
+
+    def _schedule():
+        threading.Thread(target=_send, daemon=True).start()
+
+    try:
+        transaction.on_commit(_schedule)
+    except RuntimeError:
+        _schedule()

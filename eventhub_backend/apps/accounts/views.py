@@ -7,6 +7,7 @@ import stripe
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.core.cache import cache
 from django.core.mail import send_mail
 from django.db import models, transaction
 from django.db.models import Prefetch, Q as DjangoQ
@@ -559,11 +560,13 @@ class IntegrationListView(APIView):
     ]
 
     def get(self, request: Request):
-        if not Integration.objects.exists():
-            Integration.objects.bulk_create(
-                [Integration(**item) for item in self.DEFAULT_INTEGRATIONS],
-                ignore_conflicts=True,
-            )
+        if not cache.get("integrations_seeded"):
+            if not Integration.objects.exists():
+                Integration.objects.bulk_create(
+                    [Integration(**item) for item in self.DEFAULT_INTEGRATIONS],
+                    ignore_conflicts=True,
+                )
+            cache.set("integrations_seeded", True, None)
 
         integrations = Integration.objects.all().order_by("name")
         connections = {

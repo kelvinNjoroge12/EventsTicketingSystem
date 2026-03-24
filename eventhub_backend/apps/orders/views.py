@@ -17,34 +17,11 @@ from apps.tickets.models import TicketType
 from apps.waitlist.models import WaitlistEntry
 from .models import Order, Ticket
 from .serializers import AttendeeTicketSerializer, OrderCreateSerializer, OrderDetailSerializer, OrderPublicDetailSerializer
-from .utils import send_ticket_email
+from .utils import send_ticket_email, _dispatch_ticket_email_async
 
 logger = logging.getLogger(__name__)
 
 
-def _dispatch_ticket_email_async(order: Order) -> None:
-    order_id = order.pk
-    order_number = order.order_number
-
-    def _send():
-        try:
-            fresh = Order.objects.select_related("event").get(pk=order_id)
-            send_ticket_email(fresh)
-        except Exception as exc:  # pragma: no cover
-            logger.error(
-                "Email failed for order %s: %s - %s",
-                order_number,
-                exc.__class__.__name__,
-                exc,
-            )
-
-    def _schedule():
-        threading.Thread(target=_send, daemon=True).start()
-
-    try:
-        transaction.on_commit(_schedule)
-    except RuntimeError:
-        _schedule()
 
 
 def _notify_waitlist_if_available(event):

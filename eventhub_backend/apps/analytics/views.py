@@ -194,7 +194,7 @@ class EventAnalyticsExportView(APIView):
             "order_created_at",
         ])
 
-        tickets = Ticket.objects.filter(event=event).select_related("order", "ticket_type", "checked_in_by")
+        tickets = Ticket.objects.filter(event=event).select_related("order", "ticket_type", "checked_in_by", "checkin")
         for ticket in tickets:
             order = ticket.order
             checkin = getattr(ticket, "checkin", None)
@@ -241,6 +241,11 @@ class OrganizerAnalyticsDashboardView(APIView):
             raise PermissionDenied("Only organizers can view analytics.")
         if user_requires_assigned_event_scope(request.user):
             raise PermissionDenied("This account is limited to assigned event check-in.")
+
+        cache_key = f"org_analytics:{request.user.id}:{hashlib.md5(request.META.get('QUERY_STRING', '').encode()).hexdigest()}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
 
         organizer_events_qs = Event.objects.filter(organizer=request.user)
         available_years = sorted(
@@ -468,7 +473,7 @@ class OrganizerAnalyticsDashboardView(APIView):
         if not available_years:
             available_years = [year]
 
-        return Response({
+        response_data = {
             "kpis": {
                 "total_events": total_events,
                 "total_attendees": total_attendees,
@@ -511,4 +516,7 @@ class OrganizerAnalyticsDashboardView(APIView):
                 "locations": locations,
             },
             "selected_year": year,
-        })
+        }
+        
+        cache.set(cache_key, response_data, 300)
+        return Response(response_data)
