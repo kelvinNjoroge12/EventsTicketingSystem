@@ -24,6 +24,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
 from rest_framework.throttling import ScopedRateThrottle
 
+from .access import user_requires_assigned_event_scope
 from .serializers import (
     ChangePasswordSerializer,
     EmailVerificationSerializer,
@@ -249,7 +250,7 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request: Request):
         refresh_token = request.data.get("refresh") or request.COOKIES.get(
@@ -260,7 +261,7 @@ class LogoutView(APIView):
                 token = RefreshToken(refresh_token)
                 token.blacklist()
                 jti = token.get("jti")
-                if jti:
+                if jti and request.user and request.user.is_authenticated:
                     UserSession.objects.filter(
                         user=request.user,
                         refresh_jti=jti,
@@ -593,6 +594,8 @@ class OrganizerPaymentSettingsView(APIView):
     def get(self, request: Request):
         if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
             raise PermissionDenied("Only organizers can manage payment settings.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         profile = _ensure_organizer_profile(request.user)
         stripe_account_id = profile.stripe_account_id or ""
@@ -650,6 +653,8 @@ class OrganizerPaymentConnectView(APIView):
     def post(self, request: Request):
         if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
             raise PermissionDenied("Only organizers can manage payment settings.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         if not _stripe_enabled():
             return Response(
@@ -708,6 +713,8 @@ class OrganizerPaymentDashboardView(APIView):
     def post(self, request: Request):
         if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
             raise PermissionDenied("Only organizers can manage payment settings.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         if not _stripe_enabled():
             return Response(
@@ -740,6 +747,8 @@ class OrganizerTeamListView(APIView):
     def get(self, request: Request):
         if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
             raise PermissionDenied("Only organizers can view team members.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         members = OrganizerTeamMember.objects.filter(organizer=request.user).select_related("member").prefetch_related("assigned_events")
         serializer = OrganizerTeamMemberSerializer(members, many=True)
@@ -752,6 +761,8 @@ class OrganizerTeamInviteView(APIView):
     def post(self, request: Request):
         if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
             raise PermissionDenied("Only organizers can invite team members.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         email = (request.data.get("email") or "").lower().strip()
         name = (request.data.get("name") or "").strip()
@@ -862,6 +873,8 @@ class OrganizerTeamMemberDetailView(APIView):
     def patch(self, request: Request, pk):
         if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
             raise PermissionDenied("Only organizers can update team members.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         member = generics.get_object_or_404(OrganizerTeamMember, pk=pk, organizer=request.user)
         role = request.data.get("role")
@@ -885,6 +898,8 @@ class OrganizerTeamMemberDetailView(APIView):
     def delete(self, request: Request, pk):
         if request.user.role not in ["organizer", "admin"] and not request.user.is_staff:
             raise PermissionDenied("Only organizers can remove team members.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         member = generics.get_object_or_404(OrganizerTeamMember, pk=pk, organizer=request.user)
         member.delete()

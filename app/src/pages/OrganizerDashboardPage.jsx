@@ -291,9 +291,13 @@ const OrganizerDashboardPage = () => {
     });
   }, []);
 
-  const isStaffUser = user && (user.role === 'checkin' || user.role === 'staff');
+  const isStaffUser = user && (
+    user.role === 'checkin' ||
+    user.role === 'staff' ||
+    user.restrict_dashboard_to_assigned_events
+  );
   const isAdminUser = user && (user.role === 'admin' || user.is_staff);
-  const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
+  const hasAccess = user && !user.restrict_dashboard_to_assigned_events && (user.role === 'organizer' || user.role === 'admin');
   const filterOwnedOrganizerEvents = useCallback((items) => {
     const list = Array.isArray(items) ? items : [];
     if (!user || user.role !== 'organizer') return list;
@@ -361,15 +365,18 @@ const OrganizerDashboardPage = () => {
         const data = await api.get('/api/events/organizer/');
         return filterOwnedOrganizerEvents(apiList(data));
       } catch (error) {
-        if (user?.role === 'organizer') {
-          return [];
-        }
-        const shouldFallback = [400, 403, 404, 405].includes(error?.status);
-        if (!shouldFallback) {
+        if (error?.status === 401) {
           throw error;
         }
-        const data = await api.get('/api/events/my/');
-        return filterOwnedOrganizerEvents(apiList(data));
+        try {
+          const data = await api.get('/api/events/my/');
+          return filterOwnedOrganizerEvents(apiList(data));
+        } catch (fallbackError) {
+          if (fallbackError?.status === 401) {
+            throw fallbackError;
+          }
+          throw error?.status === 500 ? error : fallbackError;
+        }
       }
     },
     enabled: !!hasAccess,

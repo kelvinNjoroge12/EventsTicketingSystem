@@ -16,11 +16,13 @@ from rest_framework.response import Response
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 
+from apps.accounts.access import get_active_assigned_checkin_events_for_user, user_requires_assigned_event_scope
 from apps.accounts.permissions import IsAdmin, IsOrganizerRole
 from apps.schedules.models import ScheduleItem
 from apps.speakers.models import Speaker
 from apps.sponsors.models import Sponsor
 from apps.tickets.models import PromoCode, TicketType
+from .compat import apply_event_schema_compat, has_optional_event_field
 from .filters import EventFilter
 from .models import Category, Event
 from .serializers import (
@@ -41,13 +43,13 @@ def _with_list_optimizations(queryset):
         active_tickets.order_by("price").values("price")[:1],
         output_field=models.DecimalField(max_digits=10, decimal_places=2),
     )
-    return queryset.select_related(
+    return apply_event_schema_compat(queryset.select_related(
         "category", "organizer", "organizer__organizer_profile"
     ).annotate(
         lowest_ticket_price_annotated=lowest_price,
         has_active_tickets_annotated=Exists(active_tickets),
         has_paid_tickets_annotated=Exists(active_tickets.filter(price__gt=0)),
-    )
+    ))
 
 
 def _with_detail_optimizations(queryset, exclude_fields: set[str] | None = None):
@@ -91,7 +93,7 @@ def _with_detail_optimizations(queryset, exclude_fields: set[str] | None = None)
             )
         )
 
-    return (
+    return apply_event_schema_compat(
         queryset.select_related("category", "organizer", "organizer__organizer_profile")
         .prefetch_related(*prefetches)
         .annotate(
@@ -106,12 +108,7 @@ def _apply_public_event_ordering(queryset):
     today = timezone.localdate()
     current_time = timezone.localtime().time()
 
-    return queryset.annotate(
-        priority_override=models.Case(
-            When(display_priority__gt=0, then=Value(0)),
-            default=Value(1),
-            output_field=IntegerField(),
-        ),
+    queryset = queryset.annotate(
         public_time_bucket=Case(
             When(
                 Q(status="completed")
@@ -123,6 +120,17 @@ def _apply_public_event_ordering(queryset):
                 Q(start_date=today) | Q(start_date__lt=today, end_date__gte=today),
                 then=Value(0),
             ),
+            default=Value(1),
+            output_field=IntegerField(),
+        ),
+    )
+
+    if not has_optional_event_field("display_priority"):
+        return queryset.order_by("public_time_bucket", "start_date", "start_time", "-published_at")
+
+    return queryset.annotate(
+        priority_override=models.Case(
+            When(display_priority__gt=0, then=Value(0)),
             default=Value(1),
             output_field=IntegerField(),
         ),
@@ -246,11 +254,13 @@ class EventDetailView(generics.RetrieveAPIView):
             raise PermissionDenied("Authentication required.")
 
         if _is_admin_user(request.user):
-            qs = Event.objects.all()
+            qs = apply_event_schema_compat(Event.objects.all())
         else:
             if request.user.role != "organizer":
                 raise PermissionDenied("Only organizers can delete events.")
-            qs = Event.objects.filter(organizer=request.user)
+            if user_requires_assigned_event_scope(request.user):
+                raise PermissionDenied("This account is limited to assigned event check-in.")
+            qs = apply_event_schema_compat(Event.objects.filter(organizer=request.user))
 
         event = get_object_or_404(qs, slug=kwargs.get(self.lookup_field))
         event.status = "cancelled"
@@ -264,6 +274,8 @@ class EventCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def perform_create(self, serializer):
+        if user_requires_assigned_event_scope(self.request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
         serializer.save()
         _bump_cache_version()
 
@@ -274,7 +286,9 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return Event.objects.filter(organizer=self.request.user)
+        if user_requires_assigned_event_scope(self.request.user):
+            return Event.objects.none()
+        return apply_event_schema_compat(Event.objects.filter(organizer=self.request.user))
 
     def perform_update(self, serializer):
         serializer.save()
@@ -287,7 +301,9 @@ class EventDeleteView(generics.DestroyAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return Event.objects.filter(organizer=self.request.user)
+        if user_requires_assigned_event_scope(self.request.user):
+            return Event.objects.none()
+        return apply_event_schema_compat(Event.objects.filter(organizer=self.request.user))
 
     def perform_destroy(self, instance):
         instance.status = "cancelled"
@@ -301,7 +317,9 @@ class EventPublishView(generics.UpdateAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return Event.objects.filter(organizer=self.request.user)
+        if user_requires_assigned_event_scope(self.request.user):
+            return Event.objects.none()
+        return apply_event_schema_compat(Event.objects.filter(organizer=self.request.user))
 
     def get_object(self):
         queryset = self.filter_queryset(self.get_queryset())
@@ -341,11 +359,14 @@ class EventReviewQueueView(generics.ListAPIView):
         requested = [item.strip() for item in raw_status.split(",") if item.strip()]
         allowed = {"pending", "published", "rejected", "draft", "cancelled", "completed"}
         statuses = [item for item in requested if item in allowed] or ["pending"]
-        return (
-            Event.objects.filter(status__in=statuses)
-            .select_related("organizer", "organizer__organizer_profile", "category")
-            .order_by("-approval_requested_at", "-created_at")
+        queryset = apply_event_schema_compat(
+            Event.objects.filter(status__in=statuses).select_related(
+                "organizer", "organizer__organizer_profile", "category"
+            )
         )
+        if has_optional_event_field("approval_requested_at"):
+            return queryset.order_by("-approval_requested_at", "-created_at")
+        return queryset.order_by("-created_at")
 
 
 class EventApproveView(generics.UpdateAPIView):
@@ -354,7 +375,7 @@ class EventApproveView(generics.UpdateAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return Event.objects.all()
+        return apply_event_schema_compat(Event.objects.all())
 
     def update(self, request, *args, **kwargs):
         event = self.get_object()
@@ -372,7 +393,7 @@ class EventRejectView(generics.UpdateAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return Event.objects.all()
+        return apply_event_schema_compat(Event.objects.all())
 
     def update(self, request, *args, **kwargs):
         event = self.get_object()
@@ -405,6 +426,12 @@ class MyEventsListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def get_queryset(self):
+        if user_requires_assigned_event_scope(self.request.user):
+            assigned_events = get_active_assigned_checkin_events_for_user(self.request.user)
+            assigned_ids = [event.id for event in assigned_events]
+            return _with_list_optimizations(
+                Event.objects.filter(id__in=assigned_ids).order_by("start_date", "start_time", "title")
+            )
         return _with_list_optimizations(
             Event.objects.filter(organizer=self.request.user).order_by("-created_at")
         )
@@ -450,11 +477,13 @@ def related_events(request, slug: str):
     # Use same logic as EventDetailView to find the base event
     user = request.user
     if user.is_authenticated and user.role == "admin":
-        qs_base = Event.objects.all()
+        qs_base = apply_event_schema_compat(Event.objects.all())
     elif user.is_authenticated:
-        qs_base = Event.objects.filter(Q(status__in=["published", "completed"]) | Q(organizer=user))
+        qs_base = apply_event_schema_compat(
+            Event.objects.filter(Q(status__in=["published", "completed"]) | Q(organizer=user))
+        )
     else:
-        qs_base = Event.objects.filter(status__in=["published", "completed"])
+        qs_base = apply_event_schema_compat(Event.objects.filter(status__in=["published", "completed"]))
     
     event = get_object_or_404(qs_base.distinct(), slug=slug)
     
@@ -464,10 +493,8 @@ def related_events(request, slug: str):
     if cached:
         return Response(cached)
         
-    qs = (
+    qs = _with_list_optimizations(
         Event.objects.filter(category=event.category, status="published")
-        .select_related("category", "organizer", "organizer__organizer_profile")
-        .prefetch_related("ticket_types")
         .exclude(id=event.id)
         .order_by("-attendee_count")[:4]
     )

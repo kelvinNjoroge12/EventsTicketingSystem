@@ -10,6 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.access import user_requires_assigned_event_scope
 from apps.events.models import Event
 from apps.orders.models import Order, Ticket, OrderAnswer, OrderRegistration
 from apps.checkin.models import CheckIn
@@ -185,6 +186,8 @@ class OrganizerDashboardStatsView(APIView):
     def get(self, request):
         if request.user.role not in ('organizer', 'admin') and not request.user.is_staff:
             raise PermissionDenied("Only organizers can view this dashboard.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         event_id = request.query_params.get('event_id')
         range_key = request.query_params.get('range')
@@ -248,6 +251,8 @@ class OrganizerRevenueSeriesView(APIView):
     def get(self, request):
         if request.user.role not in ('organizer', 'admin') and not request.user.is_staff:
             raise PermissionDenied("Only organizers can view this dashboard.")
+        if user_requires_assigned_event_scope(request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         range_key = request.query_params.get("range", "month")
         event_id = request.query_params.get("event_id")
@@ -619,6 +624,8 @@ class OrganizerAttendeeListView(generics.ListAPIView):
     def get_queryset(self):
         if self.request.user.role not in ("organizer", "admin") and not self.request.user.is_staff:
             raise PermissionDenied("Only organizers can view attendees.")
+        if user_requires_assigned_event_scope(self.request.user):
+            raise PermissionDenied("This account is limited to assigned event check-in.")
 
         event_id = self.request.query_params.get("event_id")
         search = (self.request.query_params.get("q") or "").strip()

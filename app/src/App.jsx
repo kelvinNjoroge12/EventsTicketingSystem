@@ -98,7 +98,10 @@ const CheckInStaffGate = () => {
   useEffect(() => {
     if (!user) return;
     if (user.must_reset_password) return;
-    const isStaff = user.role === 'checkin' || user.role === 'staff';
+    const isStaff =
+      user.role === 'checkin' ||
+      user.role === 'staff' ||
+      Boolean(user.restrict_dashboard_to_assigned_events);
     if (!isStaff) return;
     // Check-in staff should behave like normal attendees, except they
     // should not access organizer-only routes.
@@ -108,7 +111,7 @@ const CheckInStaffGate = () => {
       /^\/edit-event\/[^/]+\/?$/,
     ];
     if (organizerOnly.some((regex) => regex.test(location.pathname))) {
-      navigate('/', { replace: true });
+      navigate('/organizer-checkin', { replace: true });
     }
   }, [user, location.pathname, navigate]);
 

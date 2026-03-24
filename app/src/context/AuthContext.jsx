@@ -109,8 +109,12 @@ export const AuthProvider = ({ children }) => {
   }, [setUser]);
 
   const logout = useCallback(async () => {
+    const hadSession = getSessionHint() || !!getStoredToken();
     setUserRaw(null);
     setSessionHint(false);
+    if (!hadSession) {
+      return;
+    }
     try {
       await api.post('/api/auth/logout/', {});
     } catch {

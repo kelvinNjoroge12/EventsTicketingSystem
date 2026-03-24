@@ -45,7 +45,11 @@ const ForcePasswordResetPage = () => {
       updateUser({ must_reset_password: false });
       setIsSuccess(true);
       setTimeout(() => {
-        if (user?.role === 'checkin' || user?.role === 'staff') {
+        if (
+          user?.role === 'checkin' ||
+          user?.role === 'staff' ||
+          user?.restrict_dashboard_to_assigned_events
+        ) {
           navigate('/organizer-checkin', { replace: true });
         } else if (user?.role === 'organizer' || user?.role === 'admin') {
           navigate('/organizer-dashboard', { replace: true });

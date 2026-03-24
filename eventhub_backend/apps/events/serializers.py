@@ -11,6 +11,7 @@ from apps.tickets.serializers import RegistrationCategorySerializer
 from apps.speakers.serializers import SpeakerSerializer
 from apps.schedules.serializers import ScheduleItemSerializer
 from apps.sponsors.serializers import SponsorSerializer
+from .compat import get_event_attr
 from .models import Category, Event, Tag
 
 
@@ -119,6 +120,7 @@ class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
     lowest_ticket_price = serializers.SerializerMethodField()
     is_free = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
+    display_priority = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -175,6 +177,9 @@ class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
 
     def get_cover_image(self, obj: Event):
         return _safe_media_url(getattr(obj, "cover_image", None), self.context.get("request"))
+
+    def get_display_priority(self, obj: Event):
+        return get_event_attr(obj, "display_priority", 0) or 0
 
 
 class TicketTypeSerializer(serializers.ModelSerializer):
@@ -236,6 +241,7 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
     reviewed_at = serializers.SerializerMethodField()
     reviewed_by_name = serializers.SerializerMethodField()
     review_notes = serializers.SerializerMethodField()
+    display_priority = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         exclude_fields = kwargs.pop("exclude_fields", None)
@@ -312,18 +318,27 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
         ]
 
     def get_approval_requested_at(self, obj: Event):
-        return obj.approval_requested_at if self._can_view_review_data(obj) else None
+        if not self._can_view_review_data(obj):
+            return None
+        return get_event_attr(obj, "approval_requested_at")
 
     def get_reviewed_at(self, obj: Event):
-        return obj.reviewed_at if self._can_view_review_data(obj) else None
+        if not self._can_view_review_data(obj):
+            return None
+        return get_event_attr(obj, "reviewed_at")
 
     def get_reviewed_by_name(self, obj: Event):
-        if not self._can_view_review_data(obj) or not obj.reviewed_by:
+        reviewed_by = get_event_attr(obj, "reviewed_by")
+        if not self._can_view_review_data(obj) or not reviewed_by:
             return None
-        return obj.reviewed_by.get_full_name() or obj.reviewed_by.email
+        return reviewed_by.get_full_name() or reviewed_by.email
 
     def get_review_notes(self, obj: Event):
-        return obj.review_notes if self._can_view_review_data(obj) and obj.review_notes else None
+        review_notes = get_event_attr(obj, "review_notes", "")
+        return review_notes if self._can_view_review_data(obj) and review_notes else None
+
+    def get_display_priority(self, obj: Event):
+        return get_event_attr(obj, "display_priority", 0) or 0
 
     def get_cover_image(self, obj: Event):
         return _safe_media_url(getattr(obj, "cover_image", None), self.context.get("request"))
@@ -580,6 +595,9 @@ class EventStatusSerializer(serializers.ModelSerializer):
 
 class EventReviewQueueSerializer(serializers.ModelSerializer):
     organizer = OrganizerMiniSerializer(read_only=True)
+    approval_requested_at = serializers.SerializerMethodField()
+    reviewed_at = serializers.SerializerMethodField()
+    review_notes = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -602,6 +620,15 @@ class EventReviewQueueSerializer(serializers.ModelSerializer):
             "review_notes",
             "organizer",
         ]
+
+    def get_approval_requested_at(self, obj: Event):
+        return get_event_attr(obj, "approval_requested_at")
+
+    def get_reviewed_at(self, obj: Event):
+        return get_event_attr(obj, "reviewed_at")
+
+    def get_review_notes(self, obj: Event):
+        return get_event_attr(obj, "review_notes", "")
 
 
 class EventReviewRejectSerializer(serializers.Serializer):

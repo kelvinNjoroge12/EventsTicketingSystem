@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.notifications.serializers import create_notification
+from .compat import get_event_attr, update_event_with_available_fields
 
 User = get_user_model()
 
@@ -48,12 +49,14 @@ def _admin_users():
 
 def submit_event_for_review(event, submitted_by=None):
     now = timezone.now()
-    event.status = "pending"
-    event.approval_requested_at = now
-    event.reviewed_at = None
-    event.reviewed_by = None
-    event.review_notes = ""
-    event.save(update_fields=["status", "approval_requested_at", "reviewed_at", "reviewed_by", "review_notes"])
+    update_event_with_available_fields(
+        event,
+        status="pending",
+        approval_requested_at=now,
+        reviewed_at=None,
+        reviewed_by=None,
+        review_notes="",
+    )
 
     organizer = event.organizer
     organizer_name = organizer.get_short_name() or organizer.get_full_name() or organizer.email
@@ -107,20 +110,15 @@ def submit_event_for_review(event, submitted_by=None):
 
 def approve_event_submission(event, reviewer):
     organizer = event.organizer
-    event.status = "published"
-    event.reviewed_at = timezone.now()
-    event.reviewed_by = reviewer
-    event.review_notes = ""
-    if event.approval_requested_at is None:
-        event.approval_requested_at = event.reviewed_at
-    event.save(
-        update_fields=[
-            "status",
-            "approval_requested_at",
-            "reviewed_at",
-            "reviewed_by",
-            "review_notes",
-        ]
+    reviewed_at = timezone.now()
+    approval_requested_at = get_event_attr(event, "approval_requested_at")
+    update_event_with_available_fields(
+        event,
+        status="published",
+        approval_requested_at=approval_requested_at or reviewed_at,
+        reviewed_at=reviewed_at,
+        reviewed_by=reviewer,
+        review_notes="",
     )
 
     organizer_name = organizer.get_short_name() or organizer.get_full_name() or organizer.email
@@ -148,27 +146,23 @@ def approve_event_submission(event, reviewer):
 
 def reject_event_submission(event, reviewer, reason: str):
     organizer = event.organizer
-    event.status = "rejected"
-    event.reviewed_at = timezone.now()
-    event.reviewed_by = reviewer
-    event.review_notes = reason.strip()
-    if event.approval_requested_at is None:
-        event.approval_requested_at = event.reviewed_at
-    event.save(
-        update_fields=[
-            "status",
-            "approval_requested_at",
-            "reviewed_at",
-            "reviewed_by",
-            "review_notes",
-        ]
+    reviewed_at = timezone.now()
+    review_notes = reason.strip()
+    approval_requested_at = get_event_attr(event, "approval_requested_at")
+    update_event_with_available_fields(
+        event,
+        status="rejected",
+        approval_requested_at=approval_requested_at or reviewed_at,
+        reviewed_at=reviewed_at,
+        reviewed_by=reviewer,
+        review_notes=review_notes,
     )
 
     organizer_name = organizer.get_short_name() or organizer.get_full_name() or organizer.email
     message = (
         f"Hi {organizer_name},\n\n"
         f"Your event \"{event.title}\" was not approved for publication.\n\n"
-        f"Reason: {event.review_notes}\n\n"
+        f"Reason: {review_notes}\n\n"
         f"Update your event here: {_edit_url(event)}\n\n"
         "EventHub Team"
     )
@@ -181,7 +175,7 @@ def reject_event_submission(event, reviewer, reason: str):
         organizer,
         "event_rejected",
         "Event needs changes",
-        f"\"{event.title}\" was rejected. Reason: {event.review_notes}",
+        f"\"{event.title}\" was rejected. Reason: {review_notes}",
         event=event,
         action_url=f"/edit-event/{event.slug}",
     )

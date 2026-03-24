@@ -129,7 +129,7 @@ class Event(TimeStampedModel):
             models.Index(fields=["slug"]),
             models.Index(fields=["is_featured", "status"]),
         ]
-        ordering = ["-display_priority", "start_date", "start_time", "-published_at"]
+        ordering = ["start_date", "start_time", "-published_at"]
 
     def save(self, *args, **kwargs):
         update_fields = kwargs.get("update_fields")
