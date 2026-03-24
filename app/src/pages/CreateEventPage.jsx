@@ -556,94 +556,57 @@ const CreateEventPage = ({
       });
     }
 
-    // Speakers (create or update)
+    // Helper function for Speakers, MC, and Sponsors to dry up repetitive logic!
+    const syncResource = (resource, endpoint, idKey, stringFields, fileFieldObj) => {
+      const getPayloadData = () => {
+        const data = {};
+        Object.entries(stringFields).forEach(([k, v]) => { data[k] = v; });
+        return data;
+      };
+
+      const { fileKey, fileVal } = fileFieldObj || {};
+      const hasFile = !!fileVal;
+      const resourceId = resource[idKey];
+
+      if (resourceId) {
+        if (hasFile) {
+          const fd = new FormData();
+          Object.entries(stringFields).forEach(([k, v]) => fd.append(k, v));
+          fd.append(fileKey, fileVal);
+          tasks.push(api.patchForm(`/api/events/${eventSlug}/${endpoint}/${resourceId}/`, fd).catch(err => console.warn(`${endpoint} update failed:`, err)));
+        } else {
+          tasks.push(api.patch(`/api/events/${eventSlug}/${endpoint}/${resourceId}/`, getPayloadData()).catch(err => console.warn(`${endpoint} update failed:`, err)));
+        }
+      } else {
+        const fd = new FormData();
+        Object.entries(stringFields).forEach(([k, v]) => fd.append(k, v));
+        if (hasFile) fd.append(fileKey, fileVal);
+        tasks.push(api.postForm(`/api/events/${eventSlug}/${endpoint}/`, fd).catch(err => console.warn(`${endpoint} create failed:`, err)));
+      }
+    };
+
+    // Speakers
     if (formData.speakers.length > 0) {
       formData.speakers.forEach((speaker, idx) => {
         if (!speaker.name) return;
-        const hasPhoto = !!speaker.photo;
-        if (speaker.id) {
-          if (hasPhoto) {
-            const fd = new FormData();
-            fd.append('name', speaker.name);
-            fd.append('title', speaker.title || '');
-            fd.append('organization', speaker.organization || '');
-            fd.append('bio', speaker.bio || '');
-            fd.append('is_mc', 'false');
-            fd.append('sort_order', String(idx));
-            fd.append('avatar', speaker.photo);
-            tasks.push(
-              api.patchForm(`/api/events/${eventSlug}/speakers/${speaker.id}/`, fd)
-                .catch(err => console.warn('Speaker update failed:', err))
-            );
-          } else {
-            tasks.push(
-              api.patch(`/api/events/${eventSlug}/speakers/${speaker.id}/`, {
-                name: speaker.name,
-                title: speaker.title || '',
-                organization: speaker.organization || '',
-                bio: speaker.bio || '',
-                is_mc: false,
-                sort_order: idx,
-              }).catch(err => console.warn('Speaker update failed:', err))
-            );
-          }
-        } else {
-          const fd = new FormData();
-          fd.append('name', speaker.name);
-          fd.append('title', speaker.title || '');
-          fd.append('organization', speaker.organization || '');
-          fd.append('bio', speaker.bio || '');
-          fd.append('is_mc', 'false');
-          fd.append('sort_order', String(idx));
-          if (speaker.photo) fd.append('avatar', speaker.photo);
-          tasks.push(
-            api.postForm(`/api/events/${eventSlug}/speakers/`, fd)
-              .catch(err => console.warn('Speaker creation failed:', err))
-          );
-        }
+        syncResource(
+          speaker, 'speakers', 'id',
+          { name: speaker.name, title: speaker.title || '', organization: speaker.organization || '', bio: speaker.bio || '', is_mc: 'false', sort_order: String(idx) },
+          { fileKey: 'avatar', fileVal: speaker.photo }
+        );
       });
     }
 
-    // MC (create or update)
+    // MC
     if (formData.hasMC && formData.mcName) {
-      const hasPhoto = !!formData.mcPhoto;
-      if (initialSubresources.mcId) {
-        if (hasPhoto) {
-          const mcFd = new FormData();
-          mcFd.append('name', formData.mcName);
-          mcFd.append('bio', formData.mcBio || '');
-          mcFd.append('is_mc', 'true');
-          mcFd.append('sort_order', '0');
-          mcFd.append('avatar', formData.mcPhoto);
-          tasks.push(
-            api.patchForm(`/api/events/${eventSlug}/speakers/${initialSubresources.mcId}/`, mcFd)
-              .catch(err => console.warn('MC update failed:', err))
-          );
-        } else {
-          tasks.push(
-            api.patch(`/api/events/${eventSlug}/speakers/${initialSubresources.mcId}/`, {
-              name: formData.mcName,
-              bio: formData.mcBio || '',
-              is_mc: true,
-              sort_order: 0,
-            }).catch(err => console.warn('MC update failed:', err))
-          );
-        }
-      } else {
-        const mcFd = new FormData();
-        mcFd.append('name', formData.mcName);
-        mcFd.append('bio', formData.mcBio || '');
-        mcFd.append('is_mc', 'true');
-        mcFd.append('sort_order', '0');
-        if (formData.mcPhoto) mcFd.append('avatar', formData.mcPhoto);
-        tasks.push(
-          api.postForm(`/api/events/${eventSlug}/speakers/`, mcFd)
-            .catch(err => console.warn('MC creation failed:', err))
-        );
-      }
+      syncResource(
+        { id: initialSubresources.mcId }, 'speakers', 'id',
+        { name: formData.mcName, bio: formData.mcBio || '', is_mc: 'true', sort_order: '0' },
+        { fileKey: 'avatar', fileVal: formData.mcPhoto }
+      );
     }
 
-    // Schedule items (create or update)
+    // Schedule items
     if (formData.schedule.length > 0) {
       formData.schedule.forEach((item, idx) => {
         if (!item.title) return;
@@ -654,59 +617,22 @@ const CreateEventPage = ({
           sort_order: idx,
         };
         if (item.id) {
-          tasks.push(
-            api.patch(`/api/events/${eventSlug}/schedule/${item.id}/`, payloadData)
-              .catch(err => console.warn('Schedule update failed:', err))
-          );
+          tasks.push(api.patch(`/api/events/${eventSlug}/schedule/${item.id}/`, payloadData).catch(err => console.warn('Schedule update failed:', err)));
         } else {
-          tasks.push(
-            api.post(`/api/events/${eventSlug}/schedule/`, payloadData)
-              .catch(err => console.warn('Schedule creation failed:', err))
-          );
+          tasks.push(api.post(`/api/events/${eventSlug}/schedule/`, payloadData).catch(err => console.warn('Schedule creation failed:', err)));
         }
       });
     }
 
-    // Sponsors (create or update)
+    // Sponsors
     if (formData.sponsors.length > 0) {
       formData.sponsors.forEach((sponsor, idx) => {
         if (!sponsor.name) return;
-        const hasLogo = !!sponsor.logo;
-        const tierValue = (sponsor.tier || 'bronze').toLowerCase();
-        if (sponsor.id) {
-          if (hasLogo) {
-            const fd = new FormData();
-            fd.append('name', sponsor.name);
-            fd.append('website', ensureUrl(sponsor.website));
-            fd.append('tier', tierValue);
-            fd.append('sort_order', String(idx));
-            fd.append('logo', sponsor.logo);
-            tasks.push(
-              api.patchForm(`/api/events/${eventSlug}/sponsors/${sponsor.id}/`, fd)
-                .catch(err => console.warn('Sponsor update failed:', err))
-            );
-          } else {
-            tasks.push(
-              api.patch(`/api/events/${eventSlug}/sponsors/${sponsor.id}/`, {
-                name: sponsor.name,
-                website: ensureUrl(sponsor.website),
-                tier: tierValue,
-                sort_order: idx,
-              }).catch(err => console.warn('Sponsor update failed:', err))
-            );
-          }
-        } else {
-          const fd = new FormData();
-          fd.append('name', sponsor.name);
-          fd.append('website', ensureUrl(sponsor.website));
-          fd.append('tier', tierValue);
-          fd.append('sort_order', String(idx));
-          if (sponsor.logo) fd.append('logo', sponsor.logo);
-          tasks.push(
-            api.postForm(`/api/events/${eventSlug}/sponsors/`, fd)
-              .catch(err => console.warn('Sponsor creation failed:', err))
-          );
-        }
+        syncResource(
+          sponsor, 'sponsors', 'id',
+          { name: sponsor.name, website: ensureUrl(sponsor.website), tier: (sponsor.tier || 'bronze').toLowerCase(), sort_order: String(idx) },
+          { fileKey: 'logo', fileVal: sponsor.logo }
+        );
       });
     }
 

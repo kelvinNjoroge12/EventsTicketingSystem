@@ -218,3 +218,5 @@ class Event(TimeStampedModel):
     @property
     def is_past(self):
         return self.get_time_state() == "past"
+
+import common.signals  # noqa: E402
