@@ -62,11 +62,19 @@ class OrganizerMiniSerializer(serializers.ModelSerializer):
         
         if not image:
             return None
-            
+
+        try:
+            raw_url = image.url
+        except Exception:
+            return None
+
         request = self.context.get("request")
         if request:
-            return request.build_absolute_uri(image.url)
-        return image.url
+            try:
+                return request.build_absolute_uri(raw_url)
+            except Exception:
+                return raw_url
+        return raw_url
 
     def get_brand_color(self, obj):
         profile: OrganizerProfile | None = getattr(obj, "organizer_profile", None)
@@ -87,13 +95,22 @@ class EventTimeStateMixin(serializers.Serializer):
     is_past = serializers.SerializerMethodField()
 
     def get_time_state(self, obj: Event):
-        return obj.get_time_state()
+        try:
+            return obj.get_time_state()
+        except Exception:
+            return "cancelled" if getattr(obj, "status", None) == "cancelled" else "upcoming"
 
     def get_is_today(self, obj: Event) -> bool:
-        return obj.get_time_state() in {"today", "live"}
+        try:
+            return obj.get_time_state() in {"today", "live"}
+        except Exception:
+            return False
 
     def get_is_past(self, obj: Event) -> bool:
-        return obj.get_time_state() == "past"
+        try:
+            return obj.get_time_state() == "past"
+        except Exception:
+            return False
 
 
 class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
@@ -135,19 +152,25 @@ class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
         ]
 
     def get_lowest_ticket_price(self, obj: Event):
-        if hasattr(obj, "lowest_ticket_price_annotated"):
-            return obj.lowest_ticket_price_annotated
-        agg = obj.ticket_types.filter(is_active=True).aggregate(price=Min("price"))
-        price = agg["price"]
-        return price if isinstance(price, (int, float, Decimal)) else None
+        try:
+            if hasattr(obj, "lowest_ticket_price_annotated"):
+                return obj.lowest_ticket_price_annotated
+            agg = obj.ticket_types.filter(is_active=True).aggregate(price=Min("price"))
+            price = agg["price"]
+            return price if isinstance(price, (int, float, Decimal)) else None
+        except Exception:
+            return None
 
     def get_is_free(self, obj: Event) -> bool:
-        has_active = getattr(obj, "has_active_tickets_annotated", None)
-        has_paid = getattr(obj, "has_paid_tickets_annotated", None)
-        if has_active is not None and has_paid is not None:
-            return bool(has_active and not has_paid)
-        prices = obj.ticket_types.filter(is_active=True).values_list("price", flat=True)
-        return all(Decimal(p or 0) == 0 for p in prices) if prices else False
+        try:
+            has_active = getattr(obj, "has_active_tickets_annotated", None)
+            has_paid = getattr(obj, "has_paid_tickets_annotated", None)
+            if has_active is not None and has_paid is not None:
+                return bool(has_active and not has_paid)
+            prices = obj.ticket_types.filter(is_active=True).values_list("price", flat=True)
+            return all(Decimal(p or 0) == 0 for p in prices) if prices else False
+        except Exception:
+            return False
 
 
 class TicketTypeSerializer(serializers.ModelSerializer):
