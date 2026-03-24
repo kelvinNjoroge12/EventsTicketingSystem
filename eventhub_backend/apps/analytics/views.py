@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
 
-from apps.accounts.access import user_requires_assigned_event_scope
+from apps.accounts.access import user_can_access_organizer_dashboard, user_requires_assigned_event_scope
 from apps.events.models import Event
 from apps.orders.models import Order, Ticket, OrderRegistration
 from apps.checkin.models import CheckIn
@@ -237,7 +237,7 @@ class OrganizerAnalyticsDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if request.user.role not in ("organizer", "admin") and not request.user.is_staff:
+        if not user_can_access_organizer_dashboard(request.user):
             raise PermissionDenied("Only organizers can view analytics.")
         if user_requires_assigned_event_scope(request.user):
             raise PermissionDenied("This account is limited to assigned event check-in.")

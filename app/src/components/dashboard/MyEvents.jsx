@@ -80,7 +80,7 @@ const OrganizerMyEvents = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
   const isCheckinVariant = variant === 'checkin';
-  const compactToolbar = isCheckinVariant && !!headerMessage;
+  const compactToolbar = true;
 
   const categories = useMemo(() => {
     const items = events.map((event) => event.category).filter(Boolean);
@@ -113,11 +113,11 @@ const OrganizerMyEvents = ({
   };
 
   const renderSkeletons = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-3">
       {Array.from({ length: 6 }).map((_, idx) => (
         <Card key={idx} className="overflow-hidden animate-pulse">
-          <div className="h-40 lg:h-48 bg-gray-200" />
-          <CardContent className="p-4 lg:p-5 space-y-3">
+          <div className="h-28 lg:h-32 bg-gray-200" />
+          <CardContent className="p-2.5 lg:p-3 space-y-2">
             <div className="h-4 bg-gray-200 rounded w-3/4" />
             <div className="h-3 bg-gray-200 rounded w-1/2" />
             <div className="h-3 bg-gray-200 rounded w-2/3" />
@@ -133,13 +133,13 @@ const OrganizerMyEvents = ({
   );
 
   return (
-    <div className={cn(isCheckinVariant ? 'space-y-3' : 'space-y-4 lg:space-y-6')}>
+    <div className={cn(isCheckinVariant ? 'space-y-2' : 'space-y-3')}>
       {(headerMessage || showSearch || showStatusFilter || showCategoryFilter) && (
         <Card className={cn(compactToolbar && 'border-[#E2E8F0] shadow-none')}>
-          <CardContent className={cn(compactToolbar ? 'px-2.5 py-1.5' : 'p-3 lg:p-4')}>
+          <CardContent className={cn(compactToolbar ? 'px-2 py-1' : 'p-3 lg:p-4')}>
             <div className={cn(
               'flex items-center gap-2 overflow-x-auto pb-1 flex-nowrap',
-              compactToolbar && 'gap-1.5',
+              compactToolbar && 'gap-1',
               compactToolbar && 'pb-0'
             )}>
               {headerMessage && (
@@ -151,7 +151,7 @@ const OrganizerMyEvents = ({
               {showSearch && (
                 <div className={cn(
                   'relative flex-shrink-0',
-                  compactToolbar ? 'min-w-[180px] flex-1 max-w-[340px]' : 'min-w-[200px]'
+                  compactToolbar ? 'min-w-[150px] flex-1 max-w-[300px]' : 'min-w-[200px]'
                 )}>
                   <Search className={cn(
                     'absolute left-3 top-1/2 -translate-y-1/2 text-gray-400',
@@ -163,7 +163,7 @@ const OrganizerMyEvents = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={cn(
-                      compactToolbar ? 'h-7 text-[11px] pl-7 w-full' : 'pl-10 w-[200px]'
+                      compactToolbar ? 'h-7 text-[11px] pl-7 w-full rounded-md' : 'pl-10 w-[200px]'
                     )}
                   />
                 </div>
@@ -172,9 +172,9 @@ const OrganizerMyEvents = ({
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className={cn(
                     'min-w-[140px] flex-shrink-0',
-                    compactToolbar && 'h-8 text-xs min-w-[120px]'
+                    compactToolbar && 'h-7 text-[11px] min-w-[98px] rounded-md px-2'
                   )}>
-                    <Filter className="w-4 h-4 mr-2" />
+                    <Filter className={cn(compactToolbar ? 'w-3 h-3 mr-1' : 'w-4 h-4 mr-2')} />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -192,9 +192,9 @@ const OrganizerMyEvents = ({
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className={cn(
                     'min-w-[150px] flex-shrink-0',
-                    compactToolbar && 'h-8 text-xs min-w-[130px]'
+                    compactToolbar && 'h-7 text-[11px] min-w-[104px] rounded-md px-2'
                   )}>
-                    <Calendar className="w-4 h-4 mr-2" />
+                    <Calendar className={cn(compactToolbar ? 'w-3 h-3 mr-1' : 'w-4 h-4 mr-2')} />
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -213,43 +213,43 @@ const OrganizerMyEvents = ({
       )}
 
       {isLoading ? renderSkeletons() : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-3">
         {filteredEvents.map((event) => (
           <Card
             key={event.id}
-            className="pressable-card overflow-hidden group cursor-pointer"
+            className="overflow-hidden group cursor-pointer border border-[#E2E8F0] shadow-sm transition-shadow hover:shadow-md"
             onClick={() => (onEventClick || onViewEvent)?.(event)}
           >
-            <div className="relative h-40 lg:h-48 overflow-hidden">
+            <div className="relative h-28 lg:h-32 overflow-hidden">
               {event.image ? (
                 <img
                   src={event.image}
                   alt={event.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-[#02338D] to-[#7C3AED] flex items-center justify-center">
-                  <Calendar className="w-10 h-10 text-white/70" />
+                  <Calendar className="w-8 h-8 text-white/70" />
                 </div>
               )}
-              <div className="absolute top-2 lg:top-3 left-2 lg:left-3">
+              <div className="absolute top-1.5 left-1.5">
                 <div className="flex flex-col gap-1.5">
-                  <Badge className={cn('capitalize text-xs bg-white text-[#02338D] border border-[#E2E8F0]')}>{event.status}</Badge>
+                  <Badge className={cn('capitalize text-[10px] bg-white text-[#02338D] border border-[#E2E8F0] h-5 px-1.5')}>{event.status}</Badge>
                   {isCheckinVariant && event.isAssignedCheckinEvent && (
-                    <Badge className="text-xs bg-[#EEF2FF] text-[#4338CA] border border-[#C7D2FE]">
+                    <Badge className="text-[10px] bg-[#EEF2FF] text-[#4338CA] border border-[#C7D2FE] h-5 px-1.5">
                       Assigned For Check-In
                     </Badge>
                   )}
                 </div>
               </div>
-              <div className="absolute top-2 lg:top-3 right-2 lg:right-3">
+              <div className="absolute top-1.5 right-1.5">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="p-1.5 lg:p-2 rounded-full bg-white/90 hover:bg-white transition-colors"
+                      className="p-1.5 rounded-full bg-white/90 hover:bg-white transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <MoreVertical className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-gray-600" />
+                      <MoreVertical className="w-3.5 h-3.5 text-gray-600" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -298,54 +298,54 @@ const OrganizerMyEvents = ({
               </div>
             </div>
 
-            <CardContent className="p-4 lg:p-5">
-              <h3 className="font-bold text-base lg:text-lg text-[#0F172A] mb-2 group-hover:text-[#C58B1A] transition-colors line-clamp-1">
+            <CardContent className="p-2.5 lg:p-3">
+              <h3 className="font-bold text-sm lg:text-base text-[#0F172A] mb-1.5 group-hover:text-[#C58B1A] transition-colors line-clamp-1">
                 {event.name}
               </h3>
 
-              <div className="space-y-1 lg:space-y-2 mb-3 lg:mb-4">
-                <div className="flex items-center gap-2 text-xs lg:text-sm text-gray-500">
-                  <Calendar className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              <div className="space-y-1 mb-2.5">
+                <div className="flex items-center gap-1.5 text-[11px] lg:text-xs text-gray-500">
+                  <Calendar className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                   <span>{event.date} {event.time ? `at ${event.time}` : ''}</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs lg:text-sm text-gray-500">
-                  <MapPin className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                <div className="flex items-center gap-1.5 text-[11px] lg:text-xs text-gray-500">
+                  <MapPin className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                   <span className="line-clamp-1">{event.location || 'Online'}</span>
                 </div>
               </div>
 
               {isCheckinVariant ? (
-                <div className="flex items-center justify-between gap-3 pt-3 lg:pt-4 border-t border-gray-100">
-                  <Badge variant="outline" className="text-xs">
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                     {event.category || 'General'}
                   </Badge>
                   {onCheckInEvent && (
                     <Button
                       size="sm"
-                      className="bg-[#02338D] hover:bg-[#022A78] text-white"
+                      className="h-7 px-2 bg-[#02338D] hover:bg-[#022A78] text-white text-[11px]"
                       onClick={(e) => {
                         e.stopPropagation();
                         onCheckInEvent(event);
                       }}
                     >
-                      <QrCode className="w-4 h-4 mr-2" />
+                      <QrCode className="w-3 h-3 mr-1" />
                       Open Check-In
                     </Button>
                   )}
                 </div>
               ) : (
                 <>
-                  <div className="mb-3 lg:mb-4">
-                    <div className="flex items-center justify-between text-xs lg:text-sm mb-1">
+                  <div className="mb-2">
+                    <div className="flex items-center justify-between text-[11px] lg:text-xs mb-1">
                       <span className="text-gray-500 flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                        <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                         Tickets Sold
                       </span>
                       <span className="font-medium text-[#0F172A]">
                         {event.ticketsSold}/{event.totalTickets || 0}
                       </span>
                     </div>
-                    <div className="h-1.5 lg:h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-[#02338D] to-[#C58B1A] rounded-full transition-all duration-500"
                         style={{
@@ -355,14 +355,14 @@ const OrganizerMyEvents = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 lg:pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-[#C58B1A]" />
-                      <span className="font-bold text-[#0F172A] text-sm lg:text-base">
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 text-[#C58B1A]" />
+                      <span className="font-bold text-[#0F172A] text-xs lg:text-sm">
                         {formatMoney(event.revenue)}
                       </span>
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                       {event.category || 'General'}
                     </Badge>
                   </div>

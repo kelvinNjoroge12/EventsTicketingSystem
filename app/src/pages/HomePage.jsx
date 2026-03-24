@@ -26,6 +26,7 @@ import { categories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
 import { useAuth } from '../context/AuthContext';
 import eventQueryKeys from '../lib/eventQueryKeys';
+import { canAccessOrganizerDashboard } from '../lib/authAccess';
 
 // Statistics Component
 const StatBox = ({ value, label, suffix = '' }) => {
@@ -80,7 +81,7 @@ const HomePage = () => {
 
   // Instantly redirect organizers/admins to their dashboard instead of showing the public homepage
   useEffect(() => {
-    if (isAuthenticated && (user?.role === 'organizer' || user?.role === 'admin')) {
+    if (isAuthenticated && canAccessOrganizerDashboard(user)) {
       navigate('/organizer-dashboard', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);

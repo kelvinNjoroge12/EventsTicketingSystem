@@ -9,6 +9,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner';
 import { api } from '../../../lib/apiClient';
 import strathmoreLogo from '../../../assets/strathmore-logo.png';
+import { canAccessOrganizerDashboard, isCheckinOnlyUser } from '../../../lib/authAccess';
 
 const AttendeeNavbar = ({ isScrolled, isActive }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -19,8 +20,8 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
   const navigate = useNavigate();
   const profileRef = useRef(null);
 
-  const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
-  const isCheckInStaff = user?.role === 'checkin' || user?.role === 'staff';
+  const isOrganizer = canAccessOrganizerDashboard(user);
+  const isCheckInStaff = isCheckinOnlyUser(user);
   const canRequestOrganizer = isAuthenticated && !isOrganizer && !isCheckInStaff;
 
   useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);

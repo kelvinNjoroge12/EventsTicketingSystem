@@ -10,6 +10,7 @@ import useScrollTop from './hooks/useScrollTop';
 import { Toaster } from './components/ui/sonner';
 import ClassicTicketLoader from './components/ui/ClassicTicketLoader';
 import { API_BASE_URL } from './lib/apiClient';
+import { canAccessOrganizerDashboard, isCheckinOnlyUser } from './lib/authAccess';
 
 // HomePage is eager-loaded (entry point — no spinner on first visit)
 import HomePage from './pages/HomePage';
@@ -98,10 +99,7 @@ const CheckInStaffGate = () => {
   useEffect(() => {
     if (!user) return;
     if (user.must_reset_password) return;
-    const requiresCheckinWorkspace =
-      user.role === 'checkin' ||
-      user.role === 'staff' ||
-      Boolean(user.restrict_dashboard_to_assigned_events);
+    const requiresCheckinWorkspace = isCheckinOnlyUser(user);
     if (!requiresCheckinWorkspace) return;
     // Check-in staff should behave like normal attendees, except they
     // should not access organizer-only routes.
@@ -118,7 +116,7 @@ const CheckInStaffGate = () => {
   return null;
 };
 
-const RequireAuth = ({ children, roles }) => {
+const RequireAuth = ({ children, roles, allowOrganizerDashboardAccess = false }) => {
   const { user, isInitializing } = useAuth();
   const location = useLocation();
 
@@ -130,8 +128,12 @@ const RequireAuth = ({ children, roles }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (roles?.length && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+  if (roles?.length) {
+    const allowedByRole = roles.includes(user.role);
+    const allowedByOrganizerAccess = allowOrganizerDashboardAccess && canAccessOrganizerDashboard(user);
+    if (!allowedByRole && !allowedByOrganizerAccess) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return children;
@@ -199,12 +201,12 @@ const AppRoutes = ({ onLocationKey }) => {
         <Route path="/search" element={<Suspense fallback={<PageLoader />}><SearchResultsPage /></Suspense>} />
         <Route path="/organizers/:id" element={<Suspense fallback={<PageLoader />}><OrganizerProfilePage /></Suspense>} />
         <Route path="/edit-event/:slug" element={
-          <RequireAuth roles={organizerRoles}>
+          <RequireAuth roles={organizerRoles} allowOrganizerDashboardAccess>
             <Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>
           </RequireAuth>
         } />
         <Route path="/create-event" element={
-          <RequireAuth roles={organizerRoles}>
+          <RequireAuth roles={organizerRoles} allowOrganizerDashboardAccess>
             <Suspense fallback={<PageLoader />}><CreateEventPage /></Suspense>
           </RequireAuth>
         } />
@@ -226,7 +228,7 @@ const AppRoutes = ({ onLocationKey }) => {
           </RequireAuth>
         } />
         <Route path="/organizer-dashboard" element={
-          <RequireAuth roles={organizerRoles}>
+          <RequireAuth roles={organizerRoles} allowOrganizerDashboardAccess>
             <Suspense fallback={<PageLoader />}><OrganizerDashboardPage /></Suspense>
           </RequireAuth>
         } />
@@ -236,7 +238,7 @@ const AppRoutes = ({ onLocationKey }) => {
           </RequireAuth>
         } />
         <Route path="/organizer/events/:slug/checkin" element={
-          <RequireAuth roles={staffRoles}>
+          <RequireAuth roles={staffRoles} allowOrganizerDashboardAccess>
             <Suspense fallback={<PageLoader />}><CheckInPage /></Suspense>
           </RequireAuth>
         } />

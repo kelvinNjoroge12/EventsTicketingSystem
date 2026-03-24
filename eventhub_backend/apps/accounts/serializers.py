@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from common.validators import validate_upload_image
 from common.tokens import verify_secure_token, email_verification_token_generator
 from django.contrib.auth.tokens import default_token_generator
-from .access import user_requires_assigned_event_scope
+from .access import user_can_access_organizer_dashboard, user_requires_assigned_event_scope
 from .models import OrganizerProfile, OrganizerTeamMember
 
 User = get_user_model()
@@ -97,6 +97,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     assigned_events = serializers.SerializerMethodField()
     assigned_event_details = serializers.SerializerMethodField()
     restrict_dashboard_to_assigned_events = serializers.SerializerMethodField()
+    can_access_organizer_dashboard = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -119,6 +120,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "assigned_events",
             "assigned_event_details",
             "restrict_dashboard_to_assigned_events",
+            "can_access_organizer_dashboard",
             "created_at",
         ]
         read_only_fields = (
@@ -130,6 +132,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "assigned_events",
             "assigned_event_details",
             "restrict_dashboard_to_assigned_events",
+            "can_access_organizer_dashboard",
             "created_at",
         )
 
@@ -213,6 +216,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_restrict_dashboard_to_assigned_events(self, obj):
         return user_requires_assigned_event_scope(obj)
+
+    def get_can_access_organizer_dashboard(self, obj):
+        return user_can_access_organizer_dashboard(obj)
 
     def update(self, instance, validated_data):
         organizer_data = validated_data.pop("organizer_profile", {})

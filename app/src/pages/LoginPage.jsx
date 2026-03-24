@@ -5,6 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import AuthForm from '../components/auth/AuthForm';
 import { useAuth } from '../context/AuthContext';
+import { canAccessOrganizerDashboard, isCheckinOnlyUser } from '../lib/authAccess';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -24,14 +25,10 @@ const LoginPage = () => {
         navigate('/force-password-reset', { replace: true });
       } else if (intendedDestination) {
         navigate(intendedDestination, { replace: true });
-      } else if (
-        user?.role === 'checkin' ||
-        user?.role === 'staff' ||
-        user?.restrict_dashboard_to_assigned_events
-      ) {
-        navigate('/organizer-checkin', { replace: true });
-      } else if (user?.role === 'organizer' || user?.role === 'admin') {
+      } else if (canAccessOrganizerDashboard(user)) {
         navigate('/organizer-dashboard', { replace: true });
+      } else if (isCheckinOnlyUser(user)) {
+        navigate('/organizer-checkin', { replace: true });
       } else {
         navigate('/', { replace: true });
       }

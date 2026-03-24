@@ -3,13 +3,14 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import OrganizerNavbar from './nav/OrganizerNavbar';
 import AttendeeNavbar from './nav/AttendeeNavbar';
+import { canAccessOrganizerDashboard } from '../../lib/authAccess';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
 
-  const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
+  const isOrganizer = canAccessOrganizerDashboard(user);
 
   // Organizer nav is ONLY shown on organizer-specific pages
   const isOrganizerArea = isOrganizer && (

@@ -30,6 +30,7 @@ import OrganizerAttendeesModule from '../components/dashboard/AttendeesModule';
 import CreateEventPage from './CreateEventPage';
 import { api } from '../lib/apiClient';
 import { fetchEvent, fetchPendingEventReviews } from '../lib/eventsApi';
+import { canAccessOrganizerDashboard, isCheckinOnlyUser } from '../lib/authAccess';
 import { toast } from 'sonner';
 
 import ExpenseFormModal from '../components/dashboard/ExpenseFormModal';
@@ -290,13 +291,9 @@ const OrganizerDashboardPage = () => {
     });
   }, []);
 
-  const isStaffUser = user && (
-    user.role === 'checkin' ||
-    user.role === 'staff' ||
-    user.restrict_dashboard_to_assigned_events
-  );
+  const isStaffUser = isCheckinOnlyUser(user);
   const isAdminUser = user && (user.role === 'admin' || user.is_staff);
-  const hasAccess = user && !user.restrict_dashboard_to_assigned_events && (user.role === 'organizer' || user.role === 'admin');
+  const hasAccess = canAccessOrganizerDashboard(user);
   const filterOwnedOrganizerEvents = useCallback((items) => {
     const list = Array.isArray(items) ? items : [];
     if (!user || user.role !== 'organizer') return list;

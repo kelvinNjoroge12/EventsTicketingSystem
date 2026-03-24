@@ -7,6 +7,7 @@ import CustomInput from '../components/ui/CustomInput';
 import CustomButton from '../components/ui/CustomButton';
 import { api } from '../lib/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { canAccessOrganizerDashboard, isCheckinOnlyUser } from '../lib/authAccess';
 
 const ForcePasswordResetPage = () => {
   const navigate = useNavigate();
@@ -45,14 +46,10 @@ const ForcePasswordResetPage = () => {
       updateUser({ must_reset_password: false });
       setIsSuccess(true);
       setTimeout(() => {
-        if (
-          user?.role === 'checkin' ||
-          user?.role === 'staff' ||
-          user?.restrict_dashboard_to_assigned_events
-        ) {
-          navigate('/organizer-checkin', { replace: true });
-        } else if (user?.role === 'organizer' || user?.role === 'admin') {
+        if (canAccessOrganizerDashboard(user)) {
           navigate('/organizer-dashboard', { replace: true });
+        } else if (isCheckinOnlyUser(user)) {
+          navigate('/organizer-checkin', { replace: true });
         } else {
           navigate('/', { replace: true });
         }
@@ -91,7 +88,7 @@ const ForcePasswordResetPage = () => {
                     <CheckCircle className="w-10 h-10 text-[#16A34A]" />
                   </div>
                   <h2 className="text-2xl font-bold text-[#0F172A] mb-2">Password Updated</h2>
-                  <p className="text-[#64748B]">Redirecting you to your check-in workspace...</p>
+                  <p className="text-[#64748B]">Redirecting you to your dashboard...</p>
                 </motion.div>
               ) : (
                 <motion.form

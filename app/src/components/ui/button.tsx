@@ -42,15 +42,17 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  noPress = false,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    noPress?: boolean
   }) {
   const Comp = asChild ? Slot : "button"
   const hasRounded = Boolean(className && /\brounded-/.test(className))
   const radiusClass = hasRounded ? "" : "rounded-2xl"
-  const pressableClass = variant === "link" ? "" : "pressable-btn"
+  const pressableClass = variant === "link" || noPress ? "" : "pressable-btn"
 
   return (
     <Comp

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from rest_framework.permissions import BasePermission
 
+from .access import user_can_access_organizer_dashboard
+
 
 class IsOrganizerRole(BasePermission):
     """Allows any user whose role is 'organizer', regardless of approval status.
@@ -12,11 +14,7 @@ class IsOrganizerRole(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(
-            user
-            and user.is_authenticated
-            and getattr(user, "role", None) in ["organizer", "admin"]
-        )
+        return bool(user and user.is_authenticated and user_can_access_organizer_dashboard(user))
 
 
 class IsOrganizer(BasePermission):
@@ -32,15 +30,20 @@ class IsOrganizer(BasePermission):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-            
+
         role = getattr(user, "role", None)
-        if role == "admin":
+        if getattr(user, "is_staff", False) or role == "admin":
             return True
-            
-        return bool(
-            role == "organizer"
-            and getattr(getattr(user, "organizer_profile", None), "is_approved", False)
-        )
+
+        if not user_can_access_organizer_dashboard(user):
+            return False
+
+        try:
+            profile = user.organizer_profile
+        except Exception:
+            profile = None
+
+        return bool(profile and getattr(profile, "is_approved", False))
 
 
 class IsAdmin(BasePermission):

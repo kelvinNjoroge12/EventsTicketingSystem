@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/apiClient';
 import PageWrapper from '../components/layout/PageWrapper';
+import { canAccessOrganizerDashboard, isCheckinOnlyUser } from '../lib/authAccess';
 
 const QRCameraScanner = ({ onScan, onError, active, paused }) => {
   const videoRef = useRef(null);
@@ -377,8 +378,8 @@ const CheckInPage = () => {
     );
   });
 
-  const isOrganizer = user && (user.role === 'organizer' || user.role === 'admin');
-  const isStaff = user && (user.is_staff || user.role === 'staff' || user.role === 'checkin');
+  const isOrganizer = canAccessOrganizerDashboard(user);
+  const isStaff = isCheckinOnlyUser(user);
   const assignedEventsRaw = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
   const assignedEvents = Array.isArray(assignedEventsRaw) ? assignedEventsRaw : [];
   const isOwnedEvent = Boolean(

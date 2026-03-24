@@ -146,11 +146,11 @@ const FinanceOverview = ({
       <Card className="border border-[#E2E8F0] shadow-none">
         <CardContent className="px-2.5 py-1.5">
           <div className="flex items-center justify-end gap-1.5">
-            <Button variant="outline" onClick={onOpenExpense} className="h-8 px-2.5 text-[11px]">
+            <Button noPress variant="outline" onClick={onOpenExpense} className="h-8 px-2.5 text-[11px]">
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Expense
           </Button>
-            <Button className="h-8 px-2.5 bg-[#C58B1A] hover:bg-[#A56F14] text-white text-[11px]" onClick={onOpenRevenue}>
+            <Button noPress className="h-8 px-2.5 bg-[#C58B1A] hover:bg-[#A56F14] text-white text-[11px]" onClick={onOpenRevenue}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Revenue
           </Button>

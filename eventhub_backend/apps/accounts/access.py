@@ -5,6 +5,32 @@ from django.utils import timezone
 from .models import OrganizerTeamMember
 
 
+def _get_organizer_profile(user):
+    try:
+        return user.organizer_profile
+    except Exception:
+        return None
+
+
+def user_can_access_organizer_dashboard(user) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+
+    role = getattr(user, "role", None)
+    if getattr(user, "is_staff", False) or role == "admin":
+        return True
+    if role == "organizer":
+        return True
+
+    profile = _get_organizer_profile(user)
+    if profile and getattr(profile, "is_approved", False):
+        return True
+
+    from apps.events.models import Event
+
+    return Event.objects.filter(organizer=user).only("id").exists()
+
+
 def get_active_assigned_checkin_events_for_user(user):
     if not user or not user.is_authenticated:
         return []
@@ -36,8 +62,6 @@ def get_active_assigned_checkin_events_for_user(user):
 def user_requires_assigned_event_scope(user) -> bool:
     if not user or not user.is_authenticated:
         return False
-    if getattr(user, "is_staff", False) or getattr(user, "role", None) == "admin":
-        return False
-    if getattr(user, "role", None) == "organizer":
+    if user_can_access_organizer_dashboard(user):
         return False
     return bool(get_active_assigned_checkin_events_for_user(user))
