@@ -188,6 +188,8 @@ def _dispatch_ticket_email_async(order: Order) -> None:
 
 class StripeCreatePaymentIntentView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "checkout"
 
     def post(self, request):
         order_number = (request.data.get("order_number") or "").strip()
@@ -311,6 +313,8 @@ def stripe_webhook(request: HttpRequest) -> HttpResponse:
 
 class MpesaInitiateView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "checkout"
 
     def post(self, request):
         order_number = (request.data.get("order_number") or "").strip()
@@ -363,6 +367,8 @@ def mpesa_callback(request: HttpRequest) -> HttpResponse:
 
 class MpesaQueryView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = "order_lookup"
 
     def post(self, request):
         checkout_request_id = request.data.get("checkout_request_id")

@@ -298,6 +298,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "common.tasks.sync_event_lifecycle_task",
         "schedule": crontab(minute="*/15"),
     },
+    # Purge draft events older than 30 days to prevent DB and storage bloat.
+    "cleanup_abandoned_drafts": {
+        "task": "apps.events.tasks.cleanup_abandoned_drafts",
+        "schedule": crontab(minute=0, hour=3),  # 3 AM daily
+    },
 }
 
 if ENABLE_KEEP_ALIVE_PING:

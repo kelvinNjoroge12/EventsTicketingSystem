@@ -136,14 +136,23 @@ class OrderDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         email = (self.request.query_params.get("email") or "").strip().lower()
+        # The order_number is always available from the URL kwargs.
+        # We scope every query to it so the email parameter can only VERIFY
+        # ownership of that specific order — never enumerate orders across events.
+        order_number = self.kwargs.get(self.lookup_field, "")
 
-        # If email is provided, anyone can look up the order (if the email matches exactly)
+        # Guest (unauthenticated) lookup: email must match the specific order.
         if email:
-            return Order.objects.filter(attendee_email__iexact=email)
+            return Order.objects.filter(
+                order_number=order_number,
+                attendee_email__iexact=email,
+            )
 
-        # Otherwise, if logged in, they can look up their own orders
+        # Authenticated user lookup: must own the order.
         if user and user.is_authenticated:
-            return Order.objects.filter(attendee=user)
+            if user.is_staff or getattr(user, "role", None) == "admin":
+                return Order.objects.filter(order_number=order_number)
+            return Order.objects.filter(order_number=order_number, attendee=user)
 
         return Order.objects.none()
 

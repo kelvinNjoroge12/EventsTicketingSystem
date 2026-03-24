@@ -8,8 +8,8 @@ import stripe
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import transaction
-from django.db.models import Prefetch
+from django.db import models, transaction
+from django.db.models import Prefetch, Q as DjangoQ
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.middleware.csrf import get_token
@@ -153,7 +153,12 @@ def _clear_auth_cookies(response: Response) -> None:
 def _client_ip_from_request(request: Request) -> str | None:
     forwarded = (request.META.get("HTTP_X_FORWARDED_FOR") or "").strip()
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        # Security: Use the LAST IP in the chain (the one inserted by our
+        # trusted reverse-proxy), NOT the first (which is user-controllable).
+        # This prevents attackers from spoofing their IP to bypass rate limits
+        # by sending: X-Forwarded-For: <spoofed-ip>, <real-ip>
+        ips = [ip.strip() for ip in forwarded.split(",") if ip.strip()]
+        return ips[-1] if ips else None
     remote = (request.META.get("REMOTE_ADDR") or "").strip()
     return remote or None
 
@@ -473,10 +478,11 @@ class TwoFactorToggleView(APIView):
     def post(self, request: Request):
         enabled = bool(request.data.get("enabled", False))
         settings_obj, _ = UserSecuritySettings.objects.get_or_create(user=request.user)
+
         if enabled:
-            if settings_obj.two_factor_enabled:
-                settings_obj.two_factor_enabled = False
-                settings_obj.save(update_fields=["two_factor_enabled"])
+            # 2FA is not yet implemented. Return a clear error WITHOUT
+            # mutating state — previously this accidentally disabled 2FA
+            # when a user tried to enable it (logic inversion bug).
             return Response(
                 {
                     "detail": "Two-factor authentication setup is not available yet.",
@@ -486,6 +492,7 @@ class TwoFactorToggleView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # User is disabling 2FA — safely turn it off.
         if settings_obj.two_factor_enabled:
             settings_obj.two_factor_enabled = False
             settings_obj.save(update_fields=["two_factor_enabled"])
@@ -496,16 +503,30 @@ class SessionListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request: Request):
+        # Identify the current session by matching the live refresh token JTI
+        # from the request cookie — not by assuming the newest session is current.
+        current_jti = None
+        refresh_cookie_name = getattr(settings, "JWT_REFRESH_COOKIE", "eventhub_refresh")
+        live_refresh = request.COOKIES.get(refresh_cookie_name)
+        if live_refresh:
+            current_jti = _extract_refresh_jti(live_refresh)
+
         sessions = list(
             UserSession.objects.filter(user=request.user).order_by("-created_at")
         )
-        current_id = sessions[0].id if sessions else None
         data = [
             {
                 "id": session.id,
                 "device": session.device or "Unknown device",
                 "location": session.ip_address or "",
-                "current": session.id == current_id and session.revoked_at is None,
+                "revoked": session.revoked_at is not None,
+                "last_seen": session.last_seen.isoformat() if session.last_seen else None,
+                # A session is "current" if its JTI matches the live cookie AND it's not revoked.
+                "current": (
+                    current_jti is not None
+                    and session.refresh_jti == current_jti
+                    and session.revoked_at is None
+                ),
             }
             for session in sessions
         ]
@@ -912,27 +933,44 @@ class RequestOrganizerRoleView(APIView):
                 {"success": False, "message": "You already have a special role."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
-        organization_name = request.data.get("organization_name", "")
+
+        organization_name = (request.data.get("organization_name") or "").strip()
         if not organization_name:
             organization_name = f"{user.first_name} {user.last_name}'s Organization"
-            
+
         profile, created = OrganizerProfile.objects.get_or_create(
             user=user,
-            defaults={
-                "organization_name": organization_name,
-                "is_approved": False
-            }
+            defaults={"organization_name": organization_name, "is_approved": False}
         )
-        
+
         if not created and profile.is_approved:
             user.role = "organizer"
             user.save(update_fields=["role"])
-            return Response(
-                {"success": True, "message": "You are already approved as an organizer."}
-            )
-            
-        # Give a notification or email to admin in a real app, here we just return success
+            return Response({"success": True, "message": "You are already approved as an organizer."})
+
+        # Notify ALL admin/staff users in-app so the approval queue is never invisible.
+        try:
+            admin_users = User.objects.filter(
+                DjangoQ(is_staff=True) | DjangoQ(role="admin")
+            ).only("id")
+            notifications = [
+                Notification(
+                    recipient=admin,
+                    notification_type="organizer_message",
+                    title="New organizer role request",
+                    message=(
+                        f"{user.get_full_name() or user.email} has requested an organizer account "
+                        f"for '{organization_name}'. Please review and approve or reject."
+                    ),
+                    action_url="/hub-control-99/accounts/organizerprofile/",
+                )
+                for admin in admin_users
+            ]
+            if notifications:
+                Notification.objects.bulk_create(notifications, ignore_conflicts=True)
+        except Exception:
+            logger.exception("Failed to notify admins of organizer request for user %s", user.id)
+
         return Response(
             {"success": True, "message": "Your request to become an organizer has been submitted and is pending approval."}
         )
