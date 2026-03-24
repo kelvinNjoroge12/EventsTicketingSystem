@@ -56,6 +56,13 @@ class OrderCreateSerializer(serializers.Serializer):
     registration = OrderRegistrationInputSerializer(required=False)
 
     def validate(self, attrs):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated and not getattr(user, "is_verified", True):
+            raise serializers.ValidationError(
+                {"attendee_email": "You must verify your email address before purchasing tickets."}
+            )
+
         event = get_object_or_404(Event, slug=attrs["event_slug"], status="published")
         if event.has_ended():
             raise serializers.ValidationError({"event_slug": "This event has already ended."})

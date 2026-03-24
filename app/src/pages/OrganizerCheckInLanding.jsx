@@ -93,16 +93,16 @@ const OrganizerCheckInLanding = () => {
                     <div className="flex-1 min-w-0">
                       <h2 className="text-lg font-semibold text-[#0F172A] truncate">{event.title}</h2>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B] mt-2">
-                        {event.startDate && (
+                        {(event.start_date || event.startDate) && (
                           <span className="inline-flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
-                            {new Date(event.startDate).toLocaleDateString()}
+                            {new Date(event.start_date || event.startDate).toLocaleDateString()}
                           </span>
                         )}
-                        {event.venueName && (
+                        {(event.venue_name || event.venueName) && (
                           <span className="inline-flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5" />
-                            {event.venueName}
+                            {event.venue_name || event.venueName}
                           </span>
                         )}
                       </div>

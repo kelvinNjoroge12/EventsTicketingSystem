@@ -519,7 +519,8 @@ class SessionListView(APIView):
             {
                 "id": session.id,
                 "device": session.device or "Unknown device",
-                "location": session.ip_address or "",
+                "location": "Location unknown",
+                "ip_address": session.ip_address or "",
                 "revoked": session.revoked_at is not None,
                 "last_seen": session.last_seen.isoformat() if session.last_seen else None,
                 # A session is "current" if its JTI matches the live cookie AND it's not revoked.

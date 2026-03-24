@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
@@ -34,7 +34,11 @@ class WaitlistJoinView(APIView):
                 if not event.enable_waitlist:
                     return Response({"detail": "Waitlist is not enabled for this event."}, status=status.HTTP_400_BAD_REQUEST)
 
-                if WaitlistEntry.objects.filter(event=event, email=email).exists():
+                query = Q(email=email)
+                if request.user.is_authenticated:
+                    query |= Q(user=request.user)
+
+                if WaitlistEntry.objects.filter(event=event).filter(query).exists():
                     return Response({"detail": "You are already on the waitlist."}, status=status.HTTP_409_CONFLICT)
 
                 last_pos = (
