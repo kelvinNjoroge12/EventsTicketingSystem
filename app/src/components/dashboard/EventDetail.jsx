@@ -96,6 +96,7 @@ const OrganizerEventDetail = ({
   onDeleteExpense,
   onDeleteRevenue,
   onRefreshEvent,
+  onTabChange,
 }) => {
   const detail = eventDetail || event;
   const [activeTab, setActiveTab] = useState('overview');
@@ -269,7 +270,7 @@ const OrganizerEventDetail = ({
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview" className="text-xs lg:text-sm">Overview</TabsTrigger>
           <TabsTrigger value="tickets" className="text-xs lg:text-sm">Tickets</TabsTrigger>
@@ -855,3 +856,7 @@ const OrganizerEventDetail = ({
 export default OrganizerEventDetail;
 
 
+  const handleTabChange = (nextTab) => {
+    setActiveTab(nextTab);
+    onTabChange?.(nextTab);
+  };

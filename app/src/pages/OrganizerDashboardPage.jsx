@@ -273,10 +273,41 @@ const OrganizerDashboardPage = () => {
   const [financeEventId, setFinanceEventId] = useState('');
   const [modalEventId, setModalEventId] = useState('');
   const mainScrollRef = useRef(null);
+  const scrollDashboardToTop = useCallback(() => {
+    requestAnimationFrame(() => {
+      const container = mainScrollRef.current;
+      if (container && typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: 0, behavior: 'auto' });
+      }
+
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+
+      if (typeof document !== 'undefined') {
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
+    });
+  }, []);
 
   const isStaffUser = user && (user.role === 'checkin' || user.role === 'staff');
   const isAdminUser = user && (user.role === 'admin' || user.is_staff);
   const hasAccess = user && (user.role === 'organizer' || user.role === 'admin');
+  const filterOwnedOrganizerEvents = useCallback((items) => {
+    const list = Array.isArray(items) ? items : [];
+    if (!user || user.role !== 'organizer') return list;
+    const ownerId = String(user.id || '');
+    if (!ownerId) return list;
+    const hasOwnershipMetadata = list.some((item) => item?.organizer?.id || item?.organizer_id);
+    if (!hasOwnershipMetadata) return list;
+
+    return list.filter((item) => {
+      const eventOwnerId = item?.organizer?.id ?? item?.organizer_id ?? null;
+      if (!eventOwnerId) return false;
+      return String(eventOwnerId) === ownerId;
+    });
+  }, [user]);
 
   useEffect(() => {
     if (isStaffUser) {
@@ -328,10 +359,17 @@ const OrganizerDashboardPage = () => {
       // Try primary organizer endpoint first; fall back to /my/ if it fails
       try {
         const data = await api.get('/api/events/organizer/');
-        return apiList(data);
-      } catch {
+        return filterOwnedOrganizerEvents(apiList(data));
+      } catch (error) {
+        if (user?.role === 'organizer') {
+          return [];
+        }
+        const shouldFallback = [400, 403, 404, 405].includes(error?.status);
+        if (!shouldFallback) {
+          throw error;
+        }
         const data = await api.get('/api/events/my/');
-        return apiList(data);
+        return filterOwnedOrganizerEvents(apiList(data));
       }
     },
     enabled: !!hasAccess,
@@ -607,12 +645,8 @@ const OrganizerDashboardPage = () => {
   }, [isAdminUser, navigate, syncTabToUrl]);
 
   useEffect(() => {
-    const container = mainScrollRef.current;
-    if (!container) return;
-    requestAnimationFrame(() => {
-      container.scrollTo({ top: 0, behavior: 'auto' });
-    });
-  }, [currentPage, selectedEventId]);
+    scrollDashboardToTop();
+  }, [currentPage, selectedEventId, location.search, scrollDashboardToTop]);
 
   const getPageTitle = () => {
     switch (currentPage) {
@@ -789,6 +823,7 @@ const OrganizerDashboardPage = () => {
               toast.success('Revenue deleted.');
             }}
             onRefreshEvent={() => queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', selectedEvent?.slug] })}
+            onTabChange={scrollDashboardToTop}
           />
         ) : null;
       case 'checkin':
@@ -815,7 +850,7 @@ const OrganizerDashboardPage = () => {
           </div>
         );
       case 'settings':
-        return <OrganizerSettings events={events} />;
+        return <OrganizerSettings events={events} onTabChange={scrollDashboardToTop} />;
       default:
         return null;
     }

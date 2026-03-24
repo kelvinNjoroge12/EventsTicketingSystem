@@ -167,7 +167,7 @@ const normalizePaymentSettings = (data) => ({
   stripeError: data?.stripe_error ?? '',
 });
 
-const OrganizerSettings = ({ events = [] }) => {
+const OrganizerSettings = ({ events = [], onTabChange }) => {
   const { user, updateUser } = useAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -200,6 +200,10 @@ const OrganizerSettings = ({ events = [] }) => {
       setActiveTab(normalized);
     }
   }, [location.search, allowedSettingsTabs]);
+
+  useEffect(() => {
+    onTabChange?.(activeTab);
+  }, [activeTab, onTabChange]);
 
   const eventOptions = useMemo(
     () => events.map((event) => ({ id: String(event.id), slug: event.slug, label: event.name })),
