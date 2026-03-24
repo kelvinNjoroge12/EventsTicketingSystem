@@ -81,7 +81,7 @@ class OrganizerMiniSerializer(serializers.ModelSerializer):
         return profile.total_attendees if profile else 0
 
 
-class EventTimeStateMixin:
+class EventTimeStateMixin(serializers.Serializer):
     time_state = serializers.SerializerMethodField()
     is_today = serializers.SerializerMethodField()
     is_past = serializers.SerializerMethodField()

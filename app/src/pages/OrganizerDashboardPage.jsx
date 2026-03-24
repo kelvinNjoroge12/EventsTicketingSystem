@@ -381,13 +381,50 @@ const OrganizerDashboardPage = () => {
   const events = useMemo(() => rawEvents.map(normalizeEvent), [rawEvents]);
   const assignedEventsRaw = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
   const assignedCheckinEvents = Array.isArray(assignedEventsRaw) ? assignedEventsRaw : [];
-  const hasCheckinAssignments = assignedCheckinEvents.length > 0;
+  const assignedEventDetailsRaw = user?.assigned_event_details || user?.assignedEventDetails || [];
+  const assignedEventDetails = Array.isArray(assignedEventDetailsRaw) ? assignedEventDetailsRaw : [];
+  const assignedDetailEvents = useMemo(
+    () => assignedEventDetails
+      .filter((eventItem) => eventItem && (eventItem.id || eventItem.slug))
+      .map((eventItem) => normalizeEvent({
+        id: eventItem.id,
+        slug: eventItem.slug,
+        title: eventItem.title || eventItem.name || 'Assigned Event',
+        start_date: eventItem.date || '',
+        start_time: eventItem.time || '',
+        venue_name: eventItem.location || '',
+        city: '',
+        status: eventItem.status || 'published',
+        attendee_count: eventItem.attendee_count || 0,
+      })),
+    [assignedEventDetails]
+  );
+  const hasCheckinAssignments = assignedCheckinEvents.length > 0 || assignedDetailEvents.length > 0;
   const checkinEvents = useMemo(() => {
     if (!hasCheckinAssignments) return events;
-    return events.filter((eventItem) => assignedCheckinEvents.some((value) => (
-      String(value) === String(eventItem.id) || String(value) === String(eventItem.slug)
-    )));
-  }, [assignedCheckinEvents, events, hasCheckinAssignments]);
+    const merged = new Map();
+    const addEvent = (eventItem) => {
+      if (!eventItem) return;
+      const eventId = eventItem.id ? String(eventItem.id) : '';
+      const eventSlug = eventItem.slug ? String(eventItem.slug) : '';
+      const key = eventId ? `id:${eventId}` : (eventSlug ? `slug:${eventSlug}` : '');
+      if (!key || merged.has(key)) return;
+      merged.set(key, eventItem);
+    };
+
+    assignedDetailEvents.forEach(addEvent);
+
+    events.forEach((eventItem) => {
+      const isAssigned = assignedCheckinEvents.some((value) => (
+        String(value) === String(eventItem.id) || String(value) === String(eventItem.slug)
+      ));
+      if (isAssigned) {
+        addEvent(eventItem);
+      }
+    });
+
+    return Array.from(merged.values());
+  }, [assignedCheckinEvents, assignedDetailEvents, events, hasCheckinAssignments]);
 
   const deleteEventMutation = useMutation({
     mutationFn: async (eventItem) => {
