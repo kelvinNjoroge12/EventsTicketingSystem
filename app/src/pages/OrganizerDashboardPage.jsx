@@ -248,6 +248,7 @@ const normalizeEvent = (event) => {
     image,
     category,
     year: parsedDate ? parsedDate.getFullYear() : null,
+    isAssignedCheckinEvent: Boolean(event.isAssignedCheckinEvent),
   };
 };
 const OrganizerDashboardPage = () => {
@@ -402,7 +403,7 @@ const OrganizerDashboardPage = () => {
         venue_name: eventItem.location || '',
         city: '',
         status: eventItem.status || 'published',
-        attendee_count: eventItem.attendee_count || 0,
+        isAssignedCheckinEvent: true,
       })),
     [assignedEventDetails]
   );
@@ -419,19 +420,14 @@ const OrganizerDashboardPage = () => {
       merged.set(key, eventItem);
     };
 
-    assignedDetailEvents.forEach(addEvent);
-
     events.forEach((eventItem) => {
-      const isAssigned = assignedCheckinEvents.some((value) => (
-        String(value) === String(eventItem.id) || String(value) === String(eventItem.slug)
-      ));
-      if (isAssigned) {
-        addEvent(eventItem);
-      }
+      addEvent(eventItem);
     });
 
+    assignedDetailEvents.forEach(addEvent);
+
     return Array.from(merged.values());
-  }, [assignedCheckinEvents, assignedDetailEvents, events, hasCheckinAssignments]);
+  }, [assignedDetailEvents, events, hasCheckinAssignments]);
 
   const deleteEventMutation = useMutation({
     mutationFn: async (eventItem) => {
@@ -876,16 +872,14 @@ const OrganizerDashboardPage = () => {
             <div className="flex items-center gap-2 text-sm text-gray-600 bg-white border border-[#E2E8F0] rounded-xl px-4 py-3">
               <QrCode className="w-4 h-4 text-[#C58B1A]" />
               {hasCheckinAssignments
-                ? 'Choose one of your assigned events to open check-in.'
+                ? 'Choose one of your events or an event assigned to you to open check-in.'
                 : 'Choose an event below to open the check-in screen.'}
             </div>
             <OrganizerMyEvents
               events={checkinEvents}
+              variant="checkin"
               onEventClick={openCheckinForEvent}
               onViewEvent={openPublicEvent}
-              onCreateEvent={handleCreateEvent}
-              onEditEvent={(eventItem) => navigate(`/edit-event/${eventItem.slug}`)}
-              onDeleteEvent={(eventItem) => deleteEventMutation.mutate(eventItem)}
               onCheckInEvent={openCheckinForEvent}
               showStatusFilter={false}
               showCategoryFilter={false}

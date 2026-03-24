@@ -138,8 +138,6 @@ class AttendanceDashboardView(APIView):
 
         total_tickets = 0
         checked_in = 0
-        email_sent_count = 0
-        email_failed_count = 0
         rows = []
 
         for order in orders:
@@ -147,19 +145,11 @@ class AttendanceDashboardView(APIView):
             order_checked_in = sum(1 for t in tickets if t.status == "used")
             total_tickets += len(tickets)
             checked_in += order_checked_in
-            if order.email_sent:
-                email_sent_count += 1
-            elif order.email_error:
-                email_failed_count += 1
-
-            first_ticket = tickets[0] if tickets else None
 
             rows.append({
                 "order_number": order.order_number,
                 "attendee_name": f"{order.attendee_first_name} {order.attendee_last_name}",
                 "attendee_email": order.attendee_email,
-                "attendee_phone": order.attendee_phone,
-                "qr_code_uuid": str(first_ticket.qr_code_data) if first_ticket else "",
                 "tickets": [
                     {
                         "id": str(t.id),
@@ -171,12 +161,6 @@ class AttendanceDashboardView(APIView):
                     }
                     for t in tickets
                 ],
-                "email_sent": order.email_sent,
-                "email_sent_at": order.email_sent_at.isoformat() if order.email_sent_at else None,
-                "email_error": order.email_error or None,
-                "total": str(order.total),
-                "payment_method": order.payment_method,
-                "created_at": order.created_at.isoformat(),
             })
 
         return Response({
@@ -187,8 +171,6 @@ class AttendanceDashboardView(APIView):
                     "total_tickets": total_tickets,
                     "checked_in": checked_in,
                     "not_checked_in": total_tickets - checked_in,
-                    "email_sent": email_sent_count,
-                    "email_failed": email_failed_count,
                 },
                 "attendees": rows,
             }

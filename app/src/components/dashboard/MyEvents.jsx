@@ -71,12 +71,14 @@ const OrganizerMyEvents = ({
   showStatusFilter = true,
   showCategoryFilter = true,
   isLoading = false,
+  variant = 'default',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
+  const isCheckinVariant = variant === 'checkin';
 
   const categories = useMemo(() => {
     const items = events.map((event) => event.category).filter(Boolean);
@@ -205,7 +207,14 @@ const OrganizerMyEvents = ({
                 </div>
               )}
               <div className="absolute top-2 lg:top-3 left-2 lg:left-3">
-                <Badge className={cn('capitalize text-xs bg-white text-[#02338D] border border-[#E2E8F0]')}>{event.status}</Badge>
+                <div className="flex flex-col gap-1.5">
+                  <Badge className={cn('capitalize text-xs bg-white text-[#02338D] border border-[#E2E8F0]')}>{event.status}</Badge>
+                  {isCheckinVariant && event.isAssignedCheckinEvent && (
+                    <Badge className="text-xs bg-[#EEF2FF] text-[#4338CA] border border-[#C7D2FE]">
+                      Assigned For Check-In
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className="absolute top-2 lg:top-3 right-2 lg:right-3">
                 <DropdownMenu>
@@ -237,23 +246,27 @@ const OrganizerMyEvents = ({
                         Check-in
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onEditEvent) onEditEvent(event);
-                      }}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer text-red-600"
-                      onClick={(e) => handleDeleteClick(event, e)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
+                    {!isCheckinVariant && onEditEvent && (
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditEvent(event);
+                        }}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
+                    {!isCheckinVariant && onDeleteEvent && (
+                      <DropdownMenuItem
+                        className="cursor-pointer text-red-600"
+                        onClick={(e) => handleDeleteClick(event, e)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -275,37 +288,60 @@ const OrganizerMyEvents = ({
                 </div>
               </div>
 
-              <div className="mb-3 lg:mb-4">
-                <div className="flex items-center justify-between text-xs lg:text-sm mb-1">
-                  <span className="text-gray-500 flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                    Tickets Sold
-                  </span>
-                  <span className="font-medium text-[#0F172A]">
-                    {event.ticketsSold}/{event.totalTickets || 0}
-                  </span>
+              {isCheckinVariant ? (
+                <div className="flex items-center justify-between gap-3 pt-3 lg:pt-4 border-t border-gray-100">
+                  <Badge variant="outline" className="text-xs">
+                    {event.category || 'General'}
+                  </Badge>
+                  {onCheckInEvent && (
+                    <Button
+                      size="sm"
+                      className="bg-[#02338D] hover:bg-[#022A78] text-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCheckInEvent(event);
+                      }}
+                    >
+                      <QrCode className="w-4 h-4 mr-2" />
+                      Open Check-In
+                    </Button>
+                  )}
                 </div>
-                <div className="h-1.5 lg:h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#02338D] to-[#C58B1A] rounded-full transition-all duration-500"
-                    style={{
-                      width: event.totalTickets ? `${(event.ticketsSold / event.totalTickets) * 100}%` : '0%',
-                    }}
-                  />
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="mb-3 lg:mb-4">
+                    <div className="flex items-center justify-between text-xs lg:text-sm mb-1">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                        Tickets Sold
+                      </span>
+                      <span className="font-medium text-[#0F172A]">
+                        {event.ticketsSold}/{event.totalTickets || 0}
+                      </span>
+                    </div>
+                    <div className="h-1.5 lg:h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#02338D] to-[#C58B1A] rounded-full transition-all duration-500"
+                        style={{
+                          width: event.totalTickets ? `${(event.ticketsSold / event.totalTickets) * 100}%` : '0%',
+                        }}
+                      />
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-between pt-3 lg:pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-[#C58B1A]" />
-                  <span className="font-bold text-[#0F172A] text-sm lg:text-base">
-                    {formatMoney(event.revenue)}
-                  </span>
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {event.category || 'General'}
-                </Badge>
-              </div>
+                  <div className="flex items-center justify-between pt-3 lg:pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-[#C58B1A]" />
+                      <span className="font-bold text-[#0F172A] text-sm lg:text-base">
+                        {formatMoney(event.revenue)}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {event.category || 'General'}
+                    </Badge>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -317,12 +353,20 @@ const OrganizerMyEvents = ({
           <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
             <Calendar className="w-8 h-8 lg:w-10 lg:h-10 text-gray-400" />
           </div>
-          <h3 className="text-base lg:text-lg font-medium text-gray-700 mb-2">No events found</h3>
-          <p className="text-sm text-gray-500 mb-4">Try adjusting your filters or create a new event</p>
-          <Button onClick={onCreateEvent} className="bg-[#C58B1A] text-white hover:bg-[#A56F14]">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Event
-          </Button>
+          <h3 className="text-base lg:text-lg font-medium text-gray-700 mb-2">
+            {isCheckinVariant ? 'No check-in events found' : 'No events found'}
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            {isCheckinVariant
+              ? 'No events are currently available for check-in.'
+              : 'Try adjusting your filters or create a new event'}
+          </p>
+          {!isCheckinVariant && onCreateEvent && (
+            <Button onClick={onCreateEvent} className="bg-[#C58B1A] text-white hover:bg-[#A56F14]">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Event
+            </Button>
+          )}
         </div>
       )}
 

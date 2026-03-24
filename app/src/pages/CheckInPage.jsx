@@ -381,13 +381,15 @@ const CheckInPage = () => {
   const isStaff = user && (user.is_staff || user.role === 'staff' || user.role === 'checkin');
   const assignedEventsRaw = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
   const assignedEvents = Array.isArray(assignedEventsRaw) ? assignedEventsRaw : [];
-  const hasAssignments = assignedEvents.length > 0;
+  const isOwnedEvent = Boolean(
+    event && String(event?.organizer?.id ?? event?.organizer_id ?? '') === String(user?.id ?? '')
+  );
   const isAssigned = !event || assignedEvents.some((value) => (
     String(value) === String(event?.id) ||
     String(value) === String(event?.slug) ||
     String(value) === String(slug)
   ));
-  const organizerHasCheckinAccess = Boolean(isOrganizer && (!hasAssignments || isAssigned));
+  const organizerHasCheckinAccess = Boolean(isOrganizer && (isOwnedEvent || isAssigned));
   const staffHasCheckinAccess = Boolean(isStaff && isAssigned);
   const canAccess = Boolean(user && (organizerHasCheckinAccess || staffHasCheckinAccess));
 

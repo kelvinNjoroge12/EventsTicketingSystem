@@ -38,4 +38,6 @@ def user_requires_assigned_event_scope(user) -> bool:
         return False
     if getattr(user, "is_staff", False) or getattr(user, "role", None) == "admin":
         return False
+    if getattr(user, "role", None) == "organizer":
+        return False
     return bool(get_active_assigned_checkin_events_for_user(user))

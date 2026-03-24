@@ -19,13 +19,6 @@ const OrganizerCheckInLanding = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-    if (assignedEvents.length === 1) {
-      navigate(`/organizer/events/${assignedEvents[0].slug}/checkin`, { replace: true });
-    }
-  }, [user, assignedEvents, navigate]);
-
-  useEffect(() => {
     if (!user || isRefreshing || refreshAttempted) return;
     if (assignedEvents.length > 0) return;
     setIsRefreshing(true);

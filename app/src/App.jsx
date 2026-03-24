@@ -98,11 +98,11 @@ const CheckInStaffGate = () => {
   useEffect(() => {
     if (!user) return;
     if (user.must_reset_password) return;
-    const isStaff =
+    const requiresCheckinWorkspace =
       user.role === 'checkin' ||
       user.role === 'staff' ||
       Boolean(user.restrict_dashboard_to_assigned_events);
-    if (!isStaff) return;
+    if (!requiresCheckinWorkspace) return;
     // Check-in staff should behave like normal attendees, except they
     // should not access organizer-only routes.
     const organizerOnly = [

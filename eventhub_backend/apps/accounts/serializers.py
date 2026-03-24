@@ -128,6 +128,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "must_reset_password",
             "organizer_profile",
             "assigned_events",
+            "assigned_event_details",
             "restrict_dashboard_to_assigned_events",
             "created_at",
         )
@@ -148,8 +149,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def _get_memberships(self, obj):
         prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("team_memberships")
         if prefetched is not None:
-            return prefetched
-        return OrganizerTeamMember.objects.filter(member=obj).prefetch_related("assigned_events")
+            return [membership for membership in prefetched if membership.organizer_id != obj.id]
+        return OrganizerTeamMember.objects.filter(member=obj).exclude(organizer=obj).prefetch_related("assigned_events")
 
     def _is_active_checkin_event(self, event):
         if not event:
@@ -205,6 +206,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
                     "title": getattr(event, "title", "Unknown Event"),
                     "date": date_value,
                     "time": time_value,
+                    "location": getattr(event, "venue_name", "") or getattr(event, "city", ""),
+                    "status": getattr(event, "status", "published"),
                 })
         return details
 
