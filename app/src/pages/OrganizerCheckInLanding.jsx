@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, ExternalLink, MapPin, TicketCheck, RefreshCw } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import CheckInStaffHeader from '../components/organizer/CheckInStaffHeader';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/apiClient';
 
 const OrganizerCheckInLanding = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [assignedEvents, setAssignedEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,23 +17,42 @@ const OrganizerCheckInLanding = () => {
   // This endpoint ONLY returns events that were explicitly assigned to this
   // user by an organizer for check-in. It is completely separate from the
   // organizer dashboard and never leaks other organizers' event data.
-  const fetchAssignedEvents = () => {
+  const fetchAssignedEvents = useCallback(() => {
     setIsLoading(true);
     setError(null);
+    
+    // First, try the explicit API endpoint
     api.get('/api/events/checkin/assigned/')
       .then((data) => {
         const results = data?.results || data || [];
         setAssignedEvents(Array.isArray(results) ? results : []);
       })
       .catch((err) => {
-        setError(err?.message || 'Failed to load assigned events.');
+        // Fallback: Use the user's profile data if the endpoint 404s or fails
+        const fallbackRaw = user?.assigned_events || user?.event_assignments || user?.checkin_events || [];
+        const fallbackDetails = user?.assigned_event_details || user?.assignedEventDetails || [];
+        
+        if (fallbackRaw.length > 0 || fallbackDetails.length > 0) {
+          const normalized = (fallbackDetails.length > 0 ? fallbackDetails : fallbackRaw).map((ev) => ({
+            id: ev.id,
+            slug: ev.slug,
+            title: ev.title || ev.name || 'Assigned Event',
+            start_date: ev.start_date || ev.date || '',
+            venue_name: ev.venue_name || ev.location || '',
+          }));
+          setAssignedEvents(normalized);
+        } else if (err?.status !== 404) {
+           setError(err?.message || 'Failed to load assigned events.');
+        } else {
+           setAssignedEvents([]);
+        }
       })
       .finally(() => setIsLoading(false));
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchAssignedEvents();
-  }, []);
+  }, [fetchAssignedEvents]);
 
   return (
     <PageWrapper className="bg-[#F8FAFC]">

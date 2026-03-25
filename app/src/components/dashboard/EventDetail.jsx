@@ -270,7 +270,10 @@ const OrganizerEventDetail = ({
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
+      <Tabs value={activeTab} onValueChange={(val) => {
+        setActiveTab(val);
+        onTabChange?.(val);
+      }}>
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview" className="text-xs lg:text-sm">Overview</TabsTrigger>
           <TabsTrigger value="tickets" className="text-xs lg:text-sm">Tickets</TabsTrigger>
@@ -856,7 +859,4 @@ const OrganizerEventDetail = ({
 export default OrganizerEventDetail;
 
 
-  const handleTabChange = (nextTab) => {
-    setActiveTab(nextTab);
-    onTabChange?.(nextTab);
-  };
+

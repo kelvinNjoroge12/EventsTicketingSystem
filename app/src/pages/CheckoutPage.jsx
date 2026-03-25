@@ -72,7 +72,7 @@ const CheckoutPage = () => {
 
     const checkQueue = async () => {
       try {
-        const res = await api.post(`/api/payments/events/${slug}/queue/join/`);
+        const res = await api.post(`/api/events/${slug}/waitlist/join/`);
         if (mounted) {
           setQueueState(res);
           setIsJoiningQueue(false);

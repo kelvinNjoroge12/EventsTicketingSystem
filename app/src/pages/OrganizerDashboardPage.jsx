@@ -477,21 +477,44 @@ const OrganizerDashboardPage = () => {
 
   const { data: analyticsData, isLoading: isLoadingAnalytics } = useQuery({
     queryKey: ['organizer_analytics', analyticsFilters],
-    queryFn: () => api.get(`/api/analytics/organizer/summary/${analyticsParams ? `?${analyticsParams}` : ''}`),
+    queryFn: async () => {
+      try {
+        const url = `/api/analytics/organizer/summary/${analyticsParams ? `?${analyticsParams}` : ''}`;
+        return await api.get(url);
+      } catch (err) {
+        if (err?.status === 403) return EMPTY_STATS;
+        throw err;
+      }
+    },
     enabled: !!hasAccess,
     staleTime: 30 * 1000,
   });
 
   const { data: financeStatsData, isLoading: isLoadingFinanceStats } = useQuery({
     queryKey: ['finance_stats'],
-    queryFn: () => api.get('/api/finances/dashboard-stats/'),
+    queryFn: async () => {
+      try {
+        return await api.get('/api/finances/dashboard-stats/');
+      } catch (err) {
+        if (err?.status === 403) return {};
+        throw err;
+      }
+    },
     enabled: !!hasAccess && currentPage === 'finance',
     staleTime: 30 * 1000,
   });
 
   const { data: financeRevenueSeriesData, isLoading: isLoadingFinanceSeries } = useQuery({
     queryKey: ['finance_revenue_series'],
-    queryFn: () => api.get('/api/finances/revenue-series/'),
+    queryFn: async () => {
+      try {
+        const data = await api.get('/api/finances/revenue-series/');
+        return normalizeRevenueSeries(data);
+      } catch (err) {
+        if (err?.status === 403) return [];
+        throw err;
+      }
+    },
     enabled: !!hasAccess && currentPage === 'finance',
     staleTime: 30 * 1000,
   });

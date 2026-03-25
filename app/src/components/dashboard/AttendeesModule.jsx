@@ -87,7 +87,14 @@ const OrganizerAttendeesModule = ({ events = [] }) => {
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['organizer_attendees_module', filters],
-    queryFn: () => api.get(`/api/finances/attendees/?${attendeesParams}`),
+    queryFn: async () => {
+      try {
+        return await api.get(`/api/finances/attendees/?${attendeesParams}`);
+      } catch (err) {
+        if (err?.status === 403) return { results: [], count: 0, total_pages: 1 };
+        throw err;
+      }
+    },
     staleTime: 60 * 1000,
     placeholderData: (previous) => previous,
   });
