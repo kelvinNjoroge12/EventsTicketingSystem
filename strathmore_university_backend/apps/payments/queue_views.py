@@ -36,7 +36,7 @@ def _queue_key(event_id, suffix: str) -> str:
     return f"queue:{event_id}:{suffix}"
 
 
-def _user_token(request) -> str:
+def get_user_queue_token(request) -> str:
     """
     Generate a stable token for the user in this queue session.
     Authenticated users get their user ID. Anonymous users get a fingerprint.
@@ -48,6 +48,15 @@ def _user_token(request) -> str:
     ua = request.META.get("HTTP_USER_AGENT", "")
     fingerprint = hashlib.sha256(f"{ip}:{ua}".encode()).hexdigest()[:16]
     return f"a:{fingerprint}"
+
+
+# Backwards-compatible alias for existing internal usage.
+def _user_token(request) -> str:
+    return get_user_queue_token(request)
+
+
+def is_queue_enabled(event_id) -> bool:
+    return bool(cache.get(_queue_key(event_id, "enabled")))
 
 
 class QueueStatusView(APIView):
@@ -264,7 +273,12 @@ def _issue_purchase_token(event_id, user_token: str) -> str:
     return signer.sign(token_data)
 
 
-def verify_purchase_token(event_id, token: str, max_age: int = 600) -> bool:
+def verify_purchase_token(
+    event_id,
+    token: str,
+    max_age: int = 600,
+    expected_user_token: str | None = None,
+) -> bool:
     """
     Verify a queue purchase token (10-minute expiry by default).
     """
@@ -274,6 +288,36 @@ def verify_purchase_token(event_id, token: str, max_age: int = 600) -> bool:
         data = signer.unsign(token, max_age=max_age)
     except (BadSignature, SignatureExpired):
         return False
-    
-    expected_prefix = f"{event_id}:"
-    return data.startswith(expected_prefix)
+
+    try:
+        token_event_id, token_user = data.split(":", 1)
+    except ValueError:
+        return False
+
+    if str(token_event_id) != str(event_id):
+        return False
+    if expected_user_token and token_user != expected_user_token:
+        return False
+    return True
+
+
+def consume_purchase_token(
+    event_id,
+    token: str,
+    max_age: int = 600,
+    expected_user_token: str | None = None,
+) -> bool:
+    """
+    Marks a purchase token as consumed so it cannot be replayed for multiple orders.
+    """
+    if not verify_purchase_token(
+        event_id=event_id,
+        token=token,
+        max_age=max_age,
+        expected_user_token=expected_user_token,
+    ):
+        return False
+
+    digest = hashlib.sha256(token.encode()).hexdigest()
+    consumed_key = _queue_key(event_id, f"consumed:{digest}")
+    return bool(cache.add(consumed_key, True, timeout=max_age))

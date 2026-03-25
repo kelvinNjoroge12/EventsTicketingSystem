@@ -269,6 +269,7 @@ MPESA_CONSUMER_SECRET = env("MPESA_CONSUMER_SECRET", default="")
 MPESA_SHORTCODE = env("MPESA_SHORTCODE", default="")
 MPESA_PASSKEY = env("MPESA_PASSKEY", default="")
 MPESA_CALLBACK_URL = env("MPESA_CALLBACK_URL", default="")
+MPESA_CALLBACK_SECRET = env("MPESA_CALLBACK_SECRET", default="")
 MPESA_ENVIRONMENT = env("MPESA_ENVIRONMENT", default="sandbox")  # sandbox|production
 
 # Storage (S3 / Cloudflare R2)
@@ -287,6 +288,9 @@ RATELIMIT_ENABLE = env.bool("RATELIMIT_ENABLE", default=True)
 # Payments simulation mode (safe-by-default off unless explicitly enabled per environment)
 ENABLE_SIMULATED_PAYMENTS = env.bool("ENABLE_SIMULATED_PAYMENTS", default=False)
 SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS = env.int("SIMULATED_PAYMENT_TOKEN_MAX_AGE_SECONDS", default=3600)
+
+# Require signed/rotating QR payloads in production by default.
+QR_STRICT_VALIDATION = env.bool("QR_STRICT_VALIDATION", default=not DEBUG)
 
 # Reservation TTL: how long a pending order holds inventory before auto-cancel
 ORDER_RESERVATION_TTL_MINUTES = env.int("ORDER_RESERVATION_TTL_MINUTES", default=15)

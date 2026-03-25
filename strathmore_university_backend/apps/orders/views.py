@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import uuid
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -15,6 +16,11 @@ from rest_framework.response import Response
 
 from apps.tickets.models import TicketType
 from apps.waitlist.models import WaitlistEntry
+from apps.payments.queue_views import (
+    consume_purchase_token,
+    get_user_queue_token,
+    is_queue_enabled,
+)
 from .models import Order, Ticket
 from .serializers import AttendeeTicketSerializer, OrderCreateSerializer, OrderDetailSerializer, OrderPublicDetailSerializer
 from .utils import send_ticket_email, _dispatch_ticket_email_async
@@ -79,6 +85,20 @@ class OrderCreateView(generics.GenericAPIView):
         try:
             with transaction.atomic():
                 event = serializer.validated_data["event"]
+                purchase_token = (serializer.validated_data.get("purchase_token") or "").strip()
+                if is_queue_enabled(event.id):
+                    expected_queue_user = get_user_queue_token(request)
+                    consumed = consume_purchase_token(
+                        event_id=event.id,
+                        token=purchase_token,
+                        expected_user_token=expected_queue_user,
+                    )
+                    if not consumed:
+                        return Response(
+                            {"detail": "Queue token is invalid, expired, or already used."},
+                            status=status.HTTP_409_CONFLICT,
+                        )
+
                 items = serializer.validated_data["items"]
                 ticket_ids = [i["ticket_type_id"] for i in items]
                 # Fetch (not just .exists()) so Postgres actually acquires row locks.
@@ -217,8 +237,16 @@ class TicketQRView(generics.GenericAPIView):
     def get(self, request, qr_code_data, *args, **kwargs):
         # Dynamically generate QR code to bypass any auth/S3 headers from storages
         # This becomes a pure 100% public PNG accessible via a simple HTTP GET.
+        try:
+            parsed_uuid = str(uuid.UUID(str(qr_code_data)))
+        except ValueError:
+            return HttpResponse(status=400)
+
+        from common.qr_security import generate_secure_qr_payload
+        secure_payload = generate_secure_qr_payload(parsed_uuid)
+
         qr = qrcode.QRCode(version=1, box_size=10, border=4)
-        qr.add_data(str(qr_code_data))
+        qr.add_data(secure_payload)
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         
@@ -237,7 +265,31 @@ class TicketVerificationDetailView(generics.GenericAPIView):
 
     def get(self, request, qr_code_data, *args, **kwargs):
         from apps.orders.models import Ticket
-        ticket = get_object_or_404(Ticket.objects.select_related("event", "ticket_type", "order"), qr_code_data=qr_code_data)
+        from common.qr_security import generate_secure_qr_payload, verify_secure_qr_payload
+
+        raw_token = str(qr_code_data).strip()
+        verified_payload = verify_secure_qr_payload(raw_token)
+        if verified_payload:
+            ticket_lookup = verified_payload
+        else:
+            if bool(getattr(settings, "QR_STRICT_VALIDATION", True)):
+                return Response(
+                    {"detail": "Invalid or expired ticket token."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            ticket_lookup = raw_token
+        try:
+            ticket_lookup = str(uuid.UUID(ticket_lookup))
+        except ValueError:
+            return Response(
+                {"detail": "Invalid ticket token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ticket = get_object_or_404(
+            Ticket.objects.select_related("event", "ticket_type", "order"),
+            qr_code_data=ticket_lookup,
+        )
         order = ticket.order
         event = ticket.event
         viewer = request.user if request.user and request.user.is_authenticated else None
@@ -288,7 +340,8 @@ class TicketVerificationDetailView(generics.GenericAPIView):
 
         return Response({
             "id": str(ticket.id),
-            "qr_code_data": str(ticket.qr_code_data),
+            "qr_code_data": generate_secure_qr_payload(str(ticket.qr_code_data)),
+            "checkin_token": generate_secure_qr_payload(str(ticket.qr_code_data)),
             "status": effective_status,
             "attendee_name": ticket.attendee_name if can_view_pii else mask_name(ticket.attendee_name),
             "attendee_email_masked": masked_email,

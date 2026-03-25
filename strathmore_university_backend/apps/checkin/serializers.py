@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -33,22 +34,19 @@ class QRScanSerializer(serializers.Serializer):
         ticket = None
         parsed_uuid = None
 
-        # Try to verify as secure time-bucketed QR payload (issue #9)
+        # Verify as secure time-bucketed QR payload (issue #9)
         from common.qr_security import verify_secure_qr_payload
         verified_uuid_str = verify_secure_qr_payload(raw_value)
-        
+
         if verified_uuid_str:
             try:
                 parsed_uuid = uuid.UUID(verified_uuid_str)
             except ValueError:
                 parsed_uuid = None
-        else:
-            # If verify_secure_qr_payload returned None, it was a secure payload
-            # but fails validation (expired screenshot).
-            if ":" in raw_value:
-                raise serializers.ValidationError("QR code is expired. Please refresh your ticket.")
-            
-            # Allow fallback for manually typed UUIDs or Order Numbers
+        elif ":" in raw_value:
+            raise serializers.ValidationError("QR code is expired. Please refresh your ticket.")
+        elif not bool(getattr(settings, "QR_STRICT_VALIDATION", True)):
+            # Temporary backwards compatibility for legacy UUID-only QR values in non-strict mode.
             try:
                 parsed_uuid = uuid.UUID(raw_value)
             except ValueError:
@@ -58,10 +56,6 @@ class QRScanSerializer(serializers.Serializer):
             ticket = Ticket.objects.select_related("event", "order").filter(
                 qr_code_data=parsed_uuid
             ).first()
-            if not ticket:
-                ticket = Ticket.objects.select_related("event", "order").filter(
-                    id=parsed_uuid
-                ).first()
 
         if ticket is None:
             order = Order.objects.filter(order_number__iexact=raw_value).first()

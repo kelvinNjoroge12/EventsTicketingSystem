@@ -162,6 +162,7 @@ const CheckoutPage = () => {
             attendee_email: attendeeData.email,
           })),
           promo_code: cart.promoCode || null,
+          purchase_token: queueState?.purchase_token || null,
           payment_method: paymentData.paymentMethod || 'card',
           attendee_first_name: attendeeData.firstName,
           attendee_last_name: attendeeData.lastName,

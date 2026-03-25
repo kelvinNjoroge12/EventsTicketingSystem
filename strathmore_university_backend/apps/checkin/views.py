@@ -158,7 +158,6 @@ class AttendanceDashboardView(APIView):
                         "ticket_type": t.ticket_type.name if t.ticket_type else "-",
                         "status": t.status,
                         "qr_code_data": generate_secure_qr_payload(str(t.qr_code_data)),
-                        "qr_code_uuid": str(t.qr_code_data),
                         "checked_in_at": t.checked_in_at.isoformat() if t.checked_in_at else None,
                     }
                     for t in tickets

@@ -376,7 +376,7 @@ const OrganizerDashboardPage = () => {
       }
     },
     enabled: !!hasAccess,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 1000,
     placeholderData: (prev) => prev,
   });
 
@@ -454,14 +454,14 @@ const OrganizerDashboardPage = () => {
     queryKey: ['organizer_event_detail', selectedEvent?.slug],
     queryFn: () => fetchEvent(selectedEvent.slug),
     enabled: !!selectedEvent?.slug,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 15 * 1000,
   });
 
   const { data: reviewQueue = [], isLoading: isLoadingReviewQueue } = useQuery({
     queryKey: ['admin_event_reviews', 'pending'],
     queryFn: () => fetchPendingEventReviews('pending'),
     enabled: !!isAdminUser && currentPage === 'reviews',
-    staleTime: 30 * 1000,
+    staleTime: 15 * 1000,
   });
 
   const analyticsParams = useMemo(() => {
@@ -479,21 +479,21 @@ const OrganizerDashboardPage = () => {
     queryKey: ['organizer_analytics', analyticsFilters],
     queryFn: () => api.get(`/api/analytics/organizer/summary/${analyticsParams ? `?${analyticsParams}` : ''}`),
     enabled: !!hasAccess,
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
   });
 
   const { data: financeStatsData, isLoading: isLoadingFinanceStats } = useQuery({
     queryKey: ['finance_stats'],
     queryFn: () => api.get('/api/finances/dashboard-stats/'),
     enabled: !!hasAccess && currentPage === 'finance',
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
   });
 
   const { data: financeRevenueSeriesData, isLoading: isLoadingFinanceSeries } = useQuery({
     queryKey: ['finance_revenue_series'],
     queryFn: () => api.get('/api/finances/revenue-series/'),
     enabled: !!hasAccess && currentPage === 'finance',
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
   });
 
   const { data: financeExpensesData, isLoading: isLoadingFinanceExpenses } = useQuery({

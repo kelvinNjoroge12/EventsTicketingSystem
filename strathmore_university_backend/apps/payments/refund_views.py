@@ -23,6 +23,7 @@ from apps.tickets.models import TicketType
 from apps.notifications.serializers import create_notification
 from common.audit import log_action
 from .models import Payment
+from .promo_usage import release_promo_code_usage
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,7 @@ class RefundOrderView(APIView):
                         TicketType.objects.filter(id=ticket.ticket_type_id).update(
                             quantity_sold=F("quantity_sold") - 1,
                         )
+                release_promo_code_usage(order)
 
         # Audit log
         log_action(

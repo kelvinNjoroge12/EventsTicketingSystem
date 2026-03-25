@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, MapPin, Clock, Users, Zap, Building2, Mic2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageWrapper from '../components/layout/PageWrapper';
 import StepNav from '../components/organizer/StepNav';
 import OrganizerHeader from '../components/organizer/OrganizerHeader';
@@ -100,6 +100,7 @@ const CreateEventPage = ({
   const navigate = useNavigate();
   const isSubmittingRef = useRef(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const canManagePriority = user?.role === 'admin' || user?.is_staff;
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState('forward');
@@ -677,8 +678,10 @@ const CreateEventPage = ({
       const payload = buildPayload('draft');
       const event = await createEventAndTickets(payload);
       if (event?.slug) {
+        queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
         navigate(`/events/${event.slug}`);
       } else {
+        queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
         navigate('/organizer-dashboard?tab=events');
       }
     } catch (err) {
@@ -701,11 +704,13 @@ const CreateEventPage = ({
         const submittedEvent = await submitEventForReview(event);
         const submitted = normalizeEventPayload(submittedEvent, event?.slug || slug);
         setSubmittedEventSlug(submitted?.slug || event?.slug || slug || '');
+        queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
         setShowSubmissionModal(true);
       } catch (publishErr) {
         const alreadyPending = String(event?.status || '').toLowerCase() === 'pending';
         if (alreadyPending && publishErr?.status === 404) {
           setSubmittedEventSlug(event?.slug || slug || '');
+          queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
           setShowSubmissionModal(true);
           return;
         }

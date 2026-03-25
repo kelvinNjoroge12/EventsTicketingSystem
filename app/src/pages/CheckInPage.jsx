@@ -271,7 +271,8 @@ const CheckInPage = () => {
     setPendingCode(qrCodeData);
     setResult(null);
     try {
-      const data = await api.get(`/api/orders/qr/${qrCodeData}/verify/`);
+      const encodedValue = encodeURIComponent(qrCodeData);
+      const data = await api.get(`/api/orders/qr/${encodedValue}/verify/`);
       if (data?.event?.slug && data.event.slug !== slug) {
         setResult({ type: 'error', message: 'Ticket does not belong to this event.' });
         resetScan();
@@ -285,7 +286,9 @@ const CheckInPage = () => {
         resetScan();
         return;
       }
+      const nextToken = data?.checkin_token || qrCodeData;
       setScanPreview(data);
+      setPendingCode(nextToken);
       setScanState('ready');
     } catch (err) {
       setResult({ type: 'error', message: err?.message || 'Invalid QR code.' });
@@ -324,7 +327,7 @@ const CheckInPage = () => {
     e.preventDefault();
     const val = manualInput.trim();
     if (!val) return;
-    if (isUuid(val)) {
+    if (val.includes(':') || isUuid(val)) {
       verifyTicket(val);
       return;
     }
@@ -332,14 +335,14 @@ const CheckInPage = () => {
   };
 
   const toggleCheckIn = (guest) => {
-    if (guest.scanCode) {
-      submitCheckIn(guest.scanCode);
+    if (guest.id) {
+      submitCheckIn(guest.id.toString());
       return;
     }
     setMode('manual');
     setActiveTab('scan');
     setManualInput(guest.id?.toString() || guest.email || '');
-    setManualHelper('No QR code found. Enter the order number or ticket ID.');
+    setManualHelper('No signed QR token found. Enter the order number for manual check-in.');
   };
 
   const attendees = attendance?.attendees || [];
@@ -362,7 +365,7 @@ const CheckInPage = () => {
       checkedIn,
       checkInTime,
       avatar: initials,
-      scanCode: attendee.qr_code || attendee.qr_code_uuid || attendee.tickets?.[0]?.qr_code_uuid || '',
+      scanCode: attendee.qr_code_data || attendee.qr_code || attendee.tickets?.[0]?.qr_code_data || '',
     };
   });
 
@@ -544,7 +547,7 @@ const CheckInPage = () => {
                             type="text"
                             value={manualInput}
                             onChange={(e) => setManualInput(e.target.value)}
-                            placeholder="e.g. order number or QR code UUID"
+                            placeholder="e.g. order number or signed QR token"
                             className="w-full px-4 py-4 text-base border-2 border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#7C3AED] font-mono text-[#0F172A] placeholder:text-[#CBD5E1]"
                             autoComplete="off"
                           />

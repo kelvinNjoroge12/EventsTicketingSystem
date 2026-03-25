@@ -23,7 +23,8 @@ const TicketVerificationPage = () => {
         const fetchTicket = async () => {
             try {
                 // We're adding a new public GET endpoint for ticket viewing
-                const response = await api.get(`/api/orders/qr/${uuid}/verify/`);
+                const encodedValue = encodeURIComponent(uuid);
+                const response = await api.get(`/api/orders/qr/${encodedValue}/verify/`);
                 if (mounted) {
                     setTicketData(response);
                 }
@@ -61,7 +62,7 @@ const TicketVerificationPage = () => {
         setIsCheckingIn(true);
         try {
             await api.post(`/api/events/${ticketData.event.slug}/checkin/scan/`, {
-                qr_code_data: uuid
+                qr_code_data: ticketData?.checkin_token || uuid
             });
             toast.success('Ticket successfully checked in!');
             // Refresh the ticket data to show updated status

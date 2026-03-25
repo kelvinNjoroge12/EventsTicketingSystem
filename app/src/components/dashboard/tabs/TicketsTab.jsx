@@ -210,7 +210,7 @@ const TicketsTab = ({ slug }) => {
                   type="number"
                   min="1"
                   value={ticketForm.quantity}
-                  onChange={(e) => setTicketForm({ ...ticketForm, quantity: e.target.value })}
+                  onChange={(e) => setTicketForm({ ...ticketForm, quantity: e.target.value === '' ? '' : Math.max(1, Number(e.target.value)) })}
                   placeholder="Total tickets"
                 />
               </div>
@@ -223,7 +223,7 @@ const TicketsTab = ({ slug }) => {
                   type="number"
                   min="0"
                   value={ticketForm.price}
-                  onChange={(e) => setTicketForm({ ...ticketForm, price: e.target.value })}
+                  onChange={(e) => setTicketForm({ ...ticketForm, price: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) })}
                   placeholder="e.g., 2000"
                 />
               </div>

@@ -12,6 +12,7 @@ import {
   getSessionHint,
   getStoredToken,
 } from '../lib/apiClient';
+import { useQueryClient } from '@tanstack/react-query';
 
 const AuthContext = createContext(null);
 
@@ -108,10 +109,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, [setUser]);
 
+  const queryClient = useQueryClient();
+
   const logout = useCallback(async () => {
     const hadSession = getSessionHint() || !!getStoredToken();
     setUserRaw(null);
     setSessionHint(false);
+    
+    if (queryClient) {
+      queryClient.clear();
+    }
+    sessionStorage.removeItem('strathmore_university-cache-v2');
+
     if (!hadSession) {
       return;
     }
@@ -120,7 +129,7 @@ export const AuthProvider = ({ children }) => {
     } catch {
       // ignore
     }
-  }, []);
+  }, [queryClient]);
 
   const updateUser = useCallback((updates) => {
     setUserRaw((prev) => (prev ? normalizeUser({ ...prev, ...updates }) : null));

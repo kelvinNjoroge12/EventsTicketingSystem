@@ -952,9 +952,10 @@ export const TicketsStep = ({ data, onChange, errors }) => {
                                   <label className="block text-xs font-medium text-[#64748B] mb-1">Price ({currency})</label>
                                   <input
                                     type="number"
+                                    min="0"
                                     placeholder="0"
                                     value={ticket.price}
-                                    onChange={(e) => updateTicket(ticketIndex, 'price', parseInt(e.target.value) || 0)}
+                                    onChange={(e) => updateTicket(ticketIndex, 'price', Math.max(0, parseInt(e.target.value) || 0))}
                                     disabled={ticket.type === 'Free'}
                                     className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] disabled:bg-[#F1F5F9] text-sm bg-white"
                                   />
@@ -963,9 +964,10 @@ export const TicketsStep = ({ data, onChange, errors }) => {
                                   <label className="block text-xs font-medium text-[#64748B] mb-1">Quantity Available</label>
                                   <input
                                     type="number"
+                                    min="1"
                                     placeholder="100"
                                     value={ticket.quantity}
-                                    onChange={(e) => updateTicket(ticketIndex, 'quantity', parseInt(e.target.value) || 0)}
+                                    onChange={(e) => updateTicket(ticketIndex, 'quantity', Math.max(1, parseInt(e.target.value) || 0))}
                                     className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
                                   />
                                 </div>

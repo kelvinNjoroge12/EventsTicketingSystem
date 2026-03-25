@@ -1,4 +1,5 @@
 import os
+from django.core.exceptions import ImproperlyConfigured
 from .base import *  # noqa: F403
 
 DEBUG = False
@@ -37,6 +38,11 @@ CORS_ALLOWED_ORIGINS = env.list(
 # Disable wildcard CORS regexes in production unless explicitly provided.
 CORS_ALLOWED_ORIGIN_REGEXES = env.list("CORS_ALLOWED_ORIGIN_REGEXES", default=[])
 ENABLE_SIMULATED_PAYMENTS = env.bool("ENABLE_SIMULATED_PAYMENTS", default=False)  # noqa: F405
+
+if MPESA_ENVIRONMENT == "production" and not MPESA_CALLBACK_SECRET:  # noqa: F405
+    raise ImproperlyConfigured(
+        "MPESA_CALLBACK_SECRET must be set when MPESA_ENVIRONMENT=production."
+    )
 
 # Security headers
 SECURE_HSTS_SECONDS = 31536000
@@ -92,11 +98,17 @@ if _redis_url:
     }
 
 # â”€â”€ Celery: ALWAYS run async in production (issue #2) â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# Even without Redis, we set to False so tasks fail-loud rather than
-# silently blocking the request thread. The Celery worker process
-# must be running (see Procfile: `celery -A config worker ...`).
-CELERY_TASK_ALWAYS_EAGER = False
-CELERY_TASK_EAGER_PROPAGATES = False
+# Render free-tier mode runs only a web service (no worker/beat).
+# In this mode we can execute Celery tasks inline to keep critical
+# paths like ticket email delivery working.
+RENDER_FREE_MODE = env.bool("RENDER_FREE_MODE", default=False)  # noqa: F405
+if RENDER_FREE_MODE:
+    ASYNC_TICKET_EMAIL = False  # noqa: F405
+    CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)  # noqa: F405
+    CELERY_TASK_EAGER_PROPAGATES = env.bool("CELERY_TASK_EAGER_PROPAGATES", default=False)  # noqa: F405
+else:
+    CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)  # noqa: F405
+    CELERY_TASK_EAGER_PROPAGATES = env.bool("CELERY_TASK_EAGER_PROPAGATES", default=False)  # noqa: F405
 
 # â”€â”€ Extra throttle scopes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["promo_code_lookup"] = "10/minute"  # noqa: F405

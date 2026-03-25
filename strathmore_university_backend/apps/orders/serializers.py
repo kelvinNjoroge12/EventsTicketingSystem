@@ -9,8 +9,15 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.events.models import Event
+from apps.payments.queue_views import (
+    get_user_queue_token,
+    is_queue_enabled,
+    verify_purchase_token,
+)
+from apps.payments.promo_usage import consume_promo_code_usage
 from apps.payments.simulation import issue_simulation_token
 from apps.tickets.models import PromoCode, TicketType, RegistrationCategory, RegistrationQuestion, School, Course
+from common.qr_security import generate_secure_qr_payload
 from .models import Order, OrderItem, Ticket, OrderRegistration, OrderAnswer
 # send_ticket_email imported in view to decouple from transaction.atomic()
 
@@ -48,6 +55,7 @@ class OrderCreateSerializer(serializers.Serializer):
     event_slug = serializers.SlugField()
     items = OrderItemInputSerializer(many=True)
     promo_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    purchase_token = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     payment_method = serializers.ChoiceField(choices=[("card", "Card"), ("stripe", "Stripe"), ("free", "Free"), ("mpesa", "M-Pesa")])
     attendee_first_name = serializers.CharField(max_length=150)
     attendee_last_name = serializers.CharField(max_length=150)
@@ -80,6 +88,20 @@ class OrderCreateSerializer(serializers.Serializer):
         if event.has_ended():
             raise serializers.ValidationError({"event_slug": "This event has already ended."})
         attrs["event"] = event
+
+        purchase_token = (attrs.get("purchase_token") or "").strip()
+        if is_queue_enabled(event.id):
+            expected_queue_user = get_user_queue_token(request)
+            if not purchase_token or not verify_purchase_token(
+                event_id=event.id,
+                token=purchase_token,
+                expected_user_token=expected_queue_user,
+            ):
+                raise serializers.ValidationError(
+                    {"purchase_token": "Valid queue purchase token is required while this event queue is active."}
+                )
+        attrs["purchase_token"] = purchase_token
+
         items = attrs["items"]
         if not items:
             raise serializers.ValidationError({"items": "At least one ticket item is required."})
@@ -288,6 +310,7 @@ class OrderCreateSerializer(serializers.Serializer):
         if is_free_order:
             order.status = "confirmed"
             order.save(update_fields=["status"])
+            consume_promo_code_usage(order)
             # For each item, move reserved -> sold and create individual Ticket rows
             for item in order.items.select_related("ticket_type"):
                 tt = item.ticket_type
@@ -434,6 +457,7 @@ class OrderPublicDetailSerializer(serializers.ModelSerializer):
 class AttendeeTicketSerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source="order.order_number", read_only=True)
     purchased_at = serializers.DateTimeField(source="order.created_at", read_only=True)
+    qr_code_data = serializers.SerializerMethodField()
     ticket_type_name = serializers.SerializerMethodField()
     qr_image_url = serializers.SerializerMethodField()
     ticket_url = serializers.SerializerMethodField()
@@ -461,6 +485,9 @@ class AttendeeTicketSerializer(serializers.ModelSerializer):
     def get_ticket_type_name(self, obj: Ticket):
         return obj.ticket_type.name if obj.ticket_type else obj.order_item.ticket_type_name
 
+    def get_qr_code_data(self, obj: Ticket):
+        return generate_secure_qr_payload(str(obj.qr_code_data))
+
     def get_qr_image_url(self, obj: Ticket):
         request = self.context.get("request")
         relative_url = f"/api/orders/qr/{obj.qr_code_data}/"
@@ -470,7 +497,8 @@ class AttendeeTicketSerializer(serializers.ModelSerializer):
 
     def get_ticket_url(self, obj: Ticket):
         request = self.context.get("request")
-        relative_url = f"/t/{obj.qr_code_data}"
+        secure_payload = generate_secure_qr_payload(str(obj.qr_code_data))
+        relative_url = f"/t/{secure_payload}"
         if request:
             return request.build_absolute_uri(relative_url)
         return relative_url

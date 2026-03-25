@@ -395,7 +395,11 @@ def _dispatch_ticket_email_async(order) -> None:
     order_id = str(order.pk)
 
     def _enqueue():
-        send_ticket_email_task.delay(order_id)
+        try:
+            send_ticket_email_task.delay(order_id)
+        except Exception:
+            logger.exception("Celery enqueue failed for order %s; falling back to inline email", order.order_number)
+            send_ticket_email(order)
 
     try:
         transaction.on_commit(_enqueue)

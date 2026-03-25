@@ -257,14 +257,7 @@ const AttendeeForm = ({
 
       {/* Category-Specific Registration */}
       {registration && (
-        <div className="space-y-4 p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-[#0F172A]">Registration Details</p>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white border border-[#E2E8F0] text-[#64748B]">
-              {registration.categoryLabel || registration.category_label}
-            </span>
-          </div>
-
+        <>
           {fixedFields.requireStudentEmail && (
             <CustomInput
               label="Student Email"
@@ -411,7 +404,7 @@ const AttendeeForm = ({
               ))}
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Additional Attendees */}
