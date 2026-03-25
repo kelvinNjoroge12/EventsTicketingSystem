@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BrowserQRCodeReader } from '@zxing/browser';
 import {
   QrCode,
   Keyboard,
@@ -26,8 +27,8 @@ import { canAccessOrganizerDashboard, isCheckinOnlyUser } from '../lib/authAcces
 
 const QRCameraScanner = ({ onScan, onError, active, paused }) => {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const scanIntervalRef = useRef(null);
+  const readerRef = useRef(null);
+  const controlsRef = useRef(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const onScanRef = useRef(onScan);
@@ -43,36 +44,90 @@ const QRCameraScanner = ({ onScan, onError, active, paused }) => {
     pausedRef.current = paused;
   }, [paused]);
 
+  const stopCamera = useCallback(() => {
+    if (controlsRef.current) {
+      controlsRef.current.stop();
+      controlsRef.current = null;
+    }
+    const video = videoRef.current;
+    const stream = video?.srcObject;
+    if (stream && typeof stream.getTracks === 'function') {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    if (video) {
+      video.srcObject = null;
+    }
+    setCameraReady(false);
+  }, []);
+
   const startCamera = useCallback(async () => {
-    if (streamRef.current || isStartingRef.current) return;
-    isStartingRef.current = true;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setCameraReady(true);
-      }
-    } catch (err) {
-      const msg = 'Camera access denied or not available on this device. Use manual entry.';
+    if (controlsRef.current || isStartingRef.current || !videoRef.current) return;
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      const msg = 'Camera not supported on this browser. Use manual entry.';
       setCameraError(msg);
-      if (onError) onError(msg);
+      onError?.(msg);
+      return;
+    }
+
+    isStartingRef.current = true;
+    setCameraError('');
+
+    if (!readerRef.current) {
+      readerRef.current = new BrowserQRCodeReader(undefined, {
+        delayBetweenScanAttempts: 140,
+        delayBetweenScanSuccess: 700,
+        tryPlayVideoTimeout: 3000,
+      });
+    }
+
+    const readCallback = (result, error) => {
+      if (pausedRef.current) return;
+      if (result) {
+        const value = result.getText()?.trim();
+        if (!value) return;
+        const now = Date.now();
+        const last = lastScanRef.current;
+        if (last.value !== value || now - last.time > 2000) {
+          lastScanRef.current = { value, time: now };
+          onScanRef.current?.(value);
+        }
+        return;
+      }
+
+      if (!error) return;
+      const kind = typeof error.getKind === 'function' ? error.getKind() : error.name;
+      const isRecoverable = kind === 'NotFoundException' || kind === 'ChecksumException' || kind === 'FormatException';
+      if (!isRecoverable) {
+        console.warn('Scanner decode warning:', error);
+      }
+    };
+
+    const preferredConstraints = {
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    };
+    const fallbackConstraints = { audio: false, video: true };
+
+    try {
+      const controls = await readerRef.current.decodeFromConstraints(
+        preferredConstraints,
+        videoRef.current,
+        readCallback
+      ).catch(() => readerRef.current.decodeFromConstraints(fallbackConstraints, videoRef.current, readCallback));
+      controlsRef.current = controls;
+      setCameraReady(true);
+    } catch (err) {
+      const msg = 'Unable to start camera scanner. Check camera permissions and close other camera apps.';
+      setCameraError(msg);
+      onError?.(msg);
     } finally {
       isStartingRef.current = false;
     }
   }, [onError]);
-
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-    }
-    if (scanIntervalRef.current) clearTimeout(scanIntervalRef.current);
-    setCameraReady(false);
-    streamRef.current = null;
-  }, []);
 
   useEffect(() => {
     if (!active) {
@@ -80,34 +135,6 @@ const QRCameraScanner = ({ onScan, onError, active, paused }) => {
       return undefined;
     }
     startCamera();
-
-    if ('BarcodeDetector' in window && videoRef.current) {
-      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-      const scanLoop = async () => {
-        if (!videoRef.current) return;
-        if (pausedRef.current || videoRef.current.readyState !== 4) {
-          scanIntervalRef.current = setTimeout(scanLoop, 350);
-          return;
-        }
-        try {
-          const barcodes = await detector.detect(videoRef.current);
-          if (barcodes.length > 0) {
-            const value = barcodes[0].rawValue;
-            const now = Date.now();
-            const last = lastScanRef.current;
-            if (last.value !== value || now - last.time > 2000) {
-              lastScanRef.current = { value, time: now };
-              onScanRef.current?.(value);
-            }
-          }
-        } catch {
-          // ignore frame errors
-        }
-        scanIntervalRef.current = setTimeout(scanLoop, 350);
-      };
-      scanIntervalRef.current = setTimeout(scanLoop, 350);
-    }
-
     return () => stopCamera();
   }, [active, startCamera, stopCamera]);
 
@@ -122,7 +149,7 @@ const QRCameraScanner = ({ onScan, onError, active, paused }) => {
 
   return (
     <div className="relative rounded-2xl overflow-hidden bg-black">
-      <video ref={videoRef} className="w-full max-h-72 object-cover" muted playsInline />
+      <video ref={videoRef} className="w-full max-h-72 object-cover" muted playsInline autoPlay />
       {cameraReady && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-48 h-48 border-2 border-white rounded-2xl relative">
