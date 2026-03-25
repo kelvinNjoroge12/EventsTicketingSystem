@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useCallback, useEffect } fr
 
 const CartContext = createContext(null);
 
-const STORAGE_KEY = 'eventhub_cart';
+const STORAGE_KEY = 'strathmore_university_cart';
 
 const toCents = (value) => Math.round(Number(value || 0) * 100);
 const fromCents = (value) => Number((value / 100).toFixed(2));
@@ -51,7 +51,7 @@ export const CartProvider = ({ children }) => {
         return buildCart(item.eventSlug, item.eventTitle, item.themeColor, item.accentColor, [item], null, 0, null, {});
       }
 
-      // Existing cart for same event — merge items
+      // Existing cart for same event â€” merge items
       const existingItems = prev ? [...prev.items] : [];
       const idx = existingItems.findIndex(i => i.ticketTypeId === item.ticketTypeId);
 
@@ -139,7 +139,7 @@ export const CartProvider = ({ children }) => {
     });
   }, []);
 
-  // ── Backward compatibility ──
+  // â”€â”€ Backward compatibility â”€â”€
   // Many components still expect cart.ticketTypeId, cart.quantity, cart.unitPrice, cart.ticketType
   // We provide these as computed values from the first item for backward compat
   const compatCart = cart ? {

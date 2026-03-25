@@ -1,16 +1,16 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// ──────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Security: The JWT access token lives ONLY in memory.
 // Storing it in localStorage would expose it to XSS attacks.
 // The HttpOnly refresh cookie handles persistence across sessions.
 // We keep only a boolean session-hint flag in localStorage so we
 // know whether to attempt a silent refresh on page load.
-// ──────────────────────────────────────────────────────────────
-const HAS_SESSION_KEY = "eventhub_has_session";
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const HAS_SESSION_KEY = "strathmore_university_has_session";
 
-// In-memory token store — cleared on every page reload (intentional).
+// In-memory token store â€” cleared on every page reload (intentional).
 // The refresh cookie rehydrates it transparently via refreshAccessToken().
 let _accessToken = null;
 
@@ -30,7 +30,7 @@ export const setSessionHint = (enabled) => {
     } else {
       localStorage.removeItem(HAS_SESSION_KEY);
       // Also remove the legacy token key if it was ever stored (migration safety)
-      localStorage.removeItem("eventhub_access_token");
+      localStorage.removeItem("strathmore_university_access_token");
       _accessToken = null;
     }
   } catch {
@@ -40,15 +40,15 @@ export const setSessionHint = (enabled) => {
 
 // One-time migration: purge the old insecure localStorage token key
 try {
-  if (typeof localStorage !== "undefined" && localStorage.getItem("eventhub_access_token")) {
-    localStorage.removeItem("eventhub_access_token");
+  if (typeof localStorage !== "undefined" && localStorage.getItem("strathmore_university_access_token")) {
+    localStorage.removeItem("strathmore_university_access_token");
   }
 } catch { /* ignore */ }
 
 /** Returns the current in-memory access token (never touches localStorage). */
 export const getStoredToken = () => _accessToken;
 
-/** Stores the access token in memory only — NOT in localStorage. */
+/** Stores the access token in memory only â€” NOT in localStorage. */
 export const setStoredToken = (token) => {
   _accessToken = token || null;
 };

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Ticket, Calendar, MapPin, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Ticket, Calendar, MapPin, ExternalLink, ShieldCheck, RotateCcw, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import PageWrapper from '../components/layout/PageWrapper';
 import { api } from '../lib/apiClient';
+import { toast } from 'sonner';
 
 const formatEventDate = (event) => {
     if (!event?.start_date) {
@@ -23,6 +25,9 @@ const formatEventDate = (event) => {
 const MyTicketsPage = () => {
     const [tickets, setTickets] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [refundModal, setRefundModal] = useState(null);
+    const [refundReason, setRefundReason] = useState('');
+    const [isRefunding, setIsRefunding] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -42,6 +47,26 @@ const MyTicketsPage = () => {
             mounted = false;
         };
     }, []);
+
+    const handleRefundRequest = async () => {
+        if (!refundModal?.orderNumber) return;
+        setIsRefunding(true);
+        try {
+            await api.post(`/api/payments/refund/`, {
+                order_number: refundModal.orderNumber,
+                reason: refundReason || 'Requested by attendee',
+            });
+            toast.success('Refund request submitted successfully. You will receive a confirmation email.');
+            setTickets((prev) => prev.filter((t) => t.order_number !== refundModal.orderNumber));
+            setRefundModal(null);
+            setRefundReason('');
+        } catch (err) {
+            const msg = err?.response?.detail || err?.message || 'Refund request failed. Please try again.';
+            toast.error(msg);
+        } finally {
+            setIsRefunding(false);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -148,6 +173,13 @@ const MyTicketsPage = () => {
                                                 View Event
                                             </Link>
                                         )}
+                                        <button
+                                            onClick={() => setRefundModal({ orderNumber: ticket.order_number, eventTitle: event?.title || 'this event' })}
+                                            className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors ml-auto"
+                                        >
+                                            <RotateCcw className="w-4 h-4" />
+                                            Refund
+                                        </button>
                                     </div>
                                 </div>
                             );
@@ -155,9 +187,73 @@ const MyTicketsPage = () => {
                     </div>
                 )}
             </div>
+
+            {/* Refund Confirmation Modal */}
+            <AnimatePresence>
+                {refundModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                        onClick={() => !isRefunding && setRefundModal(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-[#0F172A]">Request Refund</h3>
+                                <button
+                                    onClick={() => !isRefunding && setRefundModal(null)}
+                                    className="p-1 rounded-lg hover:bg-gray-100"
+                                >
+                                    <X className="w-5 h-5 text-[#64748B]" />
+                                </button>
+                            </div>
+                            <p className="text-sm text-[#64748B] mb-4">
+                                Are you sure you want to request a refund for <strong>{refundModal.eventTitle}</strong>?
+                                This action cannot be undone.
+                            </p>
+                            <textarea
+                                value={refundReason}
+                                onChange={(e) => setRefundReason(e.target.value)}
+                                placeholder="Why are you requesting a refund? (optional)"
+                                className="w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D] mb-4 resize-none"
+                                rows={3}
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setRefundModal(null)}
+                                    disabled={isRefunding}
+                                    className="flex-1 py-2.5 rounded-xl border border-[#E2E8F0] text-sm font-medium text-[#0F172A] hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleRefundRequest}
+                                    disabled={isRefunding}
+                                    className="flex-1 py-2.5 rounded-xl bg-red-600 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {isRefunding ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        'Confirm Refund'
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </PageWrapper>
     );
 };
 
 export default MyTicketsPage;
-

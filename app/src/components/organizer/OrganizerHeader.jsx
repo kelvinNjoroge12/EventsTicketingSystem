@@ -93,8 +93,8 @@ const OrganizerHeader = ({
   }, [notificationsData]);
 
   const storageKey = user?.id
-    ? `eventhub.notifications.cleared.${user.id}`
-    : 'eventhub.notifications.cleared.anon';
+    ? `strathmore_university.notifications.cleared.${user.id}`
+    : 'strathmore_university.notifications.cleared.anon';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

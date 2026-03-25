@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'eventhub_saved_events';
+const STORAGE_KEY = 'strathmore_university_saved_events';
 
 const normalizeEntry = (entry) => {
   if (!entry) return null;

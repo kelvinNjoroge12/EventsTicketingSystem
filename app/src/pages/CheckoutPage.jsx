@@ -32,6 +32,11 @@ const CheckoutPage = () => {
   const [attendeeData, setAttendeeData] = useState(null);
   const [orderContext, setOrderContext] = useState(null);
   const [error, setError] = useState('');
+  const [mpesaPolling, setMpesaPolling] = useState(false);
+  const [mpesaCountdown, setMpesaCountdown] = useState(60);
+
+  const [queueState, setQueueState] = useState(null);
+  const [isJoiningQueue, setIsJoiningQueue] = useState(true);
 
   const steps = [
     { id: 'attendee', number: 1, label: 'Your Details' },
@@ -59,6 +64,37 @@ const CheckoutPage = () => {
       navigate(`/events/${slug}`);
     }
   }, [cart, slug, event, navigate]);
+
+  // Virtual Queue polling
+  useEffect(() => {
+    let mounted = true;
+    let pollInterval;
+
+    const checkQueue = async () => {
+      try {
+        const res = await api.post(`/api/payments/events/${slug}/queue/join/`);
+        if (mounted) {
+          setQueueState(res);
+          setIsJoiningQueue(false);
+          // Auto-poll every 10 seconds if still in queue and cannot purchase
+          if (res?.queue_active && !res?.can_purchase) {
+             pollInterval = setTimeout(checkQueue, 10000);
+          }
+        }
+      } catch (err) {
+        // If queue fails (e.g., 404 or down), fail-open to not block checkout
+        console.error('Queue error:', err);
+        if (mounted) setIsJoiningQueue(false);
+      }
+    };
+
+    if (slug) checkQueue();
+
+    return () => {
+      mounted = false;
+      if (pollInterval) clearTimeout(pollInterval);
+    };
+  }, [slug]);
 
   // ── Step 1: Attendee details ─────────────────────────────────
   // Just store locally and advance — no API call needed here.
@@ -232,15 +268,27 @@ const CheckoutPage = () => {
           ...confirmationPayload,
           phone: paymentData.mpesaPhone,
         });
-        setError('M-Pesa prompt sent. Waiting for confirmation on your phone...');
+        setMpesaPolling(true);
+        setMpesaCountdown(60);
+        const countdownInterval = setInterval(() => {
+          setMpesaCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
         const checkoutRequestId =
           mpesaResponse?.checkout_request_id || mpesaResponse?.checkoutRequestId || mpesaResponse?.id;
-        await pollMpesaStatus(checkoutRequestId);
-        await waitForOrderConfirmation(currentOrderContext.orderNumber, attendeeData.email);
-        setIsProcessing(false);
-        navigate(`/confirmation/${currentOrderContext.orderNumber}?email=${encodeURIComponent(attendeeData.email)}`, {
-          state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
-        });
+        try {
+          await pollMpesaStatus(checkoutRequestId);
+          await waitForOrderConfirmation(currentOrderContext.orderNumber, attendeeData.email);
+          clearInterval(countdownInterval);
+          setMpesaPolling(false);
+          setIsProcessing(false);
+          navigate(`/confirmation/${currentOrderContext.orderNumber}?email=${encodeURIComponent(attendeeData.email)}`, {
+            state: { event, orderId: currentOrderContext.orderNumber, attendeeData, paymentData, cart },
+          });
+        } catch (mpesaErr) {
+          clearInterval(countdownInterval);
+          setMpesaPolling(false);
+          throw mpesaErr;
+        }
         return;
       }
 
@@ -270,12 +318,67 @@ const CheckoutPage = () => {
   const stripeEnabled = Boolean(STRIPE_PUBLISHABLE_KEY);
 
   // Loading
-  if (!event || !cart) {
+  if (!event || !cart || isJoiningQueue) {
     return (
       <PageWrapper>
         <div className="max-w-7xl mx-auto px-4 py-24 flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-[#02338D]" />
-          <p className="text-[#64748B]">Loading checkout...</p>
+          <p className="text-[#64748B]">{isJoiningQueue ? 'Checking queue status...' : 'Loading checkout...'}</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Virtual Queue Waiting Room UI
+  if (queueState?.queue_active && !queueState?.can_purchase) {
+    return (
+      <PageWrapper>
+        <div className="w-full max-w-lg mx-auto px-4 py-16 sm:py-24">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl shadow-xl border border-[#E2E8F0] p-8 text-center overflow-hidden relative"
+          >
+            {/* Background Accent */}
+            <div className="absolute top-0 left-0 w-full h-2 bg-[#02338D]" />
+            
+            <div className="w-20 h-20 bg-[#EFF6FF] text-[#02338D] mx-auto rounded-full flex items-center justify-center mb-6">
+              <svg className="w-10 h-10 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-[#0F172A] mb-3">You are in line</h2>
+            <p className="text-[#64748B] mb-8">
+              Due to high demand, you have been placed in a virtual queue. Please do not refresh this page.
+            </p>
+            
+            <div className="bg-[#F8FAFC] rounded-2xl p-6 mb-8 border border-[#E2E8F0]">
+              <div className="text-[#64748B] text-sm font-medium mb-1 uppercase tracking-wider">Your Position</div>
+              <div className="text-5xl font-extrabold text-[#0F172A] tabular-nums tracking-tight">
+                #{queueState.position?.toLocaleString() || '...'}
+              </div>
+              {queueState.ahead_of_you !== undefined && (
+                <div className="text-sm font-medium text-[#02338D] mt-3 flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#02338D] animate-ping" />
+                  {queueState.ahead_of_you.toLocaleString()} people ahead of you
+                </div>
+              )}
+            </div>
+            
+            {queueState.estimated_wait_seconds > 0 && (
+              <div className="text-sm text-[#475569] bg-white border border-[#CBD5E1] rounded-xl py-3 px-4 flex items-center justify-center gap-2 mx-auto inline-flex">
+                <svg className="w-4 h-4 text-[#64748B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Estimated wait time: <span className="font-semibold text-[#0F172A]">~{Math.ceil(queueState.estimated_wait_seconds / 60)} mins</span>
+              </div>
+            )}
+            
+            <p className="text-xs text-[#94A3B8] mt-6">
+              When it is your turn, you will automatically be directed to checkout.
+            </p>
+          </motion.div>
         </div>
       </PageWrapper>
     );
@@ -291,6 +394,39 @@ const CheckoutPage = () => {
         <div className="mb-6">
           <StepIndicator steps={steps} currentStep={currentStep} themeColor={themeColor} />
         </div>
+
+        {/* M-Pesa Polling Overlay */}
+        <AnimatePresence>
+          {mpesaPolling && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[#4CAF50]/10 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-[#4CAF50] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-[#0F172A] mb-2">Check Your Phone</h3>
+                <p className="text-[#64748B] text-sm mb-4">
+                  An M-Pesa prompt has been sent to your phone. Enter your PIN to complete payment.
+                </p>
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-[#4CAF50] animate-ping" />
+                  <span className="text-sm font-medium text-[#4CAF50]">Waiting for confirmation...</span>
+                </div>
+                <div className="text-3xl font-bold text-[#0F172A] tabular-nums">
+                  0:{mpesaCountdown.toString().padStart(2, '0')}
+                </div>
+                <p className="text-xs text-[#94A3B8] mt-2">Do not close this page</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Error Banner */}
         <AnimatePresence>

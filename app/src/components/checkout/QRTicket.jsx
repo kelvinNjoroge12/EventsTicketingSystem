@@ -74,7 +74,7 @@ const QRTicket = ({
       <div className="p-6 flex flex-col items-center">
         <div className="relative w-48 h-48 bg-white p-2 rounded-xl border border-[#E2E8F0] flex items-center justify-center">
           <QRCodeSVG
-            value={`eventhub:order:${orderId}`}
+            value={`Strathmore University:order:${orderId}`}
             size={160}
             level="M"
             fgColor="#0F172A"

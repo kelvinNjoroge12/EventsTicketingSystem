@@ -1,4 +1,4 @@
-﻿diff --git a/app/src/components/checkout/AttendeeForm.jsx b/app/src/components/checkout/AttendeeForm.jsx
+diff --git a/app/src/components/checkout/AttendeeForm.jsx b/app/src/components/checkout/AttendeeForm.jsx
 index 776d3e7..93e7afe 100644
 --- a/app/src/components/checkout/AttendeeForm.jsx
 +++ b/app/src/components/checkout/AttendeeForm.jsx
@@ -1160,10 +1160,10 @@ index 861214a..0bf0d10 100644
      );
      navigate(`/checkout/${event.slug}`);
    };
-diff --git a/eventhub_backend/.env.example b/eventhub_backend/.env.example
+diff --git a/strathmore_university_backend/.env.example b/strathmore_university_backend/.env.example
 index 1e0cdcb..89364bf 100644
---- a/eventhub_backend/.env.example
-+++ b/eventhub_backend/.env.example
+--- a/strathmore_university_backend/.env.example
++++ b/strathmore_university_backend/.env.example
 @@ -20,6 +20,9 @@ STRIPE_SECRET_KEY=sk_test_...
  STRIPE_WEBHOOK_SECRET=whsec_...
  STRIPE_SERVICE_FEE_PERCENT=3.0
@@ -1174,10 +1174,10 @@ index 1e0cdcb..89364bf 100644
  # M-Pesa Daraja
  MPESA_CONSUMER_KEY=...
  MPESA_CONSUMER_SECRET=...
-diff --git a/eventhub_backend/apps/events/serializers.py b/eventhub_backend/apps/events/serializers.py
+diff --git a/strathmore_university_backend/apps/events/serializers.py b/strathmore_university_backend/apps/events/serializers.py
 index 81b4e23..f1603d8 100644
---- a/eventhub_backend/apps/events/serializers.py
-+++ b/eventhub_backend/apps/events/serializers.py
+--- a/strathmore_university_backend/apps/events/serializers.py
++++ b/strathmore_university_backend/apps/events/serializers.py
 @@ -7,6 +7,7 @@ from rest_framework import serializers
  
  from apps.accounts.models import OrganizerProfile, User
@@ -1227,10 +1227,10 @@ index 81b4e23..f1603d8 100644
  
  class EventCreateSerializer(serializers.ModelSerializer):
  
-diff --git a/eventhub_backend/apps/orders/models.py b/eventhub_backend/apps/orders/models.py
+diff --git a/strathmore_university_backend/apps/orders/models.py b/strathmore_university_backend/apps/orders/models.py
 index 4b35f45..bf79fc4 100644
---- a/eventhub_backend/apps/orders/models.py
-+++ b/eventhub_backend/apps/orders/models.py
+--- a/strathmore_university_backend/apps/orders/models.py
++++ b/strathmore_university_backend/apps/orders/models.py
 @@ -135,3 +135,37 @@ class Ticket(TimeStampedModel):
              models.Index(fields=["event", "status"]),
          ]
@@ -1269,10 +1269,10 @@ index 4b35f45..bf79fc4 100644
 +
 +    def __str__(self) -> str:  # pragma: no cover
 +        return f"Answer({self.question_id})"
-diff --git a/eventhub_backend/apps/orders/serializers.py b/eventhub_backend/apps/orders/serializers.py
+diff --git a/strathmore_university_backend/apps/orders/serializers.py b/strathmore_university_backend/apps/orders/serializers.py
 index 0aa4ec2..34bc531 100644
---- a/eventhub_backend/apps/orders/serializers.py
-+++ b/eventhub_backend/apps/orders/serializers.py
+--- a/strathmore_university_backend/apps/orders/serializers.py
++++ b/strathmore_university_backend/apps/orders/serializers.py
 @@ -9,8 +9,8 @@ from rest_framework import serializers
  
  from apps.events.models import Event
@@ -1440,10 +1440,10 @@ index 0aa4ec2..34bc531 100644
          return order
  
  
-diff --git a/eventhub_backend/apps/tickets/models.py b/eventhub_backend/apps/tickets/models.py
+diff --git a/strathmore_university_backend/apps/tickets/models.py b/strathmore_university_backend/apps/tickets/models.py
 index 108fb36..f724db0 100644
---- a/eventhub_backend/apps/tickets/models.py
-+++ b/eventhub_backend/apps/tickets/models.py
+--- a/strathmore_university_backend/apps/tickets/models.py
++++ b/strathmore_university_backend/apps/tickets/models.py
 @@ -7,6 +7,87 @@ from common.models import TimeStampedModel
  from apps.events.models import Event
  
@@ -1551,10 +1551,10 @@ index 108fb36..f724db0 100644
      def __str__(self) -> str:  # pragma: no cover
          return f"{self.code} ({self.event.title})"
 -
-diff --git a/eventhub_backend/apps/tickets/serializers.py b/eventhub_backend/apps/tickets/serializers.py
+diff --git a/strathmore_university_backend/apps/tickets/serializers.py b/strathmore_university_backend/apps/tickets/serializers.py
 index 0a428cc..629bdf0 100644
---- a/eventhub_backend/apps/tickets/serializers.py
-+++ b/eventhub_backend/apps/tickets/serializers.py
+--- a/strathmore_university_backend/apps/tickets/serializers.py
++++ b/strathmore_university_backend/apps/tickets/serializers.py
 @@ -4,7 +4,14 @@ from decimal import Decimal
  
  from rest_framework import serializers
@@ -1704,10 +1704,10 @@ index 0a428cc..629bdf0 100644
          attrs["discount_amount"] = discount_amount
          return attrs
 -
-diff --git a/eventhub_backend/apps/tickets/urls.py b/eventhub_backend/apps/tickets/urls.py
+diff --git a/strathmore_university_backend/apps/tickets/urls.py b/strathmore_university_backend/apps/tickets/urls.py
 index ab24b95..3b1e427 100644
---- a/eventhub_backend/apps/tickets/urls.py
-+++ b/eventhub_backend/apps/tickets/urls.py
+--- a/strathmore_university_backend/apps/tickets/urls.py
++++ b/strathmore_university_backend/apps/tickets/urls.py
 @@ -9,6 +9,13 @@ from .views import (
      PromoCodeValidateView,
      TicketTypeCreateView,
@@ -1742,10 +1742,10 @@ index ab24b95..3b1e427 100644
 +    path("locations/search/", LocationSearchView.as_view(), name="location-search"),
  ]
 -
-diff --git a/eventhub_backend/apps/tickets/views.py b/eventhub_backend/apps/tickets/views.py
+diff --git a/strathmore_university_backend/apps/tickets/views.py b/strathmore_university_backend/apps/tickets/views.py
 index 3048570..2848c8e 100644
---- a/eventhub_backend/apps/tickets/views.py
-+++ b/eventhub_backend/apps/tickets/views.py
+--- a/strathmore_university_backend/apps/tickets/views.py
++++ b/strathmore_university_backend/apps/tickets/views.py
 @@ -5,17 +5,28 @@ from decimal import Decimal
  from django_ratelimit.decorators import ratelimit
  from django.shortcuts import get_object_or_404
@@ -2090,10 +2090,10 @@ index 3048570..2848c8e 100644
              status=status.HTTP_200_OK,
          )
 -
-diff --git a/eventhub_backend/requirements.in b/eventhub_backend/requirements.in
+diff --git a/strathmore_university_backend/requirements.in b/strathmore_university_backend/requirements.in
 index 71c2d93..dfe45da 100644
---- a/eventhub_backend/requirements.in
-+++ b/eventhub_backend/requirements.in
+--- a/strathmore_university_backend/requirements.in
++++ b/strathmore_university_backend/requirements.in
 @@ -17,6 +17,7 @@ Pillow==11.1.0
  
  stripe==11.5.0
@@ -2102,10 +2102,10 @@ index 71c2d93..dfe45da 100644
  
  django-ratelimit==4.1.0
  django-filter==24.3
-diff --git a/eventhub_backend/requirements.txt b/eventhub_backend/requirements.txt
+diff --git a/strathmore_university_backend/requirements.txt b/strathmore_university_backend/requirements.txt
 index dd12346..925e39e 100644
---- a/eventhub_backend/requirements.txt
-+++ b/eventhub_backend/requirements.txt
+--- a/strathmore_university_backend/requirements.txt
++++ b/strathmore_university_backend/requirements.txt
 @@ -34,6 +34,7 @@ jmespath==1.1.0
  jsonschema==4.26.0
  jsonschema-specifications==2025.9.1

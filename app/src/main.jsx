@@ -24,7 +24,7 @@ const queryClient = new QueryClient({
 
 const persister = createSyncStoragePersister({
   storage: window.sessionStorage,
-  key: 'eventhub-cache-v2',
+  key: 'strathmore_university-cache-v2',
   throttleTime: 1000,
 })
 

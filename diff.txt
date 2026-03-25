@@ -1,4 +1,4 @@
-﻿ M app/src/components/checkout/AttendeeForm.jsx
+ M app/src/components/checkout/AttendeeForm.jsx
  M app/src/components/event/TicketBox.jsx
  M app/src/components/organizer/EventForm.jsx
  M app/src/context/CartContext.jsx
@@ -6,17 +6,17 @@
  M app/src/pages/CheckoutPage.jsx
  M app/src/pages/CreateEventPage.jsx
  M app/src/pages/EventDetailPage.jsx
- M eventhub_backend/.env.example
- M eventhub_backend/apps/events/serializers.py
- M eventhub_backend/apps/orders/models.py
- M eventhub_backend/apps/orders/serializers.py
- M eventhub_backend/apps/tickets/models.py
- M eventhub_backend/apps/tickets/serializers.py
- M eventhub_backend/apps/tickets/urls.py
- M eventhub_backend/apps/tickets/views.py
- M eventhub_backend/requirements.in
- M eventhub_backend/requirements.txt
+ M strathmore_university_backend/.env.example
+ M strathmore_university_backend/apps/events/serializers.py
+ M strathmore_university_backend/apps/orders/models.py
+ M strathmore_university_backend/apps/orders/serializers.py
+ M strathmore_university_backend/apps/tickets/models.py
+ M strathmore_university_backend/apps/tickets/serializers.py
+ M strathmore_university_backend/apps/tickets/urls.py
+ M strathmore_university_backend/apps/tickets/views.py
+ M strathmore_university_backend/requirements.in
+ M strathmore_university_backend/requirements.txt
 ?? diff.txt
 ?? diff_files.txt
-?? eventhub_backend/apps/orders/migrations/0004_order_registration.py
-?? eventhub_backend/apps/tickets/migrations/0002_registration_categories.py
+?? strathmore_university_backend/apps/orders/migrations/0004_order_registration.py
+?? strathmore_university_backend/apps/tickets/migrations/0002_registration_categories.py
