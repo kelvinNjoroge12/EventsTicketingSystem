@@ -602,11 +602,6 @@ const CheckoutPage = () => {
                     </span>
                   </div>
 
-                  {/* Trust badge */}
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-[#94A3B8] pt-2">
-                    <span>🔒</span>
-                    <span>Secure - Instant QR ticket - SSL encrypted</span>
-                  </div>
                 </div>
               </div>
             </div>
