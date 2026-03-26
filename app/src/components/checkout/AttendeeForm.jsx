@@ -5,6 +5,8 @@ import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
 import { api } from '../../lib/apiClient';
 
+const OTHER_COURSE_OPTION_VALUE = '__other__';
+
 const AttendeeForm = ({
   event,
   cart,
@@ -33,6 +35,7 @@ const AttendeeForm = ({
   const [registrationData, setRegistrationData] = useState({
     graduationYear: '',
     courseId: '',
+    customCourseName: '',
     schoolId: '',
     admissionNumber: '',
     studentEmail: '',
@@ -48,6 +51,7 @@ const AttendeeForm = ({
   const [courses, setCourses] = useState([]);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const isOtherCourseSelected = registrationData.courseId === OTHER_COURSE_OPTION_VALUE;
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -76,11 +80,15 @@ const AttendeeForm = ({
 
   useEffect(() => {
     if (!fixedFields.askCourse) return;
+    if (fixedFields.askSchool && !registrationData.schoolId) {
+      setCourses([]);
+      return;
+    }
     const query = registrationData.schoolId ? `?school=${registrationData.schoolId}` : '';
     api.get(`/api/academics/courses/${query}`)
       .then((data) => setCourses(Array.isArray(data) ? data : []))
       .catch(() => setCourses([]));
-  }, [fixedFields.askCourse, registrationData.schoolId]);
+  }, [fixedFields.askCourse, fixedFields.askSchool, registrationData.schoolId]);
 
   useEffect(() => {
     if (!fixedFields.askLocation) return;
@@ -139,8 +147,12 @@ const AttendeeForm = ({
       if (fixedFields.askSchool && !registrationData.schoolId) {
         newErrors.schoolId = 'School is required';
       }
-      if (fixedFields.askCourse && !registrationData.courseId) {
-        newErrors.courseId = 'Course is required';
+      if (fixedFields.askCourse) {
+        if (!registrationData.courseId) {
+          newErrors.courseId = 'Course is required';
+        } else if (isOtherCourseSelected && !registrationData.customCourseName.trim()) {
+          newErrors.customCourseName = 'Course name is required';
+        }
       }
       if (fixedFields.askLocation && !registrationData.locationText.trim()) {
         newErrors.locationText = 'Location is required';
@@ -181,7 +193,8 @@ const AttendeeForm = ({
           category_type: registration.categoryType ?? registration.category_type ?? '',
           category_label: registration.categoryLabel ?? registration.category_label ?? '',
           graduation_year: registrationData.graduationYear || null,
-          course_id: registrationData.courseId || null,
+          course_id: isOtherCourseSelected ? null : registrationData.courseId || null,
+          custom_course_name: isOtherCourseSelected ? registrationData.customCourseName.trim() : '',
           school_id: registrationData.schoolId || null,
           admission_number: registrationData.admissionNumber || '',
           student_email: registrationData.studentEmail || '',
@@ -297,7 +310,23 @@ const AttendeeForm = ({
               <label className="block text-sm font-medium text-[#0F172A] mb-2">School</label>
               <select
                 value={registrationData.schoolId}
-                onChange={(e) => setRegistrationData((prev) => ({ ...prev, schoolId: e.target.value }))}
+                onChange={(e) => {
+                  const nextSchoolId = e.target.value;
+                  setRegistrationData((prev) => ({
+                    ...prev,
+                    schoolId: nextSchoolId,
+                    courseId: '',
+                    customCourseName: '',
+                  }));
+                  if (errors.schoolId || errors.courseId || errors.customCourseName) {
+                    setErrors((prev) => ({
+                      ...prev,
+                      schoolId: '',
+                      courseId: '',
+                      customCourseName: '',
+                    }));
+                  }
+                }}
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.schoolId ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
               >
                 <option value="">Select a school</option>
@@ -314,15 +343,49 @@ const AttendeeForm = ({
               <label className="block text-sm font-medium text-[#0F172A] mb-2">Course</label>
               <select
                 value={registrationData.courseId}
-                onChange={(e) => setRegistrationData((prev) => ({ ...prev, courseId: e.target.value }))}
+                onChange={(e) => {
+                  const nextCourseId = e.target.value;
+                  setRegistrationData((prev) => ({
+                    ...prev,
+                    courseId: nextCourseId,
+                    customCourseName: nextCourseId === OTHER_COURSE_OPTION_VALUE ? prev.customCourseName : '',
+                  }));
+                  if (errors.courseId || errors.customCourseName) {
+                    setErrors((prev) => ({
+                      ...prev,
+                      courseId: '',
+                      customCourseName: '',
+                    }));
+                  }
+                }}
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.courseId ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
+                disabled={fixedFields.askSchool && !registrationData.schoolId}
               >
-                <option value="">Select a course</option>
+                <option value="">{fixedFields.askSchool && !registrationData.schoolId ? 'Select a school first' : 'Select a course'}</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
+                <option value={OTHER_COURSE_OPTION_VALUE}>Other</option>
               </select>
               {errors.courseId && <p className="mt-1.5 text-sm text-[#DC2626]">{errors.courseId}</p>}
+              {isOtherCourseSelected && (
+                <div className="mt-3">
+                  <CustomInput
+                    label="Type your course"
+                    value={registrationData.customCourseName}
+                    onChange={(e) => {
+                      const nextCourseName = e.target.value;
+                      setRegistrationData((prev) => ({ ...prev, customCourseName: nextCourseName }));
+                      if (errors.customCourseName) {
+                        setErrors((prev) => ({ ...prev, customCourseName: '' }));
+                      }
+                    }}
+                    error={errors.customCourseName}
+                    placeholder="Enter your course name"
+                    required
+                  />
+                </div>
+              )}
             </div>
           )}
 

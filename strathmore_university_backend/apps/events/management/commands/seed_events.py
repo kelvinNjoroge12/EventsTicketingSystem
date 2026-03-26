@@ -1,7 +1,7 @@
 """
 Management command: seed_events
 Usage: python manage.py seed_events
-Deletes all events and creates 5 rich sample events with
+Creates 5 rich sample events with
 speakers, MC, sponsors, schedule items, tickets, and cover images
 pulled from Unsplash (no auth required).
 """
@@ -286,7 +286,7 @@ def download_image(url: str, filename: str) -> ContentFile:
 
 
 class Command(BaseCommand):
-    help = "Delete all events and seed 5 rich sample events with all related data."
+    help = "Seed 5 rich sample events with all related data without deleting existing events."
 
     def handle(self, *args, **options):
         from apps.events.models import Event, Category, Tag
@@ -297,8 +297,7 @@ class Command(BaseCommand):
         from apps.accounts.models import User
 
         self.stdout.write(self.style.WARNING("Deleting all existing events…"))
-        Event.objects.all().delete()
-        self.stdout.write(self.style.SUCCESS("  Done.\n"))
+        self.stdout.write(self.style.WARNING("No events will be deleted.\n"))
 
         # Find or pick an organizer (prefer superuser)
         organizer = User.objects.filter(is_superuser=True).first() or User.objects.first()

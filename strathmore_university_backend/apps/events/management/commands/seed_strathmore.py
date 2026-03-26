@@ -13,12 +13,103 @@ from apps.tickets.models import TicketType, School, Course, RegistrationCategory
 from apps.accounts.models import User
 
 SCHOOLS_COURSES = {
-    "Strathmore Institute of Mathematical Sciences": ["BBS Financial Engineering", "BBS Acturial Science"],
-    "Strathmore Law School": ["Bachelors of Laws (LL.B)"],
-    "Strathmore University Business School": ["Bachelor of Supply Chain and Operations Management", "Bachelor of Commerce", "BBS Financial Economics"],
-    "School of Computing and Engineering Sciences": ["BBIT", "CNS", "BSEEE"],
-    "School of Tourism and Hospitality": ["BSC Tourism Management", "BSC in Hospitality  Management"],
-    "School of Humanities and Social Sciences": ["Bachelor of Arts in International Studies", "Bachelor of Arts in Communication"],
+    "Strathmore Institute of Mathematical Sciences": [
+        "Bachelor of Business Science: Actuarial Science",
+        "Bachelor of Business Science: Finance",
+        "Bachelor of Business Science: Financial Engineering",
+        "Chartered Financial Analyst (CFA)",
+        "Master of Science in Biomathematics",
+        "Master of Science in Development Finance",
+        "Master of Science in Development Finance (MDF)",
+        "Master of Science in Mathematical Finance",
+        "Master of Science in Statistical Science",
+    ],
+    "Strathmore Law School": [
+        "Bachelor of Laws",
+        "Master of Laws",
+    ],
+    "Strathmore University Business School": [
+        "Advanced Management Program (AMP)",
+        "Advisory Board Member",
+        "Bachelor of Commerce",
+        "Bachelor of Financial Services",
+        "Bachelor of Science in Leadership and Management",
+        "Bachelor of Science in Supply Chain and Operations Management",
+        "Bio-Entrepreneurship Executive Program",
+        "Diploma in Business Creation and Entrepreneurship",
+        "Diploma in Business Management",
+        "Diploma in Leadership and Management",
+        "Diploma in Procurement",
+        "Enterprise Development Programme (EDP)",
+        "Executive Coaching for Managers",
+        "Executive Healthcare Management Program (EHMP)",
+        "Family Business Executive Programme (FBEP)",
+        "Grants Management Program",
+        "Leading High-Performing Healthcare Organisations (LeHHO)",
+        "Leading the Board (LTB)",
+        "Managing Healthcare Businesses (MHB)",
+        "Master of Business Administration",
+        "Master of Business Administration - Healthcare Management",
+        "Master of Business Administration (Modular)",
+        "Master of Commerce",
+        "Master of Management in Agribusiness",
+        "Master of Management in Agribusiness (MMA)",
+        "Master of Science in Education Management",
+        "MBA for Executive (E MBA)",
+        "MBA in Healthcare Management (MBA HCM)",
+        "Modular MBA",
+        "New Managers Leadership Programme (NMLP)",
+        "Owner Manager Program (OMP)",
+        "Part-time MBA",
+        "Post Experience Diploma in Educational Management",
+        "Postgraduate Diploma in Educational Management",
+        "Project Management Professional (PMP)",
+        "Senior Management Leadership Program (SMLP)",
+        "Teacher Enhancement Programme (TEP)",
+        "The Effective Director (TED)",
+        "Women Directors Leadership Summit (WDLS)",
+        "Women in Leadership Programme (WIL)",
+    ],
+    "School of Computing and Engineering Sciences": [
+        "Bachelor of Business Information Technology",
+        "Bachelor of Science in Electrical and Electronic Engineering",
+        "Bachelor of Science in Informatics and Computer Science",
+        "Bachelor of Science in Telecommunications",
+        "Certified Information Security Manager (CISM)",
+        "Certified Information Systems Auditor (CISA)",
+        "Master of Science in Computing and Information Systems",
+        "Master of Science in Information Systems Security (Msc ISS)",
+        "Master of Science in Information Technology",
+        "Master of Science in Mobile Telecommunications and Innovation",
+    ],
+    "School of Tourism and Hospitality": [
+        "Bachelor of Science in Hospitality and Hotel Management",
+        "Bachelor of Science in Tourism Management",
+    ],
+    "School of Humanities and Social Sciences": [
+        "Bachelor of Arts in Communication",
+        "Bachelor of Arts in Communication (Journalism and Public Relations)",
+        "Bachelor of Arts in Development Studies and Philosophy",
+        "Bachelor of Arts in International Studies",
+        "Diploma in International Relations",
+        "Diploma in Journalism and New Media",
+        "Master in Public Policy and Management (MPPM)",
+        "Master of Applied Philosophy and Ethics",
+        "Master of Public Policy and Management",
+    ],
+    "Strathmore Institute of Technology": [
+        "Certificate in Secretarial Studies",
+        "CERTIFICATE IN COMPUTER APPLICATION {CCA}",
+        "Diploma in Business Information Technology",
+        "Diploma in Secretarial Studies",
+        "INTERNATIONAL COMPUTER DRIVING LICENSE (ICDL)",
+    ],
+    "School of Accounting": [
+        "Association of Chartered Certified Accountants (ACCA)",
+        "Certified Public Accountants (CPA)",
+        "Chartered Institute of Marketing (CIM)",
+        "Microfinance Diploma",
+    ],
 }
 
 EVENT_TEMPLATES = [
@@ -64,9 +155,7 @@ class Command(BaseCommand):
         admin_user.set_password("password123")
         admin_user.save()
 
-        # Delete existing events
-        deleted_count, _ = Event.objects.all().delete()
-        self.stdout.write(f"Deleted {deleted_count} existing events.")
+        self.stdout.write("Existing events will be left untouched.")
 
         default_category, _ = Category.objects.get_or_create(
             name="University Events",
@@ -81,9 +170,31 @@ class Command(BaseCommand):
         school_objs = []
         for s_idx, (school_name, courses) in enumerate(SCHOOLS_COURSES.items()):
             school_obj, _ = School.objects.get_or_create(name=school_name, defaults={"is_active": True, "sort_order": s_idx})
+            school_updates = []
+            if not school_obj.is_active:
+                school_obj.is_active = True
+                school_updates.append("is_active")
+            if school_obj.sort_order != s_idx:
+                school_obj.sort_order = s_idx
+                school_updates.append("sort_order")
+            if school_updates:
+                school_obj.save(update_fields=school_updates)
             school_objs.append(school_obj)
             for c_idx, course_name in enumerate(courses):
-                Course.objects.get_or_create(school=school_obj, name=course_name, defaults={"is_active": True, "sort_order": c_idx})
+                course_obj, _ = Course.objects.get_or_create(
+                    school=school_obj,
+                    name=course_name,
+                    defaults={"is_active": True, "sort_order": c_idx},
+                )
+                course_updates = []
+                if not course_obj.is_active:
+                    course_obj.is_active = True
+                    course_updates.append("is_active")
+                if course_obj.sort_order != c_idx:
+                    course_obj.sort_order = c_idx
+                    course_updates.append("sort_order")
+                if course_updates:
+                    course_obj.save(update_fields=course_updates)
 
         # List string for dropdowns
         all_school_names = [s for s in SCHOOLS_COURSES.keys()]

@@ -7,6 +7,9 @@
 
 set -o errexit  # exit on error
 
+# Render deploys should always use production settings for management commands.
+export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-config.settings.production}"
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -32,6 +35,11 @@ EOF
 
 # Run migrations
 python manage.py migrate
+
+# Seed the schools/courses catalog on every deploy. This command is idempotent
+# and does not modify or delete events.
+echo ">>> Seeding academic catalog..."
+python manage.py seed_academics_catalog
 
 # Collect static files
 python manage.py collectstatic --no-input

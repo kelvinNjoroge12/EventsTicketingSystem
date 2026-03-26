@@ -40,6 +40,7 @@ class OrderRegistrationInputSerializer(serializers.Serializer):
     category_label = serializers.CharField(required=False, allow_blank=True)
     graduation_year = serializers.IntegerField(required=False, allow_null=True)
     course_id = serializers.UUIDField(required=False, allow_null=True)
+    custom_course_name = serializers.CharField(required=False, allow_blank=True, max_length=200)
     school_id = serializers.UUIDField(required=False, allow_null=True)
     admission_number = serializers.CharField(required=False, allow_blank=True)
     student_email = serializers.EmailField(required=False, allow_blank=True)
@@ -194,18 +195,28 @@ class OrderCreateSerializer(serializers.Serializer):
 
             if registration_category.ask_graduation_year and not registration_data.get("graduation_year"):
                 raise serializers.ValidationError({"registration": "Graduation year is required."})
-            if registration_category.ask_course:
-                course_id = registration_data.get("course_id")
-                if not course_id:
-                    raise serializers.ValidationError({"registration": "Course is required."})
-                if not Course.objects.filter(id=course_id).exists():
-                    raise serializers.ValidationError({"registration": "Selected course is invalid."})
             if registration_category.ask_school:
                 school_id = registration_data.get("school_id")
                 if not school_id:
                     raise serializers.ValidationError({"registration": "School is required."})
                 if not School.objects.filter(id=school_id).exists():
                     raise serializers.ValidationError({"registration": "Selected school is invalid."})
+            if registration_category.ask_course:
+                school_id = registration_data.get("school_id")
+                course_id = registration_data.get("course_id")
+                custom_course_name = (registration_data.get("custom_course_name") or "").strip()
+
+                if not course_id and not custom_course_name:
+                    raise serializers.ValidationError({"registration": "Course is required."})
+
+                if course_id:
+                    course = Course.objects.select_related("school").filter(id=course_id).first()
+                    if not course:
+                        raise serializers.ValidationError({"registration": "Selected course is invalid."})
+                    if school_id and str(course.school_id) != str(school_id):
+                        raise serializers.ValidationError({"registration": "Selected course does not belong to the chosen school."})
+
+                registration_data["custom_course_name"] = custom_course_name
             if registration_category.ask_location and not registration_data.get("location_text"):
                 raise serializers.ValidationError({"registration": "Location is required."})
 
@@ -334,14 +345,36 @@ class OrderCreateSerializer(serializers.Serializer):
         # Store registration data if present
         if registration_category:
             category_label = registration_category.label if registration_category.category == "guest" and registration_category.label else registration_category.get_category_display()
+            selected_school = (
+                School.objects.filter(id=registration_data.get("school_id")).first()
+                if registration_data.get("school_id")
+                else None
+            )
+            selected_course = None
+            if registration_data.get("course_id"):
+                selected_course = Course.objects.filter(id=registration_data.get("course_id")).first()
+            else:
+                custom_course_name = (registration_data.get("custom_course_name") or "").strip()
+                if custom_course_name:
+                    selected_course = Course.objects.filter(
+                        school=selected_school,
+                        name__iexact=custom_course_name,
+                    ).first()
+                    if not selected_course:
+                        selected_course = Course.objects.create(
+                            school=selected_school,
+                            name=custom_course_name,
+                            is_active=True,
+                        )
+
             reg = OrderRegistration.objects.create(
                 order=order,
                 registration_category=registration_category,
                 category=registration_category.category,
                 category_label=category_label,
                 graduation_year=registration_data.get("graduation_year") or None,
-                course=Course.objects.filter(id=registration_data.get("course_id")).first() if registration_data.get("course_id") else None,
-                school=School.objects.filter(id=registration_data.get("school_id")).first() if registration_data.get("school_id") else None,
+                course=selected_course,
+                school=selected_school,
                 admission_number=registration_data.get("admission_number", "") or "",
                 student_email=registration_data.get("student_email", "") or "",
                 location_text=registration_data.get("location_text", "") or "",

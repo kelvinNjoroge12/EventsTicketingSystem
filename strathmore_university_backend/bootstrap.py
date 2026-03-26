@@ -56,9 +56,8 @@ OrganizerProfile.objects.get_or_create(
 print("  Organizer profile ready âœ“")
 
 # â”€â”€ Delete existing events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-print("\n[2/7] Deleting existing events...")
-n, _ = Event.objects.all().delete()
-print(f"  Deleted {n} records.")
+print("\n[2/7] Preserving existing events...")
+print("  Existing events will be left untouched.")
 
 # â”€â”€ Event definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 EVENTS = [
