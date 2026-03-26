@@ -37,7 +37,7 @@ def _create_event(organizer) -> Event:
 def test_order_create_accepts_custom_course_name_and_creates_course(db):
     organizer = OrganizerUserFactory()
     event = _create_event(organizer)
-    school = School.objects.create(name="School of Computing and Engineering Sciences", code="SCES")
+    school = School.objects.get(name="School of Computing and Engineering Sciences")
     registration_category = RegistrationCategory.objects.create(
         event=event,
         category="student",

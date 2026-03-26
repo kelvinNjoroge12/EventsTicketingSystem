@@ -36,10 +36,5 @@ EOF
 # Run migrations
 python manage.py migrate
 
-# Seed the schools/courses catalog on every deploy. This command is idempotent
-# and does not modify or delete events.
-echo ">>> Seeding academic catalog..."
-python manage.py seed_academics_catalog
-
 # Collect static files
 python manage.py collectstatic --no-input
