@@ -202,7 +202,6 @@ class OrderCreateSerializer(serializers.Serializer):
                 if not School.objects.filter(id=school_id).exists():
                     raise serializers.ValidationError({"registration": "Selected school is invalid."})
             if registration_category.ask_course:
-                school_id = registration_data.get("school_id")
                 course_id = registration_data.get("course_id")
                 custom_course_name = (registration_data.get("custom_course_name") or "").strip()
 
@@ -210,11 +209,9 @@ class OrderCreateSerializer(serializers.Serializer):
                     raise serializers.ValidationError({"registration": "Course is required."})
 
                 if course_id:
-                    course = Course.objects.select_related("school").filter(id=course_id).first()
+                    course = Course.objects.filter(id=course_id).first()
                     if not course:
                         raise serializers.ValidationError({"registration": "Selected course is invalid."})
-                    if school_id and str(course.school_id) != str(school_id):
-                        raise serializers.ValidationError({"registration": "Selected course does not belong to the chosen school."})
 
                 registration_data["custom_course_name"] = custom_course_name
             if registration_category.ask_location and not registration_data.get("location_text"):
@@ -356,13 +353,9 @@ class OrderCreateSerializer(serializers.Serializer):
             else:
                 custom_course_name = (registration_data.get("custom_course_name") or "").strip()
                 if custom_course_name:
-                    selected_course = Course.objects.filter(
-                        school=selected_school,
-                        name__iexact=custom_course_name,
-                    ).first()
+                    selected_course = Course.objects.filter(name__iexact=custom_course_name).first()
                     if not selected_course:
                         selected_course = Course.objects.create(
-                            school=selected_school,
                             name=custom_course_name,
                             is_active=True,
                         )

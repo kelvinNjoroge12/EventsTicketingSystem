@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset class="module aligned">
+            {{ form.as_p }}
+            <div class="help">
+                <p>{{ upload_help_text }}</p>
+                <p>Supported file types: CSV and XLSX.</p>
+                <p>Expected columns: {{ upload_columns|join:", " }}</p>
+            </div>
+        </fieldset>
+        <div class="submit-row">
+            <input type="submit" value="Upload" class="default">
+            <a href="{{ changelist_url }}" class="button cancel-link">Back to list</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

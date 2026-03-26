@@ -37,7 +37,7 @@ def _create_event(organizer) -> Event:
 def test_order_create_accepts_custom_course_name_and_creates_course(db):
     organizer = OrganizerUserFactory()
     event = _create_event(organizer)
-    school = School.objects.get(name="School of Computing and Engineering Sciences")
+    school = School.objects.create(name="School of Computing and Engineering Sciences")
     registration_category = RegistrationCategory.objects.create(
         event=event,
         category="student",
@@ -94,12 +94,75 @@ def test_order_create_accepts_custom_course_name_and_creates_course(db):
     assert serializer.is_valid(), serializer.errors
     order = serializer.save()
 
-    created_course = Course.objects.get(
-        school=school,
-        name="Bachelor of Cloud Engineering",
-    )
+    created_course = Course.objects.get(name="Bachelor of Cloud Engineering")
     registration = OrderRegistration.objects.get(order=order)
 
     assert registration.course_id == created_course.id
     assert registration.school_id == school.id
+    assert created_course.school is None
     assert order.status == "confirmed"
+
+
+def test_order_create_accepts_independent_school_and_course_selection(db):
+    organizer = OrganizerUserFactory()
+    event = _create_event(organizer)
+    school = School.objects.create(name="School of Humanities and Social Sciences")
+    course = Course.objects.create(name="Bachelor of Arts in Communication")
+    registration_category = RegistrationCategory.objects.create(
+        event=event,
+        category="student",
+        label="Student",
+        is_active=True,
+        require_student_email=True,
+        require_admission_number=True,
+        ask_school=True,
+        ask_course=True,
+    )
+    ticket_type = TicketType.objects.create(
+        event=event,
+        registration_category=registration_category,
+        name="Student Pass",
+        ticket_class="free",
+        price=Decimal("0.00"),
+        quantity=50,
+        is_active=True,
+    )
+
+    payload = {
+        "event_slug": event.slug,
+        "items": [
+            {
+                "ticket_type_id": str(ticket_type.id),
+                "quantity": 1,
+                "attendee_name": "John Doe",
+                "attendee_email": "john@example.com",
+            }
+        ],
+        "payment_method": "free",
+        "attendee_first_name": "John",
+        "attendee_last_name": "Doe",
+        "attendee_email": "john@example.com",
+        "attendee_phone": "+254711111111",
+        "registration": {
+            "category_id": str(registration_category.id),
+            "category_type": "student",
+            "category_label": "Student",
+            "school_id": str(school.id),
+            "course_id": str(course.id),
+            "admission_number": "654321",
+            "student_email": "john@strathmore.edu",
+            "answers": [],
+        },
+    }
+
+    request = APIRequestFactory().post("/api/orders/create/", payload, format="json")
+    request.user = AnonymousUser()
+
+    serializer = OrderCreateSerializer(data=payload, context={"request": request})
+
+    assert serializer.is_valid(), serializer.errors
+    order = serializer.save()
+
+    registration = OrderRegistration.objects.get(order=order)
+    assert registration.course_id == course.id
+    assert registration.school_id == school.id

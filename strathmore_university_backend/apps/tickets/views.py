@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from datetime import date as dt_date, datetime, time as dt_time
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django_ratelimit.decorators import ratelimit
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
@@ -27,9 +28,9 @@ from .serializers import (
     SchoolSerializer,
     CourseSerializer,
 )
-import csv
-import io
 import requests
+
+from .importers import import_courses_file, import_schools_file
 
 
 class EventTicketTypesView(generics.ListAPIView):
@@ -185,7 +186,8 @@ class EventRegistrationPublicView(generics.ListAPIView):
 
 class SchoolListView(generics.ListCreateAPIView):
     serializer_class = SchoolSerializer
-    queryset = School.objects.all().order_by("sort_order", "name")
+    pagination_class = None
+    queryset = School.objects.filter(is_active=True).order_by("sort_order", "name")
 
     def get_permissions(self):
         if self.request.method == "GET":
@@ -195,9 +197,10 @@ class SchoolListView(generics.ListCreateAPIView):
 
 class CourseListView(generics.ListCreateAPIView):
     serializer_class = CourseSerializer
+    pagination_class = None
 
     def get_queryset(self):
-        qs = Course.objects.select_related("school").all().order_by("sort_order", "name")
+        qs = Course.objects.select_related("school").filter(is_active=True).order_by("sort_order", "name")
         school_id = self.request.query_params.get("school")
         if school_id:
             qs = qs.filter(school_id=school_id)
@@ -216,48 +219,11 @@ class SchoolUploadView(APIView):
         file = request.FILES.get("file")
         if not file:
             raise ValidationError({"file": "Upload file is required."})
-
-        name_map = {}
-        created = 0
-
-        # CSV fallback
-        if file.name.lower().endswith(".csv"):
-            content = file.read().decode("utf-8")
-            reader = csv.DictReader(io.StringIO(content))
-            for row in reader:
-                name = (row.get("name") or row.get("Name") or "").strip()
-                if not name:
-                    continue
-                code = (row.get("code") or row.get("Code") or "").strip()
-                name_map[name.lower()] = code
-        else:
-            # XLSX (requires openpyxl)
-            try:
-                import openpyxl
-            except Exception:
-                raise ValidationError({"file": "Excel upload requires openpyxl."})
-            wb = openpyxl.load_workbook(file)
-            ws = wb.active
-            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
-            for row in ws.iter_rows(min_row=2):
-                data = {headers[i].lower(): (row[i].value or "") for i in range(len(headers))}
-                name = str(data.get("name", "")).strip()
-                if not name:
-                    continue
-                code = str(data.get("code", "")).strip()
-                name_map[name.lower()] = code
-
-        for name_lower, code in name_map.items():
-            name = name_lower.title()
-            obj = School.objects.filter(name__iexact=name).first()
-            if not obj:
-                obj = School.objects.create(name=name, code=code)
-                created += 1
-            elif code and not obj.code:
-                obj.code = code
-                obj.save(update_fields=["code"])
-
-        return Response({"created": created, "total": len(name_map)}, status=status.HTTP_200_OK)
+        try:
+            summary = import_schools_file(file)
+        except DjangoValidationError as exc:
+            raise ValidationError({"file": exc.messages[0]})
+        return Response(summary, status=status.HTTP_200_OK)
 
 
 class CourseUploadView(APIView):
@@ -267,46 +233,11 @@ class CourseUploadView(APIView):
         file = request.FILES.get("file")
         if not file:
             raise ValidationError({"file": "Upload file is required."})
-
-        rows = []
-
-        if file.name.lower().endswith(".csv"):
-            content = file.read().decode("utf-8")
-            reader = csv.DictReader(io.StringIO(content))
-            rows = list(reader)
-        else:
-            try:
-                import openpyxl
-            except Exception:
-                raise ValidationError({"file": "Excel upload requires openpyxl."})
-            wb = openpyxl.load_workbook(file)
-            ws = wb.active
-            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
-            for row in ws.iter_rows(min_row=2):
-                data = {headers[i].lower(): (row[i].value or "") for i in range(len(headers))}
-                rows.append(data)
-
-        created = 0
-        for row in rows:
-            name = str(row.get("name") or row.get("Name") or "").strip()
-            if not name:
-                continue
-            code = str(row.get("code") or row.get("Code") or "").strip()
-            school_name = str(row.get("school") or row.get("School") or "").strip()
-            school = None
-            if school_name:
-                school = School.objects.filter(name__iexact=school_name).first()
-                if not school:
-                    school = School.objects.create(name=school_name)
-            obj = Course.objects.filter(school=school, name__iexact=name).first()
-            if not obj:
-                obj = Course.objects.create(name=name, code=code, school=school)
-                created += 1
-            elif code and not obj.code:
-                obj.code = code
-                obj.save(update_fields=["code"])
-
-        return Response({"created": created, "total": len(rows)}, status=status.HTTP_200_OK)
+        try:
+            summary = import_courses_file(file)
+        except DjangoValidationError as exc:
+            raise ValidationError({"file": exc.messages[0]})
+        return Response(summary, status=status.HTTP_200_OK)
 
 
 class LocationSearchView(APIView):

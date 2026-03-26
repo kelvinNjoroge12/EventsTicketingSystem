@@ -6,6 +6,11 @@ import CustomButton from '../ui/CustomButton';
 import { api } from '../../lib/apiClient';
 
 const OTHER_COURSE_OPTION_VALUE = '__other__';
+const getCollection = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
 
 const AttendeeForm = ({
   event,
@@ -72,23 +77,24 @@ const AttendeeForm = ({
   };
 
   useEffect(() => {
-    if (!fixedFields.askSchool) return;
+    if (!fixedFields.askSchool) {
+      setSchools([]);
+      return;
+    }
     api.get('/api/academics/schools/')
-      .then((data) => setSchools(Array.isArray(data) ? data : []))
+      .then((data) => setSchools(getCollection(data)))
       .catch(() => setSchools([]));
   }, [fixedFields.askSchool]);
 
   useEffect(() => {
-    if (!fixedFields.askCourse) return;
-    if (fixedFields.askSchool && !registrationData.schoolId) {
+    if (!fixedFields.askCourse) {
       setCourses([]);
       return;
     }
-    const query = registrationData.schoolId ? `?school=${registrationData.schoolId}` : '';
-    api.get(`/api/academics/courses/${query}`)
-      .then((data) => setCourses(Array.isArray(data) ? data : []))
+    api.get('/api/academics/courses/')
+      .then((data) => setCourses(getCollection(data)))
       .catch(() => setCourses([]));
-  }, [fixedFields.askCourse, fixedFields.askSchool, registrationData.schoolId]);
+  }, [fixedFields.askCourse]);
 
   useEffect(() => {
     if (!fixedFields.askLocation) return;
@@ -315,15 +321,11 @@ const AttendeeForm = ({
                   setRegistrationData((prev) => ({
                     ...prev,
                     schoolId: nextSchoolId,
-                    courseId: '',
-                    customCourseName: '',
                   }));
-                  if (errors.schoolId || errors.courseId || errors.customCourseName) {
+                  if (errors.schoolId) {
                     setErrors((prev) => ({
                       ...prev,
                       schoolId: '',
-                      courseId: '',
-                      customCourseName: '',
                     }));
                   }
                 }}
@@ -359,9 +361,8 @@ const AttendeeForm = ({
                   }
                 }}
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#02338D] ${errors.courseId ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}`}
-                disabled={fixedFields.askSchool && !registrationData.schoolId}
               >
-                <option value="">{fixedFields.askSchool && !registrationData.schoolId ? 'Select a school first' : 'Select a course'}</option>
+                <option value="">Select a course</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
