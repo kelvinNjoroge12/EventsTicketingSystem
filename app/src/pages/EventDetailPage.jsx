@@ -394,8 +394,7 @@ const EventDetailPage = () => {
   const eventTimeLabel = `${event.time}${event.endTime ? ` - ${event.endTime}` : ''}`;
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
   const lowestTicketPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => Number(ticket.price || 0))) : Number(event.price || 0);
-  const heroDateLine = `${formatDate(event.date)} - ${eventTimeLabel}`;
-  const heroPriceBadge = event.isFree || lowestTicketPrice === 0 ? 'Free Entry' : `${event.currency} ${lowestTicketPrice.toLocaleString()}`;
+  const heroDateText = formatDate(event.date);
   const reviewStatusCopy = {
     pending: { title: 'Pending approval', body: 'This event has been submitted for publication and is waiting for admin review.', tone: 'border-[#FDE68A] bg-[#FFF7E6] text-[#8A620E]' },
     rejected: { title: 'Changes requested', body: 'This event was reviewed and needs updates before it can be published again.', tone: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B]' },
@@ -410,8 +409,46 @@ const EventDetailPage = () => {
       <div className="max-w-[1240px] mx-auto w-full px-4 pb-28 pt-6 sm:px-6 sm:pb-32 lg:px-8 lg:pb-10">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_336px]">
           <div className="min-w-0">
-            <section className="overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
-              <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
+            <section className="rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
+              <div className="flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8">
+                <h1 className="min-w-0 break-words text-2xl font-bold leading-tight text-[#0F172A] sm:text-3xl lg:text-[2.2rem]">
+                  {event.title}
+                </h1>
+
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <div className="relative">
+                    <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-[#CBD5E1] bg-white p-2 text-[#475569] shadow-sm transition-colors hover:bg-[#F8FAFC]" aria-label="Share event">
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                    <AnimatePresence>
+                      {showSharePopover && (
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl">
+                          {[
+                            { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
+                            { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
+                            { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
+                            { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
+                          ].map(({ label, platform, icon }) => (
+                            <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                              {icon} {label}
+                            </button>
+                          ))}
+                          <div className="my-1 border-t border-[#E2E8F0]" />
+                          <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                            {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <button onClick={() => toggleSave({ id: event.id, slug: event.slug })} className={`rounded-full border p-2 shadow-sm transition-all ${saved ? 'border-[#02338D] bg-[#02338D] text-white' : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-[#F8FAFC]'}`} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+                    {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative mt-4 aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
                 {event.bannerImage ? (
                   <img src={heroImage(event.bannerImage)} srcSet={heroSrcSet(event.bannerImage)} sizes="(max-width: 1024px) 100vw, 780px" alt="" aria-hidden="true" fetchPriority="high" decoding="sync" className="absolute inset-0 h-full w-full object-cover" />
                 ) : (
@@ -431,101 +468,21 @@ const EventDetailPage = () => {
                   </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/95 via-[#020617]/45 to-[#020617]/10" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/10" />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#02338D]/90 via-[#02338D]/30 to-transparent sm:h-20" />
 
-                <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-3 sm:left-4 sm:right-4 sm:top-4">
-                  <div className="flex max-w-[70%] flex-wrap items-center gap-2">
-                    {event.category && (
-                      <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md">
-                        {event.category}
-                      </span>
-                    )}
-                    <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90 backdrop-blur-md">
-                      {eventFormatLabel}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-white/20 bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/35" aria-label="Share event">
-                        <Share2 className="h-4 w-4" />
-                      </button>
-                      <AnimatePresence>
-                        {showSharePopover && (
-                          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl">
-                            {[
-                              { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
-                              { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
-                              { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
-                              { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
-                            ].map(({ label, platform, icon }) => (
-                              <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                                {icon} {label}
-                              </button>
-                            ))}
-                            <div className="my-1 border-t border-[#E2E8F0]" />
-                            <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                              {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                <div className="absolute inset-x-0 bottom-0 px-4 py-3 sm:px-5 sm:py-4 lg:px-7">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-white sm:flex-nowrap sm:gap-x-6 sm:text-sm">
+                    <div className="inline-flex flex-shrink-0 items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{heroDateText}</span>
                     </div>
-
-                    <button onClick={() => toggleSave({ id: event.id, slug: event.slug })} className={`rounded-full border p-2 backdrop-blur-sm transition-all ${saved ? 'bg-[#02338D] border-[#02338D] text-white' : 'bg-white/20 border-white/20 text-white hover:bg-white/35'}`} aria-label={saved ? 'Remove from saved' : 'Save event'}>
-                      {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 lg:p-7">
-                  <div className="max-w-3xl rounded-[28px] border border-white/15 bg-black/25 p-4 text-white shadow-2xl backdrop-blur-md sm:p-5 lg:p-6">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white" style={{ backgroundColor: event.isFree || lowestTicketPrice === 0 ? '#16A34A' : `${themeColor}DD` }}>
-                        {heroPriceBadge}
-                      </span>
-                      {event.isPast && <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">Past Event</span>}
-                      {!event.isPast && event.timeState === 'live' && <span className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">Live Now</span>}
-                      {!event.isPast && event.timeState !== 'live' && event.isToday && <span className="rounded-full bg-sky-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">Today</span>}
-                      {event.isFeatured && <span className="rounded-full bg-amber-400 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-950">Featured</span>}
+                    <div className="inline-flex flex-shrink-0 items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{eventTimeLabel}</span>
                     </div>
-
-                    <h1 className="break-words text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-[2.2rem]">
-                      {event.title}
-                    </h1>
-
-                    <div className="mt-4 space-y-2 text-sm font-medium text-white/85">
-                      <div className="flex items-start gap-2">
-                        <Calendar className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                        <span className="break-words">{heroDateLine}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <span className="break-words">{locationName}</span>
-                          {event.timezone && (
-                            <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/90">
-                              {event.timezone}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 flex flex-col gap-3 border-t border-white/15 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <CustomAvatar src={event.organizer?.avatar} name={event.organizer?.name} size="sm" fallbackColor={event.organizer?.brandColor} className="border border-white/20" />
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Hosted by</p>
-                          <p className="truncate text-sm font-semibold text-white">{event.organizer?.name || 'Organizer'}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm font-semibold text-white/80">
-                        <Users className="h-4 w-4 flex-shrink-0" />
-                        <span>{event.attendeeCount?.toLocaleString() || 0} attending</span>
-                      </div>
+                    <div className="inline-flex min-w-0 items-center gap-1.5 sm:flex-1">
+                      <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{locationName}</span>
                     </div>
                   </div>
                 </div>
@@ -665,19 +622,21 @@ const EventDetailPage = () => {
           </div>
 
           <aside className="hidden w-[320px] flex-shrink-0 lg:block lg:self-start xl:w-[336px]">
-            <div className="sticky top-32">
-              <div className="flex items-center justify-between rounded-t-2xl px-4 py-3 text-sm font-medium text-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
-                <div className="flex items-center gap-2">
-                  <Ticket className="h-4 w-4" />
-                  <span>{event.isFree || lowestTicketPrice === 0 ? 'Free Event' : `From ${event.currency} ${lowestTicketPrice.toLocaleString()}`}</span>
+            <div className="sticky top-[calc(6.5rem+1rem)] z-20">
+              <div className="flex max-h-[calc(100vh-8.5rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]">
+                <div className="flex items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
+                  <div className="flex items-center gap-2">
+                    <Ticket className="h-4 w-4" />
+                    <span>{event.isFree || lowestTicketPrice === 0 ? 'Free Event' : `From ${event.currency} ${lowestTicketPrice.toLocaleString()}`}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-white/80">
+                    <Users className="h-3 w-3" />
+                    <span className="text-xs">{event.attendeeCount?.toLocaleString() || 0} going</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-white/80">
-                  <Users className="h-3 w-3" />
-                  <span className="text-xs">{event.attendeeCount?.toLocaleString() || 0} going</span>
+                <div className="min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#E2E8F0]">
+                  <TicketBox event={event} onGetTickets={handleGetTickets} themeColor={themeColor} layout="sidebar" />
                 </div>
-              </div>
-              <div className="max-h-[calc(100vh-9.5rem)] overflow-y-auto rounded-b-2xl scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#E2E8F0]">
-                <TicketBox event={event} onGetTickets={handleGetTickets} themeColor={themeColor} layout="sidebar" />
               </div>
             </div>
           </aside>
