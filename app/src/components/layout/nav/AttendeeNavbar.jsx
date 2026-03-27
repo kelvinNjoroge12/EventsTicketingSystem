@@ -135,7 +135,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
         className={`fixed top-0 left-0 right-0 z-40 bg-[#02338D] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#02338D]/95 backdrop-blur-sm' : ''}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap md:flex-nowrap items-center justify-between min-h-[6.5rem] py-2 gap-2 sm:gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 py-2 sm:gap-4 md:h-[7.5rem] md:min-h-0 md:flex-nowrap md:py-0">
             {/* Logo */}
             <Link
               to={isOrganizer ? "/organizer-dashboard" : "/"}
@@ -344,7 +344,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
           )}
         </AnimatePresence>
       </header>
-      <div className="h-[6.5rem]" />
+      <div className="h-[6.5rem] md:h-[7.5rem]" />
     </>
   );
 };

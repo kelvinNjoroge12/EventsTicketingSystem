@@ -407,48 +407,48 @@ const EventDetailPage = () => {
       <ClassicTicketLoader visible={showClassicLoader} />
 
       <div className="max-w-[1240px] mx-auto w-full px-4 pb-28 pt-6 sm:px-6 sm:pb-32 lg:px-8 lg:pb-10">
+        <div className="mb-5 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-start lg:justify-between">
+          <h1 className="min-w-0 break-words text-2xl font-bold leading-tight text-[#0F172A] sm:text-3xl lg:text-[2.2rem]">
+            {event.title}
+          </h1>
+
+          <div className="flex flex-shrink-0 items-center gap-2 self-start">
+            <div className="relative">
+              <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-[#CBD5E1] bg-white p-2 text-[#475569] shadow-sm transition-colors hover:bg-[#F8FAFC]" aria-label="Share event">
+                <Share2 className="h-4 w-4" />
+              </button>
+              <AnimatePresence>
+                {showSharePopover && (
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl">
+                    {[
+                      { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
+                      { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
+                      { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
+                      { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
+                    ].map(({ label, platform, icon }) => (
+                      <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                        {icon} {label}
+                      </button>
+                    ))}
+                    <div className="my-1 border-t border-[#E2E8F0]" />
+                    <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                      {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <button onClick={() => toggleSave({ id: event.id, slug: event.slug })} className={`rounded-full border p-2 shadow-sm transition-all ${saved ? 'border-[#02338D] bg-[#02338D] text-white' : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-[#F8FAFC]'}`} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+              {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_336px]">
           <div className="min-w-0">
-            <section className="rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
-              <div className="flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8">
-                <h1 className="min-w-0 break-words text-2xl font-bold leading-tight text-[#0F172A] sm:text-3xl lg:text-[2.2rem]">
-                  {event.title}
-                </h1>
-
-                <div className="flex flex-shrink-0 items-center gap-2">
-                  <div className="relative">
-                    <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-[#CBD5E1] bg-white p-2 text-[#475569] shadow-sm transition-colors hover:bg-[#F8FAFC]" aria-label="Share event">
-                      <Share2 className="h-4 w-4" />
-                    </button>
-                    <AnimatePresence>
-                      {showSharePopover && (
-                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl">
-                          {[
-                            { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
-                            { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
-                            { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
-                            { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
-                          ].map(({ label, platform, icon }) => (
-                            <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                              {icon} {label}
-                            </button>
-                          ))}
-                          <div className="my-1 border-t border-[#E2E8F0]" />
-                          <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                            {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <button onClick={() => toggleSave({ id: event.id, slug: event.slug })} className={`rounded-full border p-2 shadow-sm transition-all ${saved ? 'border-[#02338D] bg-[#02338D] text-white' : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-[#F8FAFC]'}`} aria-label={saved ? 'Remove from saved' : 'Save event'}>
-                    {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative mt-4 aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
+            <section className="overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
+              <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
                 {event.bannerImage ? (
                   <img src={heroImage(event.bannerImage)} srcSet={heroSrcSet(event.bannerImage)} sizes="(max-width: 1024px) 100vw, 780px" alt="" aria-hidden="true" fetchPriority="high" decoding="sync" className="absolute inset-0 h-full w-full object-cover" />
                 ) : (
@@ -621,8 +621,8 @@ const EventDetailPage = () => {
             </section>
           </div>
 
-          <aside className="hidden w-[320px] flex-shrink-0 lg:block lg:self-start xl:w-[336px]">
-            <div className="sticky top-[calc(6.5rem+1rem)] z-20">
+          <aside className="hidden h-fit w-[320px] flex-shrink-0 lg:block lg:self-start xl:w-[336px]">
+            <div className="sticky top-[8.5rem] z-20">
               <div className="flex max-h-[calc(100vh-8.5rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]">
                 <div className="flex items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                   <div className="flex items-center gap-2">
