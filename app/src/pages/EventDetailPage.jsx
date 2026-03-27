@@ -6,8 +6,6 @@ import {
   MapPin,
   Clock,
   Share2,
-  Bookmark,
-  BookmarkCheck,
   ChevronRight,
   Users,
   Check,
@@ -41,7 +39,6 @@ import {
 } from '../lib/eventsApi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import useSavedEvents from '../hooks/useSavedEvents';
 import { heroImage, heroSrcSet, avatarImage, logoImage } from '../lib/imageUtils';
 import eventQueryKeys from '../lib/eventQueryKeys';
 
@@ -152,7 +149,6 @@ const EventDetailPage = () => {
   const queryClient = useQueryClient();
   const { addMultipleToCart } = useCart();
   const { user } = useAuth();
-  const { isSaved, toggleSave } = useSavedEvents();
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
@@ -383,7 +379,6 @@ const EventDetailPage = () => {
     );
   }
 
-  const saved = isSaved({ id: event.id, slug: event.slug });
   const themeColor = event.themeColor || '#02338D';
   const accentColor = event.accentColor || '#7C3AED';
   const eventWorkflowStatus = event.workflowStatus || event.status;
@@ -395,6 +390,8 @@ const EventDetailPage = () => {
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
   const lowestTicketPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => Number(ticket.price || 0))) : Number(event.price || 0);
   const heroDateText = formatDate(event.date);
+  const ticketRailTop = 'calc(var(--app-navbar-height, 7.5rem) + 1rem)';
+  const ticketRailMaxHeight = 'calc(100vh - var(--app-navbar-height, 7.5rem) - 1rem)';
   const reviewStatusCopy = {
     pending: { title: 'Pending approval', body: 'This event has been submitted for publication and is waiting for admin review.', tone: 'border-[#FDE68A] bg-[#FFF7E6] text-[#8A620E]' },
     rejected: { title: 'Changes requested', body: 'This event was reviewed and needs updates before it can be published again.', tone: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B]' },
@@ -407,12 +404,12 @@ const EventDetailPage = () => {
       <ClassicTicketLoader visible={showClassicLoader} />
 
       <div className="max-w-[1240px] mx-auto w-full px-4 pb-28 pt-6 sm:px-6 sm:pb-32 lg:px-8 lg:pb-10">
-        <div className="mb-5 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-start lg:justify-between">
-          <h1 className="min-w-0 break-words text-2xl font-bold leading-tight text-[#0F172A] sm:text-3xl lg:text-[2.2rem]">
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:gap-4 lg:mb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <h1 className="min-w-0 max-w-[58rem] break-words text-xl font-bold leading-tight text-[#0F172A] sm:text-2xl lg:text-[1.85rem] xl:text-[2rem]">
             {event.title}
           </h1>
 
-          <div className="flex flex-shrink-0 items-center gap-2 self-start">
+          <div className="flex flex-shrink-0 items-center gap-2 self-start lg:justify-self-end">
             <div className="relative">
               <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-[#CBD5E1] bg-white p-2 text-[#475569] shadow-sm transition-colors hover:bg-[#F8FAFC]" aria-label="Share event">
                 <Share2 className="h-4 w-4" />
@@ -438,10 +435,6 @@ const EventDetailPage = () => {
                 )}
               </AnimatePresence>
             </div>
-
-            <button onClick={() => toggleSave({ id: event.id, slug: event.slug })} className={`rounded-full border p-2 shadow-sm transition-all ${saved ? 'border-[#02338D] bg-[#02338D] text-white' : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-[#F8FAFC]'}`} aria-label={saved ? 'Remove from saved' : 'Save event'}>
-              {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-            </button>
           </div>
         </div>
 
@@ -622,8 +615,8 @@ const EventDetailPage = () => {
           </div>
 
           <aside className="hidden h-fit w-[320px] flex-shrink-0 lg:block lg:self-start xl:w-[336px]">
-            <div className="sticky top-[8.5rem] z-20">
-              <div className="flex max-h-[calc(100vh-8.5rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]">
+            <div className="sticky z-20" style={{ top: ticketRailTop }}>
+              <div className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]" style={{ maxHeight: ticketRailMaxHeight }}>
                 <div className="flex items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                   <div className="flex items-center gap-2">
                     <Ticket className="h-4 w-4" />

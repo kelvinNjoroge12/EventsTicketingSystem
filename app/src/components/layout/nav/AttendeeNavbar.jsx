@@ -18,6 +18,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const headerRef = useRef(null);
   const profileRef = useRef(null);
 
   const isOrganizer = canAccessOrganizerDashboard(user);
@@ -34,6 +35,27 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const headerElement = headerRef.current;
+    if (!headerElement || typeof window === 'undefined') return undefined;
+
+    const rootStyle = document.documentElement.style;
+    const syncNavbarHeight = () => {
+      rootStyle.setProperty('--app-navbar-height', `${Math.ceil(headerElement.getBoundingClientRect().height)}px`);
+    };
+
+    syncNavbarHeight();
+    const resizeObserver = new ResizeObserver(syncNavbarHeight);
+    resizeObserver.observe(headerElement);
+    window.addEventListener('resize', syncNavbarHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', syncNavbarHeight);
+      rootStyle.removeProperty('--app-navbar-height');
+    };
   }, []);
 
   const handleSearch = (e) => {
@@ -132,6 +154,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
     <>
       <a href="#main-content" className="skip-to-main">Skip to main content</a>
       <header
+        ref={headerRef}
         className={`fixed top-0 left-0 right-0 z-40 bg-[#02338D] transition-all duration-300 ${isScrolled ? 'shadow-lg bg-[#02338D]/95 backdrop-blur-sm' : ''}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -344,7 +367,7 @@ const AttendeeNavbar = ({ isScrolled, isActive }) => {
           )}
         </AnimatePresence>
       </header>
-      <div className="h-[6.5rem] md:h-[7.5rem]" />
+      <div className="h-[6.5rem] md:h-[7.5rem]" style={{ height: 'var(--app-navbar-height, 7.5rem)' }} />
     </>
   );
 };
