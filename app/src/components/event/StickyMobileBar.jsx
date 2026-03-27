@@ -11,7 +11,7 @@ const StickyMobileBar = ({ event, onGetTickets, themeColor }) => {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E2E8F0] p-4 md:hidden z-30"
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E2E8F0] p-4 lg:hidden z-30"
       style={{ overflowX: 'hidden' }}
     >
       <div className="flex items-center justify-between gap-4">

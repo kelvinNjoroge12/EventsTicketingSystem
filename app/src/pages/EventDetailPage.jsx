@@ -1,17 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, MapPin, Clock, Globe, Share2, Bookmark, BookmarkCheck,
   ChevronRight, Users, Check, MessageCircle, Twitter, Linkedin,
-  Facebook, Ticket, Mic2, Building2, ExternalLink, Zap
+  Facebook, Ticket, Mic2, Building2, ExternalLink
 } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import TicketBox from '../components/event/TicketBox';
 import StickyMobileBar from '../components/event/StickyMobileBar';
 import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
-import ProgressiveImage from '../components/ui/ProgressiveImage';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
 import {
   buildEventDetailPlaceholderFromList,
@@ -56,7 +55,7 @@ const ScheduleTimeline = ({ schedule, themeColor }) => (
         <div className="pb-8 flex-1 min-w-0">
           <p className="text-sm font-semibold mb-0.5 break-words" style={{ color: themeColor }}>{item.time}</p>
           <h4 className="font-semibold text-[#0F172A] mb-1 break-words">{item.title}</h4>
-          {item.speaker && <p className="text-sm text-[#64748B] mb-1 break-words">🎤 {item.speaker}</p>}
+          {item.speaker && <p className="text-sm text-[#64748B] mb-1 break-words">Speaker: {item.speaker}</p>}
           {item.description && <p className="text-sm text-[#64748B] break-words">{item.description}</p>}
         </div>
       </motion.div>
@@ -170,39 +169,16 @@ const EventDetailPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { addToCart, addMultipleToCart } = useCart();
+  const { addMultipleToCart } = useCart();
   const { user } = useAuth();
   const { isSaved, toggleSave } = useSavedEvents();
-  const [activeTab, setActiveTab] = useState('overview');
+
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  const contentStartRef = useRef(null);
-  const tabsRef = useRef(null);
 
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setTimeout(() => {
-      // Find the tab content block and scroll it perfectly into view!
-      const tabsHeight = tabsRef.current?.offsetHeight ?? 60;
-      const navbarHeight = 104; // 6.5rem
-      // The total sticky height is exactly Navbar + TabBar
-      const combinedStickyHeight = navbarHeight + tabsHeight;
-
-      if (contentStartRef.current) {
-        const top = contentStartRef.current.getBoundingClientRect().top;
-        // If the container's top is less than the sticky threshold
-        // we scroll so the container top sits perfectly flush immediately
-        // underneath the Tab Bar.
-        if (top < combinedStickyHeight) {
-          const y = top + window.scrollY - combinedStickyHeight;
-          window.scrollTo({ top: y, behavior: 'smooth' });
-        }
-      }
-    }, 250);
-  };
 
   // 1. Main event — served from hover-prefetch cache instantly on revisit
   useEffect(() => {
@@ -276,9 +252,9 @@ const EventDetailPage = () => {
       ? sponsorsCount > 0
       : Array.isArray(event?.sponsors) && event.sponsors.length > 0;
 
-  const shouldFetchSpeakers = !!slug && hasSpeakers && activeTab === 'speakers' && !Array.isArray(event?.speakers);
-  const shouldFetchSchedule = !!slug && hasSchedule && activeTab === 'schedule' && !Array.isArray(event?.schedule);
-  const shouldFetchSponsors = !!slug && hasSponsors && activeTab === 'sponsors' && !Array.isArray(event?.sponsors);
+  const shouldFetchSpeakers = !!slug && hasSpeakers && !Array.isArray(event?.speakers);
+  const shouldFetchSchedule = !!slug && hasSchedule && !Array.isArray(event?.schedule);
+  const shouldFetchSponsors = !!slug && hasSponsors && !Array.isArray(event?.sponsors);
 
   const { data: speakersData = [], isLoading: isLoadingSpeakers } = useQuery({
     queryKey: eventQueryKeys.speakers(slug),
@@ -443,13 +419,25 @@ const EventDetailPage = () => {
   const eventWorkflowStatus = event.workflowStatus || event.status;
   const hasMC = event.mc?.name;
   const showClassicLoader = !detailAlreadyCached && (isPlaceholderData || (isFetching && isLoading));
-
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: <Zap className="w-4 h-4" /> },
-    ...(hasSpeakers ? [{ id: 'speakers', label: 'Speakers', icon: <Users className="w-4 h-4" /> }] : []),
-    ...(hasSchedule ? [{ id: 'schedule', label: 'Schedule', icon: <Clock className="w-4 h-4" /> }] : []),
-    ...(hasSponsors ? [{ id: 'sponsors', label: 'Sponsors', icon: <Building2 className="w-4 h-4" /> }] : []),
-  ];
+  const locationName = typeof event.location === 'object' ? event.location.name : (event.location || 'Online event');
+  const eventFormatLabel =
+    event.format === 'in_person'
+      ? 'In-person'
+      : event.format === 'online'
+        ? 'Online'
+        : event.format === 'hybrid'
+          ? 'Hybrid'
+          : event.format || 'Event';
+  const eventTimeLabel = `${event.time}${event.endTime ? ` - ${event.endTime}` : ''}`;
+  const speakerTotal = speakers.length || (typeof speakersCount === 'number' ? speakersCount : 0);
+  const scheduleTotal = schedule.length || (typeof scheduleCount === 'number' ? scheduleCount : 0);
+  const sponsorTotal = sponsors.length || (typeof sponsorsCount === 'number' ? sponsorsCount : 0);
+  const overviewHighlights = [
+    hasSpeakers ? { label: 'Speakers', value: speakerTotal } : null,
+    hasSchedule ? { label: 'Agenda items', value: scheduleTotal } : null,
+    hasSponsors ? { label: 'Sponsors', value: sponsorTotal } : null,
+  ].filter(Boolean);
+  const sectionCardClass = 'rounded-[28px] border border-[#E2E8F0] bg-white p-6 sm:p-8 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.4)]';
 
   const reviewStatusCopy = {
     pending: {
@@ -532,10 +520,10 @@ const EventDetailPage = () => {
                 {event.category}
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/20 backdrop-blur-sm text-white">
-                {event.format === 'in_person' ? '📍 In-Person' : event.format === 'online' ? '💻 Online' : '🔀 Hybrid'}
+                {eventFormatLabel}
               </span>
               {event.isFeatured && (
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-400 text-amber-900">⭐ Featured</span>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-400 text-amber-900">Featured</span>
               )}
             </div>
 
@@ -562,11 +550,11 @@ const EventDetailPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>{event.time}{event.endTime ? ` – ${event.endTime}` : ''}</span>
+                <span>{eventTimeLabel}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                <span>{typeof event.location === 'object' ? event.location.name : (event.location || 'Online')}</span>
+                <span>{locationName}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
@@ -723,54 +711,75 @@ const EventDetailPage = () => {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-10">
+        <div className="grid lg:grid-cols-[1fr_380px] gap-8 lg:gap-10 items-start">
 
-          {/* Left Column */}
-          <div className="lg:col-span-2 min-w-0">
-
-            {/* ── TABS ── */}
-            <div ref={tabsRef} className="sticky top-[6.5rem] z-30 bg-white border-b border-[#E2E8F0] w-full min-w-0 pb-0">
-              <div className="flex gap-1 overflow-x-auto hide-scrollbar w-full flex-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`relative flex-shrink-0 flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab.id ? 'text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
-                  >
-                    {tab.icon}
-                    {tab.label}
-                    {activeTab === tab.id && (
-                      <motion.div layoutId="eventTab"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                        style={{ backgroundColor: themeColor }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                      />
-                    )}
-                  </button>
-                ))}
+          {/* Mobile Ticket Section — appears first on mobile, hidden on desktop */}
+          <div className="lg:hidden order-1" id="tickets-section-mobile">
+            <div className="rounded-2xl border border-[#E2E8F0] bg-white shadow-lg overflow-hidden" style={{ borderTop: `4px solid ${themeColor}` }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
+                <div className="flex items-center gap-2 text-white">
+                  <Ticket className="w-5 h-5" />
+                  <span className="font-semibold">{event.isFree ? 'Free Event' : `From KES ${event.price?.toLocaleString()}`}</span>
+                </div>
+                <div className="flex items-center gap-1 text-white/80 text-sm">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>{event.attendeeCount?.toLocaleString()} going</span>
+                </div>
               </div>
+              <TicketBox event={event} onGetTickets={handleGetTickets} themeColor={themeColor} />
             </div>
+          </div>
 
-            {/* ── TAB CONTENT ── */}
-            <div className="min-h-[50vh] pt-6" ref={contentStartRef}>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {/* OVERVIEW */}
-                  {activeTab === 'overview' && (
-                    <div className="space-y-10">
-                      {/* Description */}
-                      <section>
-                        <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
-                          <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
-                          About This Event
-                        </h2>
-                        <div className="prose prose-slate max-w-full w-full break-words overflow-hidden">
+          {/* Left Column — all sections flow vertically */}
+          <div className="min-w-0 order-2 lg:order-1">
+
+            {/* ── ALL SECTIONS — single scrollable flow ── */}
+            <div className="space-y-8">
+              <motion.section
+                id="event-section-overview"
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                className={sectionCardClass}
+              >
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="max-w-3xl">
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em]" style={{ color: themeColor }}>
+                        Overview
+                      </p>
+                      <h2 className="mt-3 text-2xl font-bold text-[#0F172A] sm:text-3xl">
+                        Event details in one place
+                      </h2>
+                      <p className="mt-3 text-sm leading-6 text-[#64748B]">
+                        Review the event story, logistics, host information, and organizer details before you register.
+                      </p>
+                    </div>
+
+                    {overviewHighlights.length > 0 && (
+                      <div className="flex flex-wrap gap-3">
+                        {overviewHighlights.map((highlight) => (
+                          <div
+                            key={highlight.label}
+                            className="min-w-[120px] rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3"
+                          >
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94A3B8]">
+                              {highlight.label}
+                            </p>
+                            <p className="mt-1 text-lg font-semibold text-[#0F172A]">
+                              {highlight.value}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.95fr)]">
+                    <div className="space-y-6">
+                      <div className="rounded-2xl border border-[#E2E8F0] bg-[#FCFDFE] p-5 sm:p-6">
+                        <h3 className="text-lg font-bold text-[#0F172A]">About this event</h3>
+                        <div className="prose prose-slate mt-4 max-w-full break-words overflow-hidden">
                           {event.description
                             ? event.description.split('\n\n').map((para, i) => (
                               <p key={i} className="text-[#475569] leading-relaxed mb-4 whitespace-normal break-words sm:break-normal" style={{ wordBreak: 'break-word' }}>{para}</p>
@@ -778,132 +787,140 @@ const EventDetailPage = () => {
                             : <p className="text-[#64748B]">No description provided.</p>
                           }
                         </div>
-                      </section>
+                      </div>
 
-                      {/* MC Card (inline on overview) */}
                       {hasMC && (
-                        <section>
-                          <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
-                            <span className="w-1 h-6 rounded-full" style={{ backgroundColor: accentColor }} />
-                            MC / Host
-                          </h2>
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex items-start gap-3 sm:gap-5 p-4 sm:p-5 rounded-2xl border"
-                            style={{ borderColor: `${accentColor}40`, background: `${accentColor}08` }}
-                          >
+                        <div
+                          className="rounded-2xl border p-5 sm:p-6"
+                          style={{ borderColor: `${accentColor}40`, background: `${accentColor}08` }}
+                        >
+                          <div className="flex items-start gap-3 sm:gap-5">
                             {event.mc.avatar || event.mc.photo ? (
-                              <img src={avatarImage(event.mc.avatar || event.mc.photo, 128)}
+                              <img
+                                src={avatarImage(event.mc.avatar || event.mc.photo, 128)}
                                 alt={event.mc.name}
                                 loading="lazy"
                                 decoding="async"
                                 width="64"
                                 height="64"
-                                className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-md flex-shrink-0" />
+                                className="h-16 w-16 flex-shrink-0 rounded-full border-4 border-white object-cover shadow-md"
+                              />
                             ) : (
-                              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold border-4 border-white shadow-md flex-shrink-0"
-                                style={{ backgroundColor: accentColor }}>
-                                <Mic2 className="w-7 h-7" />
+                              <div
+                                className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border-4 border-white text-white shadow-md"
+                                style={{ backgroundColor: accentColor }}
+                              >
+                                <Mic2 className="h-7 w-7" />
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2 mb-1">
-                                <h4 className="font-bold text-[#0F172A]">{event.mc.name}</h4>
-                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: accentColor }}>
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <h3 className="text-lg font-bold text-[#0F172A]">{event.mc.name}</h3>
+                                <span
+                                  className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+                                  style={{ backgroundColor: accentColor }}
+                                >
                                   MC / Host
                                 </span>
                               </div>
-                              {event.mc.bio && <p className="text-sm text-[#64748B]">{event.mc.bio}</p>}
+                              {event.mc.bio && <p className="text-sm leading-6 text-[#64748B]">{event.mc.bio}</p>}
                             </div>
-                          </motion.div>
-                        </section>
+                          </div>
+                        </div>
                       )}
 
-                      {/* Event Details Card */}
-                      <section>
-                        <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
-                          <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
-                          Event Details
-                        </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {event.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {event.tags.map((tag, index) => (
+                            <span
+                              key={index}
+                              className="rounded-full border border-[#E2E8F0] bg-white px-3 py-1.5 text-sm font-medium text-[#64748B]"
+                            >
+                              # {typeof tag === 'object' ? tag.name : (tag || '')}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 sm:p-6">
+                        <h3 className="text-lg font-bold text-[#0F172A]">Event details</h3>
+                        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                           {[
-                            { icon: <Calendar className="w-5 h-5" />, label: 'Date', value: formatDate(event.date) },
-                            { icon: <Clock className="w-5 h-5" />, label: 'Time', value: `${event.time}${event.endTime ? ` – ${event.endTime}` : ''}` },
-                            { icon: <Globe className="w-5 h-5" />, label: 'Timezone', value: event.timezone },
-                            { icon: <MapPin className="w-5 h-5" />, label: 'Format', value: event.format },
+                            { icon: <Calendar className="h-5 w-5" />, label: 'Date', value: formatDate(event.date) },
+                            { icon: <Clock className="h-5 w-5" />, label: 'Time', value: eventTimeLabel },
+                            { icon: <Globe className="h-5 w-5" />, label: 'Timezone', value: event.timezone || 'Not specified' },
+                            { icon: <MapPin className="h-5 w-5" />, label: 'Format', value: eventFormatLabel },
                           ].map(({ icon, label, value }) => (
-                            <div key={label} className="flex items-start gap-4 p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-                              <div className="p-2 rounded-lg text-white flex-shrink-0" style={{ backgroundColor: themeColor }}>
+                            <div key={label} className="flex items-start gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4">
+                              <div className="flex-shrink-0 rounded-lg p-2 text-white" style={{ backgroundColor: themeColor }}>
                                 {icon}
                               </div>
-                              <div>
-                                <p className="text-xs text-[#94A3B8] mb-0.5">{label}</p>
-                                <p className="font-semibold text-[#0F172A] text-sm break-words">{value}</p>
+                              <div className="min-w-0">
+                                <p className="mb-0.5 text-xs text-[#94A3B8]">{label}</p>
+                                <p className="break-words text-sm font-semibold text-[#0F172A]">{value}</p>
                               </div>
                             </div>
                           ))}
                         </div>
+                      </div>
 
-                        {/* Tags */}
-                        {event.tags?.length > 0 && (
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {event.tags.map((tag, i) => (
-                              <span key={i} className="px-3 py-1.5 bg-white rounded-full text-sm font-medium border border-[#E2E8F0] text-[#64748B] hover:border-blue-200 transition-colors">
-                                # {typeof tag === 'object' ? tag.name : (tag || '')}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </section>
-
-                      {/* Location Section */}
-                      <section>
-                        <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
-                          <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
-                          Location
-                        </h2>
-                        <div className="bg-[#F1F5F9] rounded-2xl h-56 flex items-center justify-center border border-[#E2E8F0] relative overflow-hidden">
-                          <div className="absolute inset-0" style={{ background: `${themeColor}08` }} />
-                          <div className="text-center relative">
-                            <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white" style={{ backgroundColor: themeColor }}>
-                              <MapPin className="w-8 h-8" />
+                      <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 sm:p-6">
+                        <h3 className="text-lg font-bold text-[#0F172A]">Location</h3>
+                        <div className="mt-4 rounded-2xl border border-[#E2E8F0] bg-white p-5">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl text-white"
+                              style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}
+                            >
+                              <MapPin className="h-7 w-7" />
                             </div>
-                            <p className="font-semibold text-[#0F172A]">{typeof event.location === 'object' ? event.location.name : (event.location || 'Online Event')}</p>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#94A3B8]">
+                                Venue
+                              </p>
+                              <p className="mt-1 text-base font-semibold text-[#0F172A]">{locationName}</p>
+                            </div>
                           </div>
                         </div>
-                      </section>
+                      </div>
 
-                      {/* Organizer */}
-                      <section>
-                        <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
-                          <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
-                          Organized By
-                        </h2>
-                        <div className="flex items-start gap-3 sm:gap-5 p-4 sm:p-5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0]">
-                          <CustomAvatar src={event.organizer.avatar} name={event.organizer.name} size="lg" fallbackColor={event.organizer.brandColor} />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-[#0F172A] text-lg">{event.organizer.name}</h4>
+                      <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 sm:p-6">
+                        <h3 className="text-lg font-bold text-[#0F172A]">Organized by</h3>
+                        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:gap-5 sm:p-5">
+                          <CustomAvatar
+                            src={event.organizer.avatar}
+                            name={event.organizer.name}
+                            size="lg"
+                            fallbackColor={event.organizer.brandColor}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-lg font-bold text-[#0F172A]">{event.organizer.name}</h4>
                             {event.organizer.bio && (
-                              <p className="text-sm text-[#64748B] mt-1 line-clamp-2">{event.organizer.bio}</p>
+                              <p className="mt-1 text-sm text-[#64748B]">{event.organizer.bio}</p>
                             )}
-                            <Link to={`/organizers/${event.organizer.id}`}
-                              className="inline-flex items-center gap-1 text-sm font-medium mt-2 hover:underline"
-                              style={{ color: themeColor }}>
-                              View Profile <ChevronRight className="w-4 h-4" />
+                            <Link
+                              to={`/organizers/${event.organizer.id}`}
+                              className="mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline"
+                              style={{ color: themeColor }}
+                            >
+                              View profile <ChevronRight className="h-4 w-4" />
                             </Link>
                           </div>
                         </div>
-                      </section>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                </div>
+              </motion.section>
 
                   {/* SPEAKERS */}
-                  {activeTab === 'speakers' && hasSpeakers && (
-                    <section>
+              {hasSpeakers && (
+                    <section id="event-section-speakers" className={sectionCardClass}>
                       <h2 className="text-xl font-bold text-[#0F172A] mb-6 flex items-center gap-2">
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
-                        Featured Speakers
+                        Meet the speakers
                       </h2>
                       {isLoadingSpeakers ? (
                         <div className="py-6 text-sm text-[#64748B]">Loading speakers…</div>
@@ -916,8 +933,8 @@ const EventDetailPage = () => {
                   )}
 
                   {/* SCHEDULE */}
-                  {activeTab === 'schedule' && hasSchedule && (
-                    <section>
+                  {hasSchedule && (
+                    <section id="event-section-schedule" className={sectionCardClass}>
                       <h2 className="text-xl font-bold text-[#0F172A] mb-6 flex items-center gap-2">
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         Event Schedule
@@ -933,8 +950,8 @@ const EventDetailPage = () => {
                   )}
 
                   {/* SPONSORS */}
-                  {activeTab === 'sponsors' && hasSponsors && (
-                    <section>
+                  {hasSponsors && (
+                    <section id="event-section-sponsors" className={sectionCardClass}>
                       <h2 className="text-xl font-bold text-[#0F172A] mb-6 flex items-center gap-2">
                         <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
                         Our Sponsors
@@ -948,17 +965,6 @@ const EventDetailPage = () => {
                       )}
                     </section>
                   )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Mobile Ticket Section */}
-            <div className="lg:hidden pt-4 border-t border-[#E2E8F0]" id="tickets-section">
-              <h2 className="text-xl font-bold text-[#0F172A] mb-6 flex items-center gap-2">
-                <span className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColor }} />
-                Get Your Tickets
-              </h2>
-              <TicketBox event={event} onGetTickets={handleGetTickets} themeColor={themeColor} />
             </div>
 
             {/* Related Events */}
@@ -974,9 +980,9 @@ const EventDetailPage = () => {
             )}
           </div>
 
-          {/* ── RIGHT SIDEBAR ── */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-[8.5rem] max-h-[90vh] overflow-y-auto pr-1 space-y-4 scrollbar-thin scrollbar-thumb-[#E2E8F0] scrollbar-track-transparent">
+          {/* ── RIGHT SIDEBAR — Ticket always sticky ── */}
+          <aside className="hidden lg:block order-2">
+            <div className="sticky top-[6.5rem] max-h-[calc(100vh-7rem)] overflow-y-auto pr-1 space-y-4 scrollbar-thin scrollbar-thumb-[#E2E8F0] scrollbar-track-transparent">
               {/* Ticket price preview pill */}
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-white shadow-lg"
                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
@@ -995,15 +1001,13 @@ const EventDetailPage = () => {
         </div>
       </div>
 
-      {/* Mobile Sticky Bar */}
+      {/* Mobile Sticky Ticket Bar — always visible at bottom on mobile */}
       <StickyMobileBar
         event={event}
-        onGetTickets={() => {
-          document.getElementById('tickets-section')?.scrollIntoView({ behavior: 'smooth' });
-        }}
+        onGetTickets={handleGetTickets}
         themeColor={themeColor}
       />
-    </PageWrapper >
+    </PageWrapper>
   );
 };
 
