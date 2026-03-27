@@ -412,7 +412,7 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
 
     def get_sponsors(self, obj: Event):
         prefetched = getattr(obj, "prefetched_sponsors", None)
-        qs = prefetched if prefetched is not None else obj.event_sponsors.order_by("tier", "sort_order", "name")
+        qs = prefetched if prefetched is not None else obj.event_sponsors.order_by("sort_order", "name")
         return SponsorSerializer(qs, many=True, context=self.context).data
 
     def get_registration_categories(self, obj: Event):

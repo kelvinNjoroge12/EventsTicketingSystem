@@ -7,7 +7,7 @@ class SponsorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sponsor
-        fields = ["id", "name", "logo_url", "website", "tier", "sort_order"]
+        fields = ["id", "name", "logo_url", "website", "sort_order"]
 
     def get_logo_url(self, obj):
         request = self.context.get("request")
@@ -19,4 +19,4 @@ class SponsorSerializer(serializers.ModelSerializer):
 class SponsorCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sponsor
-        fields = ["name", "logo", "website", "tier", "sort_order"]
+        fields = ["name", "logo", "website", "sort_order"]

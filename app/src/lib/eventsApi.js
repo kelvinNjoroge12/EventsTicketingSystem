@@ -144,7 +144,6 @@ export const mapDetailEvent = (e) => {
     ? e.sponsors.map(s => ({
       ...s,
       logo: s.logo_url || s.logo,
-      tier: s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Partner'
     }))
     : undefined;
 

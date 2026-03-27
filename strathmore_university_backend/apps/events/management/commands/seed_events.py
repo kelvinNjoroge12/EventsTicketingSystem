@@ -411,7 +411,6 @@ class Command(BaseCommand):
                     sponsor = Sponsor.objects.create(
                         event=event,
                         name=sp["name"],
-                        tier=sp["tier"],
                         website=sp.get("website", ""),
                     )
                     seed = abs(hash(sp["name"])) % 500

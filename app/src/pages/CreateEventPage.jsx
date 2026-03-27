@@ -233,7 +233,6 @@ const CreateEventPage = ({
               id: s.id,
               name: s.name || '',
               website: s.website || '',
-              tier: s.tier || '',
               logo: null,
               logoPreview: s.logo || ''
             })),
@@ -632,7 +631,7 @@ const CreateEventPage = ({
         if (!sponsor.name) return;
         syncResource(
           sponsor, 'sponsors', 'id',
-          { name: sponsor.name, website: ensureUrl(sponsor.website), tier: (sponsor.tier || 'bronze').toLowerCase(), sort_order: String(idx) },
+          { name: sponsor.name, website: ensureUrl(sponsor.website), sort_order: String(idx) },
           { fileKey: 'logo', fileVal: sponsor.logo }
         );
       });
@@ -902,9 +901,9 @@ const CreateEventPage = ({
                     <h4 className="text-[10px] font-bold uppercase text-[#94A3B8] mb-3">Our Sponsors</h4>
                     <div className="flex flex-wrap gap-3">
                       {formData.sponsors.map((s, i) => (
-                        <div key={i} className="w-10 h-10 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center p-1 overflow-hidden">
+                        <div key={i} className="w-10 h-10 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center p-1 overflow-hidden">
                           {s.logoPreview ? (
-                            <img src={s.logoPreview} alt={s.name} className="w-full h-full object-contain" />
+                            <img src={s.logoPreview} alt={s.name} className="w-full h-full rounded-full object-contain" />
                           ) : (
                             <span className="text-[10px] font-bold text-[#02338D]">{s.name?.charAt(0)}</span>
                           )}

@@ -2,19 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import SponsorCard from '../cards/SponsorCard';
 
-const SponsorGrid = ({ sponsors, themeColor }) => {
+const SponsorGrid = ({ sponsors }) => {
   if (!sponsors || sponsors.length === 0) return null;
-
-  // Group sponsors by tier
-  const tiers = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'];
-  const tierLabels = { Partner: 'Supporter' };
-  const groupedSponsors = tiers.reduce((acc, tier) => {
-    const tierSponsors = sponsors.filter(s => s.tier === tier);
-    if (tierSponsors.length > 0) {
-      acc[tier] = tierSponsors;
-    }
-    return acc;
-  }, {});
 
   return (
     <div className="space-y-12">
@@ -26,34 +15,20 @@ const SponsorGrid = ({ sponsors, themeColor }) => {
         Sponsors
       </motion.h2>
 
-      {Object.entries(groupedSponsors).map(([tier, tierSponsors]) => {
-        const displayTier = tierLabels[tier] || tier;
-        return (
-        <div key={tier} className="space-y-4">
-          <h3 
-            className="text-lg font-semibold"
-            style={{ color: themeColor }}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+        {sponsors.map((sponsor, index) => (
+          <motion.div
+            key={sponsor.id || sponsor.name}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
           >
-            {displayTier} Sponsors
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {tierSponsors.map((sponsor, index) => (
-              <motion.div
-                key={sponsor.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <SponsorCard 
-                  sponsor={sponsor} 
-                  tier={tier}
-                  themeColor={themeColor}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )})}
+            <SponsorCard
+              sponsor={sponsor}
+            />
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 };

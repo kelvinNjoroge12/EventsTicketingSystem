@@ -501,7 +501,7 @@ export const ScheduleStep = ({ data, onChange }) => {
               <input type="text" placeholder="Session Title *" value={item.title} onChange={(e) => updateItem(index, 'title', e.target.value)}
                 className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
             </div>
-            <input type="text" placeholder="Speaker / Presenter (optional)" value={item.speaker} onChange={(e) => updateItem(index, 'speaker', e.target.value)}
+                  <input type="text" placeholder="Speaker (optional)" value={item.speaker} onChange={(e) => updateItem(index, 'speaker', e.target.value)}
               className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
             <textarea placeholder="Session description..." value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} rows={2}
               className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm" />
@@ -518,15 +518,13 @@ export const ScheduleStep = ({ data, onChange }) => {
 
 // â”€â”€ Step 6: Sponsors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const SponsorsStep = ({ data, onChange }) => {
-  const addSponsor = () => onChange('sponsors', [...data.sponsors, { name: '', website: '', tier: 'Bronze', logo: null, logoPreview: '' }]);
+  const addSponsor = () => onChange('sponsors', [...data.sponsors, { name: '', website: '', logo: null, logoPreview: '' }]);
   const removeSponsor = (i) => onChange('sponsors', data.sponsors.filter((_, idx) => idx !== i));
   const updateSponsor = (i, field, value) => {
     const arr = [...data.sponsors];
     arr[i] = { ...arr[i], [field]: value };
     onChange('sponsors', arr);
   };
-
-  const tierColors = { Platinum: '#E5E7EB', Gold: '#FCD34D', Silver: '#9CA3AF', Bronze: '#CD7F32', Partner: '#02338D' };
 
   return (
     <div className="space-y-6">
@@ -539,7 +537,7 @@ export const SponsorsStep = ({ data, onChange }) => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full" style={{ backgroundColor: tierColors[sponsor.tier] || '#ccc' }} />
+                <span className="w-4 h-4 rounded-full bg-[#02338D]" />
                 <h4 className="font-semibold text-[#0F172A]">Sponsor {index + 1}</h4>
               </div>
               <button type="button" onClick={() => removeSponsor(index)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
@@ -552,16 +550,11 @@ export const SponsorsStep = ({ data, onChange }) => {
               <ImageUploader size="sm" hint="Logo" preview={sponsor.logoPreview}
                 onFile={(file, preview) => { updateSponsor(index, 'logo', file); updateSponsor(index, 'logoPreview', preview); }}
               />
-              <div className="flex-1 grid grid-cols-2 gap-3">
+              <div className="flex-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input type="text" placeholder="Sponsor Name *" value={sponsor.name} onChange={(e) => updateSponsor(index, 'name', e.target.value)}
                   className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
-                <select value={sponsor.tier} onChange={(e) => updateSponsor(index, 'tier', e.target.value)}
-                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm"
-                >
-                  {Object.keys(tierColors).map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
                 <input type="url" placeholder="Website URL" value={sponsor.website} onChange={(e) => updateSponsor(index, 'website', e.target.value)}
-                  className="col-span-2 px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm sm:col-span-1" />
               </div>
             </div>
           </motion.div>

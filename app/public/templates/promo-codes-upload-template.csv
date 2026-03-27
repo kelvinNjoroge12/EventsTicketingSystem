@@ -1,0 +1,3 @@
+code,discount_value,discount_type,usage_limit,expiry,is_active,minimum_order_amount
+EARLYBIRD20,20,percent,100,2026-12-31,true,0
+VIP500,500,fixed,50,2026-12-31,true,2000

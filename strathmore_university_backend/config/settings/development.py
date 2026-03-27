@@ -27,3 +27,6 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (  # noqa: F405
 
 # Enable simulation by default in local development.
 ENABLE_SIMULATED_PAYMENTS = True  # noqa: F405
+
+# Disable ratelimits for tests/local development to prevent flaky test failures.
+RATELIMIT_ENABLE = False  # noqa: F405

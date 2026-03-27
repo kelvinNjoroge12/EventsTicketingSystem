@@ -5,7 +5,6 @@ import {
   Calendar,
   MapPin,
   Clock,
-  Globe,
   Share2,
   Bookmark,
   BookmarkCheck,
@@ -18,7 +17,6 @@ import {
   Facebook,
   Ticket,
   Mic2,
-  Building2,
   ExternalLink,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -104,55 +102,48 @@ const SpeakersGrid = ({ speakers, themeColor }) => (
   </div>
 );
 
-const SponsorsGrid = ({ sponsors, themeColor }) => {
-  const tierOrder = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'];
-  const tierStyles = {
-    Platinum: 'border-slate-300 bg-slate-50 text-slate-500',
-    Gold: 'border-amber-300 bg-amber-50 text-amber-600',
-    Silver: 'border-gray-300 bg-gray-50 text-gray-500',
-    Bronze: 'border-orange-300 bg-orange-50 text-orange-700',
-    Partner: 'border-blue-300 bg-blue-50 text-blue-600',
-  };
-  const tierLabels = { Partner: 'Supporter' };
-  const byTier = tierOrder.reduce((acc, tier) => {
-    const items = sponsors.filter((sponsor) => sponsor.tier === tier);
-    if (items.length > 0) acc[tier] = items;
-    return acc;
-  }, {});
+const SponsorsGrid = ({ sponsors, themeColor }) => (
+  <div className="grid grid-cols-1 gap-3 xs:grid-cols-2 sm:grid-cols-3 sm:gap-4">
+    {sponsors.map((sponsor, index) => {
+      const content = (
+        <>
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[#E2E8F0] bg-white p-3 shadow-sm">
+            {sponsor.logo ? (
+              <img src={logoImage(sponsor.logo)} alt={sponsor.name} loading="lazy" decoding="async" className="h-full w-full rounded-full object-contain" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center rounded-full text-lg font-bold text-white" style={{ backgroundColor: themeColor }}>
+                {sponsor.name?.charAt(0)}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 space-y-1 text-center">
+            <p className="truncate text-sm font-semibold text-[#0F172A]">{sponsor.name}</p>
+            {sponsor.website && (
+              <div className="inline-flex items-center gap-1 text-xs text-[#64748B] group-hover:text-[#02338D]">
+                <span>Visit site</span>
+                <ExternalLink className="h-3 w-3 flex-shrink-0" />
+              </div>
+            )}
+          </div>
+        </>
+      );
 
-  return (
-    <div className="w-full space-y-8 overflow-hidden">
-      {Object.entries(byTier).map(([tier, items]) => (
-        <div key={tier} className="w-full">
-          <div className={`mb-4 inline-flex max-w-full items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold sm:text-sm ${tierStyles[tier]}`}>
-            <Building2 className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{(tierLabels[tier] || tier)} Sponsor{items.length > 1 ? 's' : ''}</span>
-          </div>
-          <div className="grid grid-cols-1 gap-3 xs:grid-cols-2 sm:grid-cols-3 sm:gap-4">
-            {items.map((sponsor, index) => (
-              <motion.div key={index} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: index * 0.08 }}>
-                {sponsor.website ? (
-                  <a href={sponsor.website} target="_blank" rel="noopener noreferrer" className="pressable-card group flex min-h-[100px] w-full min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 sm:p-5">
-                    {sponsor.logo ? <img src={logoImage(sponsor.logo)} alt={sponsor.name} loading="lazy" decoding="async" className="h-10 max-w-full object-contain" /> : <div className="flex h-12 w-12 items-center justify-center rounded-xl text-lg font-bold text-white" style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>}
-                    <div className="mt-2 flex w-full items-center justify-center gap-1 text-xs text-[#94A3B8] group-hover:text-[#02338D]">
-                      <span className="truncate">{sponsor.name}</span>
-                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                    </div>
-                  </a>
-                ) : (
-                  <div className="flex min-h-[100px] w-full min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 sm:p-5">
-                    {sponsor.logo ? <img src={logoImage(sponsor.logo)} alt={sponsor.name} loading="lazy" decoding="async" className="h-10 max-w-full object-contain" /> : <div className="flex h-12 w-12 items-center justify-center rounded-xl text-lg font-bold text-white" style={{ backgroundColor: themeColor }}>{sponsor.name?.charAt(0)}</div>}
-                    <p className="mt-2 w-full truncate px-2 text-center text-xs text-[#64748B]">{sponsor.name}</p>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
+      return (
+        <motion.div key={sponsor.id || sponsor.name || index} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: index * 0.08 }}>
+          {sponsor.website ? (
+            <a href={sponsor.website} target="_blank" rel="noopener noreferrer" className="pressable-card group flex min-h-[120px] w-full min-w-0 flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-5">
+              {content}
+            </a>
+          ) : (
+            <div className="flex min-h-[120px] w-full min-w-0 flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-5">
+              {content}
+            </div>
+          )}
+        </motion.div>
+      );
+    })}
+  </div>
+);
 
 const EventDetailPage = () => {
   const { slug } = useParams();
@@ -270,7 +261,6 @@ const EventDetailPage = () => {
     return sponsorsData.map((sponsor) => ({
       ...sponsor,
       logo: sponsor.logo_url || sponsor.logo,
-      tier: sponsor.tier ? sponsor.tier.charAt(0).toUpperCase() + sponsor.tier.slice(1) : 'Partner',
     }));
   }, [event?.sponsors, sponsorsData]);
 
@@ -404,13 +394,8 @@ const EventDetailPage = () => {
   const eventTimeLabel = `${event.time}${event.endTime ? ` - ${event.endTime}` : ''}`;
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
   const lowestTicketPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => Number(ticket.price || 0))) : Number(event.price || 0);
-  const detailHighlights = [
-    { label: 'Date', value: formatDate(event.date), icon: Calendar },
-    { label: 'Time', value: eventTimeLabel, icon: Clock },
-    { label: 'Location', value: locationName, icon: MapPin },
-    { label: 'Timezone', value: event.timezone || 'Not specified', icon: Globe },
-    { label: 'Attendees', value: `${event.attendeeCount?.toLocaleString() || 0} attending`, icon: Users },
-  ];
+  const heroDateLine = `${formatDate(event.date)} - ${eventTimeLabel}`;
+  const heroPriceBadge = event.isFree || lowestTicketPrice === 0 ? 'Free Entry' : `${event.currency} ${lowestTicketPrice.toLocaleString()}`;
   const reviewStatusCopy = {
     pending: { title: 'Pending approval', body: 'This event has been submitted for publication and is waiting for admin review.', tone: 'border-[#FDE68A] bg-[#FFF7E6] text-[#8A620E]' },
     rejected: { title: 'Changes requested', body: 'This event was reviewed and needs updates before it can be published again.', tone: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B]' },
@@ -425,18 +410,7 @@ const EventDetailPage = () => {
       <div className="max-w-[1240px] mx-auto w-full px-4 pb-28 pt-6 sm:px-6 sm:pb-32 lg:px-8 lg:pb-10">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_336px]">
           <div className="min-w-0">
-            <div className="mb-4">
-              <nav className="mb-3 flex flex-wrap items-center gap-1 text-xs text-[#64748B] sm:gap-2">
-                <Link to="/" className="transition-colors hover:text-[#0F172A]">Home</Link>
-                <ChevronRight className="h-3 w-3" />
-                <Link to="/events" className="transition-colors hover:text-[#0F172A]">Events</Link>
-                <ChevronRight className="h-3 w-3" />
-                <span className="max-w-[220px] truncate text-[#0F172A]">{event.title}</span>
-              </nav>
-              <h1 className="text-2xl font-bold leading-tight text-[#0F172A] break-words sm:text-3xl">{event.title}</h1>
-            </div>
-
-            <section className="mb-6 overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
+            <section className="overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
               <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
                 {event.bannerImage ? (
                   <img src={heroImage(event.bannerImage)} srcSet={heroSrcSet(event.bannerImage)} sizes="(max-width: 1024px) 100vw, 780px" alt="" aria-hidden="true" fetchPriority="high" decoding="sync" className="absolute inset-0 h-full w-full object-cover" />
@@ -457,56 +431,101 @@ const EventDetailPage = () => {
                   </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/90 via-[#020617]/45 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/95 via-[#020617]/45 to-[#020617]/10" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/10" />
 
-                <div className="absolute right-3 top-3 flex items-center gap-2 sm:right-4 sm:top-4">
-                  <div className="relative">
-                    <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-white/20 bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/35" aria-label="Share event">
-                      <Share2 className="h-4 w-4" />
-                    </button>
-                    <AnimatePresence>
-                      {showSharePopover && (
-                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl">
-                          {[
-                            { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
-                            { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
-                            { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
-                            { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
-                          ].map(({ label, platform, icon }) => (
-                            <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                              {icon} {label}
-                            </button>
-                          ))}
-                          <div className="my-1 border-t border-[#E2E8F0]" />
-                          <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                            {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-3 sm:left-4 sm:right-4 sm:top-4">
+                  <div className="flex max-w-[70%] flex-wrap items-center gap-2">
+                    {event.category && (
+                      <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md">
+                        {event.category}
+                      </span>
+                    )}
+                    <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90 backdrop-blur-md">
+                      {eventFormatLabel}
+                    </span>
                   </div>
 
-                  <button onClick={() => toggleSave({ id: event.id, slug: event.slug })} className={`rounded-full border p-2 backdrop-blur-sm transition-all ${saved ? 'bg-[#02338D] border-[#02338D] text-white' : 'bg-white/20 border-white/20 text-white hover:bg-white/35'}`} aria-label={saved ? 'Remove from saved' : 'Save event'}>
-                    {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-white/20 bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/35" aria-label="Share event">
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                      <AnimatePresence>
+                        {showSharePopover && (
+                          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl">
+                            {[
+                              { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
+                              { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
+                              { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
+                              { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
+                            ].map(({ label, platform, icon }) => (
+                              <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                                {icon} {label}
+                              </button>
+                            ))}
+                            <div className="my-1 border-t border-[#E2E8F0]" />
+                            <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                              {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <button onClick={() => toggleSave({ id: event.id, slug: event.slug })} className={`rounded-full border p-2 backdrop-blur-sm transition-all ${saved ? 'bg-[#02338D] border-[#02338D] text-white' : 'bg-white/20 border-white/20 text-white hover:bg-white/35'}`} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+                      {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 lg:p-6">
-                  <div className="rounded-[24px] border border-white/15 bg-white/14 p-4 text-white shadow-xl backdrop-blur-xl sm:p-5">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {detailHighlights.map(({ label, value, icon: Icon }) => (
-                        <div key={label} className="min-w-0 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/12">
-                              <Icon className="h-4 w-4 text-white" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">{label}</p>
-                              <p className="mt-1 break-words text-sm font-semibold leading-5 text-white">{value}</p>
-                            </div>
-                          </div>
+                <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 lg:p-7">
+                  <div className="max-w-3xl rounded-[28px] border border-white/15 bg-black/25 p-4 text-white shadow-2xl backdrop-blur-md sm:p-5 lg:p-6">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white" style={{ backgroundColor: event.isFree || lowestTicketPrice === 0 ? '#16A34A' : `${themeColor}DD` }}>
+                        {heroPriceBadge}
+                      </span>
+                      {event.isPast && <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">Past Event</span>}
+                      {!event.isPast && event.timeState === 'live' && <span className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">Live Now</span>}
+                      {!event.isPast && event.timeState !== 'live' && event.isToday && <span className="rounded-full bg-sky-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">Today</span>}
+                      {event.isFeatured && <span className="rounded-full bg-amber-400 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-950">Featured</span>}
+                    </div>
+
+                    <h1 className="break-words text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-[2.2rem]">
+                      {event.title}
+                    </h1>
+
+                    <div className="mt-4 space-y-2 text-sm font-medium text-white/85">
+                      <div className="flex items-start gap-2">
+                        <Calendar className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span className="break-words">{heroDateLine}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="break-words">{locationName}</span>
+                          {event.timezone && (
+                            <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/90">
+                              {event.timezone}
+                            </span>
+                          )}
                         </div>
-                      ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-col gap-3 border-t border-white/15 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <CustomAvatar src={event.organizer?.avatar} name={event.organizer?.name} size="sm" fallbackColor={event.organizer?.brandColor} className="border border-white/20" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Hosted by</p>
+                          <p className="truncate text-sm font-semibold text-white">{event.organizer?.name || 'Organizer'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm font-semibold text-white/80">
+                        <Users className="h-4 w-4 flex-shrink-0" />
+                        <span>{event.attendeeCount?.toLocaleString() || 0} attending</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -514,9 +533,9 @@ const EventDetailPage = () => {
 
               <div className="p-5 sm:p-6 lg:p-8">
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full px-3 py-1 text-xs font-semibold text-white" style={{ backgroundColor: `${themeColor}CC` }}>{event.category}</span>
-                  <span className="rounded-full bg-[#F1F5F9] px-3 py-1 text-xs font-medium text-[#475569]">{eventFormatLabel}</span>
-                  {event.isFeatured && <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-semibold text-amber-900">Featured</span>}
+                  <span className="rounded-full bg-[#F1F5F9] px-3 py-1 text-xs font-semibold text-[#475569]">{eventFormatLabel}</span>
+                  {event.timezone && <span className="rounded-full bg-[#EFF6FF] px-3 py-1 text-xs font-semibold text-[#1D4ED8]">{event.timezone}</span>}
+                  {event.isFeatured && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Featured event</span>}
                 </div>
 
                 <div className="prose prose-slate max-w-full break-words overflow-hidden">
@@ -525,11 +544,11 @@ const EventDetailPage = () => {
                   )) : <p className="text-[#64748B]">No description provided.</p>}
                 </div>
               </div>
-            </section>
 
             {canViewReviewState && reviewBanner && (
-              <div className={`mb-6 rounded-2xl border p-5 ${reviewBanner.tone}`}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
+                <div className={`rounded-2xl border p-5 ${reviewBanner.tone}`}>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="rounded-full border border-current/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide">{reviewBanner.title}</span>
@@ -560,13 +579,13 @@ const EventDetailPage = () => {
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             )}
 
-            <section className="overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_24px_48px_-42px_rgba(15,23,42,0.45)]">
-              {hasMC && (
-                <div className="px-5 py-5 sm:px-6 lg:px-8">
+            {hasMC && (
+                <div className="border-t border-[#E2E8F0] px-5 py-5 sm:px-6 lg:px-8">
                   <div className="flex items-start gap-4">
                     {event.mc.avatar || event.mc.photo ? (
                       <img src={avatarImage(event.mc.avatar || event.mc.photo, 128)} alt={event.mc.name} loading="lazy" decoding="async" width="48" height="48" className="h-12 w-12 flex-shrink-0 rounded-full border-2 border-[#F1F5F9] object-cover" />
@@ -586,19 +605,6 @@ const EventDetailPage = () => {
                 </div>
               )}
 
-              <div className={`${hasMC ? 'border-t border-[#E2E8F0]' : ''} px-5 py-5 sm:px-6 lg:px-8`}>
-                <div className="flex items-start gap-4">
-                  <CustomAvatar src={event.organizer.avatar} name={event.organizer.name} size="lg" fallbackColor={event.organizer.brandColor} />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-[#0F172A]">{event.organizer.name}</h4>
-                    {event.organizer.bio && <p className="mt-1 text-sm text-[#64748B]">{event.organizer.bio}</p>}
-                    <Link to={`/organizers/${event.organizer.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium hover:underline" style={{ color: themeColor }}>
-                      View profile <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
               {event.tags?.length > 0 && (
                 <div className="border-t border-[#E2E8F0] px-5 py-4 sm:px-6 lg:px-8">
                   <div className="flex flex-wrap gap-2">
@@ -613,7 +619,7 @@ const EventDetailPage = () => {
 
               {hasSpeakers && (
                 <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
-                  <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Presenters ({speakers.length || speakersCount || 0})</h2>
+                  <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Speakers ({speakers.length || speakersCount || 0})</h2>
                   {isLoadingSpeakers ? <div className="py-6 text-sm text-[#64748B]">Loading speakers...</div> : speakers.length > 0 ? <SpeakersGrid speakers={speakers} themeColor={themeColor} /> : <p className="text-sm text-[#64748B]">No speakers listed yet.</p>}
                 </div>
               )}
@@ -622,13 +628,6 @@ const EventDetailPage = () => {
                 <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
                   <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Schedule</h2>
                   {isLoadingSchedule ? <div className="py-6 text-sm text-[#64748B]">Loading schedule...</div> : schedule.length > 0 ? <ScheduleTimeline schedule={schedule} themeColor={themeColor} /> : <p className="text-sm text-[#64748B]">No schedule published yet.</p>}
-                </div>
-              )}
-
-              {hasSponsors && (
-                <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
-                  <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Sponsors</h2>
-                  {isLoadingSponsors ? <div className="py-6 text-sm text-[#64748B]">Loading sponsors...</div> : sponsors.length > 0 ? <SponsorsGrid sponsors={sponsors} themeColor={themeColor} /> : <p className="text-sm text-[#64748B]">No sponsors listed yet.</p>}
                 </div>
               )}
 
@@ -642,11 +641,31 @@ const EventDetailPage = () => {
                   </div>
                 </div>
               )}
+
+              {hasSponsors && (
+                <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
+                  <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Sponsors</h2>
+                  {isLoadingSponsors ? <div className="py-6 text-sm text-[#64748B]">Loading sponsors...</div> : sponsors.length > 0 ? <SponsorsGrid sponsors={sponsors} themeColor={themeColor} /> : <p className="text-sm text-[#64748B]">No sponsors listed yet.</p>}
+                </div>
+              )}
+
+              <div className="border-t border-[#E2E8F0] px-5 py-5 sm:px-6 lg:px-8">
+                <div className="flex items-start gap-4">
+                  <CustomAvatar src={event.organizer.avatar} name={event.organizer.name} size="lg" fallbackColor={event.organizer.brandColor} />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-semibold text-[#0F172A]">{event.organizer.name}</h4>
+                    {event.organizer.bio && <p className="mt-1 text-sm text-[#64748B]">{event.organizer.bio}</p>}
+                    <Link to={`/organizers/${event.organizer.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium hover:underline" style={{ color: themeColor }}>
+                      View profile <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </section>
           </div>
 
-          <aside className="hidden w-[320px] flex-shrink-0 lg:block xl:w-[336px]">
-            <div className="sticky top-[7.25rem]">
+          <aside className="hidden w-[320px] flex-shrink-0 lg:block lg:self-start xl:w-[336px]">
+            <div className="sticky top-32">
               <div className="flex items-center justify-between rounded-t-2xl px-4 py-3 text-sm font-medium text-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                 <div className="flex items-center gap-2">
                   <Ticket className="h-4 w-4" />
@@ -657,7 +676,7 @@ const EventDetailPage = () => {
                   <span className="text-xs">{event.attendeeCount?.toLocaleString() || 0} going</span>
                 </div>
               </div>
-              <div className="max-h-[calc(100vh-9.25rem)] overflow-y-auto rounded-b-2xl scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#E2E8F0]">
+              <div className="max-h-[calc(100vh-9.5rem)] overflow-y-auto rounded-b-2xl scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#E2E8F0]">
                 <TicketBox event={event} onGetTickets={handleGetTickets} themeColor={themeColor} layout="sidebar" />
               </div>
             </div>

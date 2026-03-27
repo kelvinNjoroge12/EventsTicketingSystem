@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Tag, Plus, Power, Trash2, X, Upload } from 'lucide-react';
+import { Tag, Plus, Power, Trash2, X, Upload, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { api } from '@/lib/apiClient';
 import { toast } from 'sonner';
 
 const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
+const promoUploadTemplateUrl = `${import.meta.env.BASE_URL}templates/promo-codes-upload-template.csv`;
 
 const PromoCodesTab = ({ slug }) => {
   const queryClient = useQueryClient();
@@ -326,6 +327,19 @@ const PromoCodesTab = ({ slug }) => {
                   Required columns: <span className="font-semibold text-gray-600">code</span>, <span className="font-semibold text-gray-600">discount_value</span>. Optional:
                   discount_type (percent/fixed), usage_limit, expiry (YYYY-MM-DD), is_active, minimum_order_amount.
                 </p>
+              </div>
+
+              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm">
+                  <p className="font-semibold text-[#0F172A]">Need the correct upload format?</p>
+                  <p className="text-xs text-gray-500">Download the sample template and replace the example rows with your own codes.</p>
+                </div>
+                <Button asChild variant="outline" className="border-[#CBD5E1] text-[#02338D] hover:text-[#022A78]">
+                  <a href={promoUploadTemplateUrl} download="promo-codes-upload-template.csv">
+                    <Download className="w-4 h-4" />
+                    Download Template
+                  </a>
+                </Button>
               </div>
 
               <div className="space-y-2">

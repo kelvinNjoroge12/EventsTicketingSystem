@@ -88,7 +88,7 @@ def _with_detail_optimizations(queryset, exclude_fields: set[str] | None = None)
         prefetches.append(
             Prefetch(
                 "event_sponsors",
-                queryset=Sponsor.objects.order_by("tier", "sort_order", "name"),
+                queryset=Sponsor.objects.order_by("sort_order", "name"),
                 to_attr="prefetched_sponsors",
             )
         )

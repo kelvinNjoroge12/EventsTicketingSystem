@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Award, Plus, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/apiClient';
@@ -13,7 +12,7 @@ const SponsorsTab = ({ slug }) => {
   const queryClient = useQueryClient();
   const [showSponsorModal, setShowSponsorModal] = useState(false);
   const [sponsorForm, setSponsorForm] = useState({
-    name: '', website: '', tier: 'partner', sort_order: 0
+    name: '', website: '', sort_order: 0
   });
 
   const { data: sponsorsData = [], isLoading: isSponsorsLoading } = useQuery({
@@ -30,7 +29,7 @@ const SponsorsTab = ({ slug }) => {
     onSuccess: () => {
       toast.success('Sponsor added.');
       setShowSponsorModal(false);
-      setSponsorForm({ name: '', website: '', tier: 'partner', sort_order: 0 });
+      setSponsorForm({ name: '', website: '', sort_order: 0 });
       queryClient.invalidateQueries({ queryKey: ['sponsors', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to add sponsor.')
@@ -44,13 +43,6 @@ const SponsorsTab = ({ slug }) => {
     },
     onError: (err) => toast.error(err?.message || 'Failed to remove sponsor.')
   });
-
-  const formatTierLabel = (tier) => {
-    if (!tier) return '';
-    const normalized = String(tier).toLowerCase();
-    if (normalized === 'partner') return 'Supporter';
-    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-  };
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -82,15 +74,16 @@ const SponsorsTab = ({ slug }) => {
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
-                  <div className="h-16 flex items-center justify-center mb-3">
+                  <div className="mb-3 flex h-16 items-center justify-center">
                     {sponsor.logo_url ? (
-                      <img src={sponsor.logo_url} alt={sponsor.name} className="max-h-full max-w-full object-contain" />
+                      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white p-3 shadow-sm">
+                        <img src={sponsor.logo_url} alt={sponsor.name} className="h-full w-full rounded-full object-contain" />
+                      </div>
                     ) : (
                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 font-bold">{sponsor.name.charAt(0)}</div>
                     )}
                   </div>
                   <h4 className="font-bold text-[#0F172A] text-sm truncate">{sponsor.name}</h4>
-                  <Badge className="mt-2 text-[10px]" variant="outline">{formatTierLabel(sponsor.tier)}</Badge>
                 </div>
               ))}
             </div>
@@ -115,21 +108,9 @@ const SponsorsTab = ({ slug }) => {
                 <Label>Sponsor Name *</Label>
                 <Input value={sponsorForm.name} onChange={e => setSponsorForm(p => ({ ...p, name: e.target.value }))} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Tier</Label>
-                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={sponsorForm.tier} onChange={e => setSponsorForm(p => ({ ...p, tier: e.target.value }))}>
-                    <option value="platinum">Platinum</option>
-                    <option value="gold">Gold</option>
-                    <option value="silver">Silver</option>
-                    <option value="bronze">Bronze</option>
-                    <option value="partner">Supporter</option>
-                  </select>
-                </div>
-                <div>
-                  <Label>Website</Label>
-                  <Input value={sponsorForm.website} placeholder="https://" onChange={e => setSponsorForm(p => ({ ...p, website: e.target.value }))} />
-                </div>
+              <div>
+                <Label>Website</Label>
+                <Input value={sponsorForm.website} placeholder="https://" onChange={e => setSponsorForm(p => ({ ...p, website: e.target.value }))} />
               </div>
               <div className="flex justify-end gap-3 mt-4">
                 <Button variant="outline" onClick={() => setShowSponsorModal(false)}>Cancel</Button>

@@ -236,7 +236,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
   ]);
 
   const [speakers, setSpeakers] = useState([{ id: '1', name: '', title: '', org: '' }]);
-  const [sponsors, setSponsors] = useState([{ id: '1', name: '', website: '', tier: 'partner' }]);
+  const [sponsors, setSponsors] = useState([{ id: '1', name: '', website: '' }]);
 
   // MC state
   const [hasMC, setHasMC] = useState(false);
@@ -295,7 +295,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
   const rmSpeaker = id => setSpeakers(p => p.filter(s => s.id !== id));
 
   // Sponsor helpers
-  const addSponsor = () => setSponsors(p => [...p, { id: Date.now().toString(), name: '', website: '', tier: 'partner' }]);
+  const addSponsor = () => setSponsors(p => [...p, { id: Date.now().toString(), name: '', website: '' }]);
   const updSponsor = (id, f, v) => setSponsors(p => p.map(s => s.id === id ? { ...s, [f]: v } : s));
   const rmSponsor = id => setSponsors(p => p.filter(s => s.id !== id));
 
@@ -412,7 +412,7 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
       sponsors.filter(s => s.name.trim()).forEach((s, idx) => {
         tasks.push(
           api.post(`/api/events/${slug}/sponsors/`, {
-            name: s.name, website: s.website || '', tier: s.tier || 'partner', sort_order: idx,
+            name: s.name, website: s.website || '', sort_order: idx,
           }).catch(() => null)
         );
       });
@@ -743,23 +743,12 @@ const OrganizerCreateEvent = ({ onBack, onCreated }) => {
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Sponsor Name">
                     <TextInput placeholder="e.g. Google Kenya" value={sp.name} onChange={e => updSponsor(sp.id, 'name', e.target.value)} />
                   </Field>
                   <Field label="Website">
                     <TextInput placeholder="https://google.com" value={sp.website} onChange={e => updSponsor(sp.id, 'website', e.target.value)} />
-                  </Field>
-                  <Field label="Tier">
-                    <div className="relative">
-                      <select className={`${inputCls} pr-10 appearance-none`} value={sp.tier} onChange={e => updSponsor(sp.id, 'tier', e.target.value)}>
-                        <option value="platinum">Platinum</option>
-                        <option value="gold">Gold</option>
-                        <option value="silver">Silver</option>
-                        <option value="partner">Partner</option>
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    </div>
                   </Field>
                 </div>
               </div>
