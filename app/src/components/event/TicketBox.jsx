@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, Tag, Check, ShoppingCart } from 'lucide-react';
 import CustomButton from '../ui/CustomButton';
@@ -8,11 +8,18 @@ const TicketBox = ({
   event,
   onGetTickets,
   themeColor,
+  layout = 'default',
 }) => {
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
+  const promoCodes = Array.isArray(event.promoCodes)
+    ? event.promoCodes
+    : Array.isArray(event.promo_codes)
+      ? event.promo_codes
+      : [];
   const isPastEvent = event.isPast || event.timeState === 'past' || event.status === 'completed';
   const workflowStatus = event.workflowStatus || event.status;
   const isUnavailableForSale = !['published', 'completed'].includes(workflowStatus);
+  const isSidebarLayout = layout === 'sidebar';
   const registrationCategories = Array.isArray(event.registrationCategories)
     ? event.registrationCategories
     : Array.isArray(event.registration_categories)
@@ -20,10 +27,10 @@ const TicketBox = ({
       : [];
 
   const activeCategories = registrationCategories.filter((cat) => cat && cat.is_active !== false);
-  const hasCategoryTickets = activeCategories.length > 0 && tickets.some((t) => t.registration_category);
+  const hasCategoryTickets = activeCategories.length > 0 && tickets.some((ticket) => ticket.registration_category);
   const categoryOptions = hasCategoryTickets
     ? activeCategories
-      .filter((cat) => tickets.some((t) => String(t.registration_category) === String(cat.id)))
+      .filter((cat) => tickets.some((ticket) => String(ticket.registration_category) === String(cat.id)))
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     : [];
 
@@ -35,33 +42,27 @@ const TicketBox = ({
     return cat.label || cat.category;
   };
 
-  const defaultCategoryId = categoryOptions[0]?.id || null;
-
-  // Track quantity per ticket type: { [ticketId]: quantity }
   const buildQuantitiesForCategory = (categoryId) => {
     const initial = {};
-    tickets.forEach(t => { initial[t.id] = 0; });
+    tickets.forEach((ticket) => {
+      initial[ticket.id] = 0;
+    });
+
     const scopedTickets = categoryId
-      ? tickets.filter((t) => String(t.registration_category) === String(categoryId))
+      ? tickets.filter((ticket) => String(ticket.registration_category) === String(categoryId))
       : tickets;
-    const firstAvailable = scopedTickets.find(t => (t.remaining ?? 0) > 0);
+    const firstAvailable = scopedTickets.find((ticket) => (ticket.remaining ?? 0) > 0);
+
     if (firstAvailable) {
       initial[firstAvailable.id] = 1;
     }
+
     return initial;
   };
 
+  const defaultCategoryId = categoryOptions[0]?.id || null;
   const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategoryId);
   const [quantities, setQuantities] = useState(() => buildQuantitiesForCategory(defaultCategoryId));
-
-  useEffect(() => {
-    if (hasCategoryTickets && categoryOptions.length > 0 && !selectedCategoryId) {
-      const nextId = categoryOptions[0].id;
-      setSelectedCategoryId(nextId);
-      setQuantities(buildQuantitiesForCategory(nextId));
-    }
-  }, [hasCategoryTickets, categoryOptions, selectedCategoryId]);
-
   const [promoCode, setPromoCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
@@ -70,17 +71,30 @@ const TicketBox = ({
   const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '', notes: '' });
   const [waitlistStatus, setWaitlistStatus] = useState({ loading: false, error: '', success: '' });
 
+  useEffect(() => {
+    if (hasCategoryTickets && categoryOptions.length > 0 && !selectedCategoryId) {
+      const nextId = categoryOptions[0].id;
+      setSelectedCategoryId(nextId);
+      setQuantities(buildQuantitiesForCategory(nextId));
+    }
+  }, [categoryOptions, hasCategoryTickets, selectedCategoryId]);
+
   const toCents = (value) => Math.round(Number(value || 0) * 100);
   const fromCents = (value) => Number((value / 100).toFixed(2));
 
   const handleQuantityChange = (ticketId, delta) => {
     if (isPastEvent || isUnavailableForSale) return;
-    setQuantities(prev => {
-      const ticket = event.tickets.find(t => t.id === ticketId);
+
+    setQuantities((prev) => {
+      const ticket = tickets.find((item) => item.id === ticketId);
       const current = prev[ticketId] || 0;
-      const newQty = current + delta;
-      if (newQty < 0 || newQty > Math.min(10, ticket?.remaining || 10)) return prev;
-      return { ...prev, [ticketId]: newQty };
+      const nextQuantity = current + delta;
+
+      if (nextQuantity < 0 || nextQuantity > Math.min(10, ticket?.remaining || 10)) {
+        return prev;
+      }
+
+      return { ...prev, [ticketId]: nextQuantity };
     });
   };
 
@@ -92,35 +106,37 @@ const TicketBox = ({
 
   const handleApplyPromo = () => {
     if (isPastEvent || isUnavailableForSale) return;
+
     setPromoError('');
     setPromoSuccess('');
 
     if (!promoCode.trim()) return;
 
-    const validPromo = event.promoCodes?.find(
-      p => p.code.toLowerCase() === promoCode.toLowerCase()
+    const validPromo = promoCodes.find(
+      (promo) => promo.code?.toLowerCase() === promoCode.trim().toLowerCase(),
     );
 
     if (validPromo) {
       setAppliedPromo(validPromo);
       setPromoSuccess(`Promo applied! ${validPromo.discountValue}% off`);
-    } else {
-      setPromoError('Invalid promo code');
-      setAppliedPromo(null);
+      return;
     }
+
+    setPromoError('Invalid promo code');
+    setAppliedPromo(null);
   };
 
-  // Get selected tickets (quantity > 0)
   const displayedTickets = hasCategoryTickets && selectedCategoryId
-    ? tickets.filter((t) => String(t.registration_category) === String(selectedCategoryId))
+    ? tickets.filter((ticket) => String(ticket.registration_category) === String(selectedCategoryId))
     : tickets;
-  const selectedTickets = displayedTickets.filter(t => (quantities[t.id] || 0) > 0);
-  const totalQuantity = selectedTickets.reduce((sum, t) => sum + quantities[t.id], 0);
+  const selectedTickets = displayedTickets.filter((ticket) => (quantities[ticket.id] || 0) > 0);
+  const totalQuantity = selectedTickets.reduce((sum, ticket) => sum + (quantities[ticket.id] || 0), 0);
 
   const calculatePrice = () => {
     let subtotalCents = 0;
-    selectedTickets.forEach(t => {
-      subtotalCents += toCents(t.price) * quantities[t.id];
+
+    selectedTickets.forEach((ticket) => {
+      subtotalCents += toCents(ticket.price) * (quantities[ticket.id] || 0);
     });
 
     let discountCents = 0;
@@ -134,27 +150,36 @@ const TicketBox = ({
     const totalCents = subtotalCents - discountCents + serviceFeeCents;
 
     return {
-      subtotal: fromCents(subtotalCents),
       discount: fromCents(discountCents),
       serviceFee: fromCents(serviceFeeCents),
       total: fromCents(totalCents),
     };
   };
 
-  const { subtotal, discount, serviceFee, total } = calculatePrice();
-  const allSoldOut = displayedTickets.length > 0 ? displayedTickets.every((ticket) => (ticket.remaining ?? 0) <= 0) : true;
-  const waitlistAllowed = !isPastEvent && !isUnavailableForSale && allSoldOut && (event.enableWaitlist ?? event.enable_waitlist) && event.slug;
+  const { discount, serviceFee, total } = calculatePrice();
+  const allSoldOut = displayedTickets.length > 0
+    ? displayedTickets.every((ticket) => (ticket.remaining ?? 0) <= 0)
+    : true;
+  const waitlistAllowed =
+    !isPastEvent &&
+    !isUnavailableForSale &&
+    allSoldOut &&
+    (event.enableWaitlist ?? event.enable_waitlist) &&
+    event.slug;
 
   const handleWaitlistSubmit = async () => {
     setWaitlistStatus({ loading: false, error: '', success: '' });
+
     if (!waitlistForm.name.trim() || !waitlistForm.email.trim()) {
       setWaitlistStatus({ loading: false, error: 'Name and email are required.', success: '' });
       return;
     }
+
     if (!event.slug) {
       setWaitlistStatus({ loading: false, error: 'Event information is missing.', success: '' });
       return;
     }
+
     try {
       setWaitlistStatus({ loading: true, error: '', success: '' });
       await api.post(`/api/events/${event.slug}/waitlist/join/`, {
@@ -163,36 +188,47 @@ const TicketBox = ({
         phone: waitlistForm.phone.trim(),
         notes: waitlistForm.notes.trim(),
       });
-      setWaitlistStatus({ loading: false, error: '', success: 'You are on the waitlist. We will email you when tickets open.' });
+      setWaitlistStatus({
+        loading: false,
+        error: '',
+        success: 'You are on the waitlist. We will email you when tickets open.',
+      });
       setWaitlistForm({ name: '', email: '', phone: '', notes: '' });
     } catch (err) {
-      setWaitlistStatus({ loading: false, error: err?.message || 'Failed to join waitlist.', success: '' });
+      setWaitlistStatus({
+        loading: false,
+        error: err?.message || 'Failed to join waitlist.',
+        success: '',
+      });
     }
   };
 
   const handleGetTickets = () => {
     if (isPastEvent || isUnavailableForSale) return;
-    const selectedCategory = categoryOptions.find((cat) => String(cat.id) === String(selectedCategoryId));
-    const registration = selectedCategory ? {
-      categoryId: selectedCategory.id,
-      categoryType: selectedCategory.category,
-      categoryLabel: getCategoryLabel(selectedCategory),
-      fixedFields: {
-        requireStudentEmail: Boolean(selectedCategory.require_student_email),
-        requireAdmissionNumber: Boolean(selectedCategory.require_admission_number),
-        askGraduationYear: Boolean(selectedCategory.ask_graduation_year),
-        askCourse: Boolean(selectedCategory.ask_course),
-        askSchool: Boolean(selectedCategory.ask_school),
-        askLocation: Boolean(selectedCategory.ask_location),
-      },
-      questions: Array.isArray(selectedCategory.questions) ? selectedCategory.questions : [],
-    } : null;
 
-    const items = selectedTickets.map(t => ({
-      ticketTypeId: t.id,
-      ticketType: t.type || t.name,
-      quantity: quantities[t.id],
-      unitPrice: t.price,
+    const selectedCategory = categoryOptions.find((cat) => String(cat.id) === String(selectedCategoryId));
+    const registration = selectedCategory
+      ? {
+        categoryId: selectedCategory.id,
+        categoryType: selectedCategory.category,
+        categoryLabel: getCategoryLabel(selectedCategory),
+        fixedFields: {
+          requireStudentEmail: Boolean(selectedCategory.require_student_email),
+          requireAdmissionNumber: Boolean(selectedCategory.require_admission_number),
+          askGraduationYear: Boolean(selectedCategory.ask_graduation_year),
+          askCourse: Boolean(selectedCategory.ask_course),
+          askSchool: Boolean(selectedCategory.ask_school),
+          askLocation: Boolean(selectedCategory.ask_location),
+        },
+        questions: Array.isArray(selectedCategory.questions) ? selectedCategory.questions : [],
+      }
+      : null;
+
+    const items = selectedTickets.map((ticket) => ({
+      ticketTypeId: ticket.id,
+      ticketType: ticket.type || ticket.name,
+      quantity: quantities[ticket.id],
+      unitPrice: ticket.price,
     }));
 
     onGetTickets({
@@ -205,39 +241,55 @@ const TicketBox = ({
     });
   };
 
+  const shellClasses = isSidebarLayout
+    ? 'bg-white rounded-b-2xl border border-[#E2E8F0] border-t-0 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.55)] flex flex-col'
+    : 'bg-white rounded-2xl shadow-lg flex flex-col';
+  const shellStyle = isSidebarLayout ? undefined : { borderTop: `4px solid ${themeColor}` };
+  const bodyClasses = isSidebarLayout ? 'p-4 pb-10' : 'p-6 pb-16 lg:pb-24';
+  const sectionGapClass = isSidebarLayout ? 'mb-5' : 'mb-6';
+  const ticketListGapClass = isSidebarLayout ? 'space-y-2.5' : 'space-y-3';
+  const ticketCardClasses = isSidebarLayout ? 'rounded-lg p-3' : 'rounded-xl p-4';
+  const ticketCardMarginClass = isSidebarLayout ? 'mb-2 gap-2' : 'mb-3 gap-3';
+  const quantityButtonClasses = isSidebarLayout ? 'h-7 w-7' : 'h-8 w-8';
+  const footerClasses = isSidebarLayout
+    ? 'border-t border-[#E2E8F0] bg-white p-4 lg:sticky lg:bottom-0 lg:z-10 shadow-[0_-20px_35px_-32px_rgba(15,23,42,0.75)]'
+    : 'border-t border-[#E2E8F0] bg-white p-6 lg:sticky lg:bottom-0 lg:z-10';
+  const footerButtonClass = isSidebarLayout ? 'py-3.5 text-sm' : 'py-4';
+  const couponClasses = isSidebarLayout ? 'rounded-lg p-3' : 'rounded-xl p-4';
+  const waitlistClasses = isSidebarLayout ? 'mb-5 rounded-lg p-3.5' : 'mb-6 rounded-xl p-4';
+  const breakdownClasses = isSidebarLayout ? 'mb-5 space-y-1.5 pb-5' : 'mb-6 space-y-2 pb-6';
+
   return (
-    <div
-      className="bg-white rounded-2xl shadow-lg flex flex-col"
-      style={{ borderTop: `4px solid ${themeColor}` }}
-    >
-      <div className="p-6 pb-16 lg:pb-24">
+    <div className={shellClasses} style={shellStyle}>
+      <div className={bodyClasses}>
         {isPastEvent && (
-          <div className="mb-6 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm text-[#475569]">
+          <div className={`${sectionGapClass} rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm text-[#475569]`}>
             Ticket sales are closed because this event has already passed. You can still view the event details below.
           </div>
         )}
+
         {!isPastEvent && isUnavailableForSale && (
-          <div className="mb-6 rounded-xl border border-[#FDE68A] bg-[#FFF7E6] p-4 text-sm text-[#8A620E]">
+          <div className={`${sectionGapClass} rounded-xl border border-[#FDE68A] bg-[#FFF7E6] p-4 text-sm text-[#8A620E]`}>
             Ticket sales are unavailable until this event is approved and published.
           </div>
         )}
 
-        {/* Ticket Category Selector */}
         {hasCategoryTickets && categoryOptions.length > 0 && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-[#0F172A] mb-3">
+          <div className={sectionGapClass}>
+            <label className="mb-3 block text-sm font-medium text-[#0F172A]">
               Choose your category
             </label>
-            <div className="flex items-center gap-2 bg-[#F1F5F9] p-1 rounded-xl">
+            <div className="flex items-center gap-2 rounded-xl bg-[#F1F5F9] p-1">
               {categoryOptions.map((cat) => {
                 const active = String(cat.id) === String(selectedCategoryId);
+
                 return (
                   <button
                     key={cat.id}
                     onClick={() => handleCategoryChange(cat.id)}
                     disabled={isPastEvent || isUnavailableForSale}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                      active ? 'bg-white shadow text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'
+                    className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all ${
+                      active ? 'bg-white text-[#0F172A] shadow' : 'text-[#64748B] hover:text-[#0F172A]'
                     }`}
                   >
                     {getCategoryLabel(cat)}
@@ -248,21 +300,21 @@ const TicketBox = ({
           </div>
         )}
 
-        {/* Ticket Type Selection with Quantities */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-[#0F172A] mb-3">
+        <div className={sectionGapClass}>
+          <label className="mb-3 block text-sm font-medium text-[#0F172A]">
             Select Tickets
           </label>
-          <div className="space-y-3">
+          <div className={ticketListGapClass}>
             {displayedTickets.length > 0 ? displayedTickets.map((ticket) => {
               const qty = quantities[ticket.id] || 0;
               const isSelected = qty > 0;
               const isSoldOut = (ticket.remaining ?? 0) <= 0;
+
               return (
                 <div
                   key={ticket.id}
                   className={`
-                    p-4 rounded-xl border-2 transition-all
+                    ${ticketCardClasses} border-2 transition-all
                     ${isSoldOut
                       ? 'border-[#F1F5F9] bg-[#F8FAFC]'
                       : isSelected
@@ -270,26 +322,26 @@ const TicketBox = ({
                         : 'border-[#E2E8F0] hover:border-[#02338D]/30'}
                   `}
                 >
-                  <div className="flex items-start justify-between mb-3 gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium break-words leading-tight mb-1 ${isSoldOut ? 'text-[#94A3B8] line-through decoration-[#94A3B8]/50' : 'text-[#0F172A]'}`}>
+                  <div className={`flex items-start justify-between ${ticketCardMarginClass}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className={`break-words leading-tight ${isSidebarLayout ? 'mb-0.5 text-sm font-semibold' : 'mb-1 font-medium'} ${isSoldOut ? 'text-[#94A3B8] line-through decoration-[#94A3B8]/50' : 'text-[#0F172A]'}`}>
                         {ticket.type || ticket.name}
                       </p>
-                      <p className="text-xs text-[#64748B] break-words">
+                      <p className={`break-words text-[#64748B] ${isSidebarLayout ? 'text-[11px] leading-4' : 'text-xs'}`}>
                         {isSoldOut ? 'Sold out' : `${ticket.remaining} remaining`}
-                        {ticket.description && ` · ${ticket.description}`}
+                        {ticket.description && ` - ${ticket.description}`}
                       </p>
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <p className={`font-semibold whitespace-nowrap ${isSoldOut ? 'text-[#94A3B8]' : 'text-[#02338D]'}`}>
+                      <p className={`whitespace-nowrap font-semibold ${isSidebarLayout ? 'text-sm' : ''} ${isSoldOut ? 'text-[#94A3B8]' : 'text-[#02338D]'}`}>
                         {ticket.price === 0 ? 'Free' : `${event.currency} ${ticket.price.toLocaleString()}`}
                       </p>
                     </div>
                   </div>
-                  {/* Quantity controls */}
-                  <div className="flex items-center gap-3">
+
+                  <div className={`flex items-center ${isSidebarLayout ? 'gap-2' : 'gap-3'}`}>
                     {isSoldOut ? (
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#94A3B8] bg-[#F1F5F9] px-3 py-1.5 rounded-lg border border-[#E2E8F0]">
+                      <span className={`rounded-lg border border-[#E2E8F0] bg-[#F1F5F9] text-xs font-bold uppercase tracking-wider text-[#94A3B8] ${isSidebarLayout ? 'px-2.5 py-1' : 'px-3 py-1.5'}`}>
                         Sold Out
                       </span>
                     ) : (
@@ -297,19 +349,19 @@ const TicketBox = ({
                         <button
                           onClick={() => handleQuantityChange(ticket.id, -1)}
                           disabled={isPastEvent || isUnavailableForSale || qty <= 0}
-                          className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          className={`${quantityButtonClasses} flex items-center justify-center rounded-lg border border-[#E2E8F0] transition-colors hover:border-[#02338D] hover:text-[#02338D] disabled:cursor-not-allowed disabled:opacity-30`}
                           aria-label={`Decrease ${ticket.type || ticket.name} quantity`}
                         >
-                          <Minus className="w-4 h-4" />
+                          <Minus className="h-4 w-4" />
                         </button>
-                        <span className="w-8 text-center font-semibold text-sm">{qty}</span>
+                        <span className={`${isSidebarLayout ? 'w-7' : 'w-8'} text-center text-sm font-semibold`}>{qty}</span>
                         <button
                           onClick={() => handleQuantityChange(ticket.id, 1)}
                           disabled={isPastEvent || isUnavailableForSale || qty >= Math.min(10, ticket.remaining)}
-                          className="w-8 h-8 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:border-[#02338D] hover:text-[#02338D] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          className={`${quantityButtonClasses} flex items-center justify-center rounded-lg border border-[#E2E8F0] transition-colors hover:border-[#02338D] hover:text-[#02338D] disabled:cursor-not-allowed disabled:opacity-30`}
                           aria-label={`Increase ${ticket.type || ticket.name} quantity`}
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="h-4 w-4" />
                         </button>
                       </>
                     )}
@@ -324,16 +376,17 @@ const TicketBox = ({
           </div>
         </div>
 
-        {/* Promo Code */}
-        <div className="mb-6 rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] p-4">
+        <div className={`${sectionGapClass} border border-[#DBEAFE] bg-[#EFF6FF] ${couponClasses}`}>
           <div className="flex items-center gap-2 text-sm font-semibold text-[#0F172A]">
-            <Tag className="w-4 h-4 text-[#02338D]" />
+            <Tag className="h-4 w-4 text-[#02338D]" />
             Promo code
-            <span className="ml-auto text-[11px] font-medium text-[#15803D] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
-              Save with code
+            <span className={`ml-auto rounded-full bg-[#DCFCE7] font-medium text-[#15803D] ${isSidebarLayout ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]'}`}>
+              {isSidebarLayout ? 'Promo' : 'Save with code'}
             </span>
           </div>
-          <p className="text-xs text-[#64748B] mt-1">Apply your discount before checkout.</p>
+          <p className={`mt-1 text-[#64748B] ${isSidebarLayout ? 'text-[11px] leading-4' : 'text-xs'}`}>
+            Apply your discount before checkout.
+          </p>
           <div className="mt-3 flex gap-2">
             <input
               type="text"
@@ -342,7 +395,7 @@ const TicketBox = ({
               placeholder="Enter promo code"
               disabled={isPastEvent || isUnavailableForSale}
               className={`
-                flex-1 px-3 py-2.5 bg-white border rounded-lg text-sm
+                flex-1 rounded-lg border bg-white px-3 py-2.5 text-sm
                 focus:outline-none focus:ring-2 focus:ring-[#02338D]
                 ${promoError ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}
               `}
@@ -373,43 +426,47 @@ const TicketBox = ({
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mt-2 text-sm text-[#16A34A] flex items-center gap-1"
+                className="mt-2 flex items-center gap-1 text-sm text-[#16A34A]"
               >
-                <Check className="w-4 h-4" />
+                <Check className="h-4 w-4" />
                 {promoSuccess}
               </motion.p>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Price Breakdown */}
-        <div className="space-y-2 mb-6 pb-6 border-b border-[#E2E8F0]">
-          {selectedTickets.map(t => (
-            <div key={t.id} className="flex justify-between text-sm">
+        <div className={`${breakdownClasses} border-b border-[#E2E8F0]`}>
+          {selectedTickets.map((ticket) => (
+            <div key={ticket.id} className={`flex justify-between ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
               <span className="text-[#64748B]">
-                {t.type || t.name} × {quantities[t.id]}
+                {ticket.type || ticket.name} x {quantities[ticket.id]}
               </span>
-              <span className="text-[#0F172A]">{event.currency} {(t.price * quantities[t.id]).toLocaleString()}</span>
+              <span className="text-[#0F172A]">
+                {event.currency} {(ticket.price * quantities[ticket.id]).toLocaleString()}
+              </span>
             </div>
           ))}
+
           {selectedTickets.length === 0 && (
-            <div className="text-center text-sm text-[#94A3B8] py-2">
+            <div className="py-2 text-center text-sm text-[#94A3B8]">
               Select at least one ticket
             </div>
           )}
+
           {discount > 0 && (
-            <div className="flex justify-between text-sm">
+            <div className={`flex justify-between ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
               <span className="text-[#16A34A]">Discount</span>
               <span className="text-[#16A34A]">-{event.currency} {discount.toLocaleString()}</span>
             </div>
           )}
+
           {totalQuantity > 0 && (
             <>
-              <div className="flex justify-between text-sm">
+              <div className={`flex justify-between ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
                 <span className="text-[#64748B]">Service fee</span>
                 <span className="text-[#0F172A]">{event.currency} {serviceFee.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between font-semibold text-lg pt-2">
+              <div className={`flex justify-between font-semibold ${isSidebarLayout ? 'pt-1 text-base' : 'pt-2 text-lg'}`}>
                 <span className="text-[#0F172A]">Total</span>
                 <span style={{ color: themeColor }}>{event.currency} {total.toLocaleString()}</span>
               </div>
@@ -418,10 +475,10 @@ const TicketBox = ({
         </div>
 
         {waitlistAllowed && (
-          <div className="mb-6 p-4 border border-[#E2E8F0] rounded-xl bg-[#F8FAFC]">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className={`${waitlistClasses} border border-[#E2E8F0] bg-[#F8FAFC]`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-[#0F172A]">Sold out — join the waitlist</p>
+                <p className="text-sm font-semibold text-[#0F172A]">Sold out - join the waitlist</p>
                 <p className="text-xs text-[#64748B]">We will notify you when more tickets become available.</p>
               </div>
               <CustomButton
@@ -441,34 +498,34 @@ const TicketBox = ({
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <input
                       type="text"
                       placeholder="Full name *"
                       value={waitlistForm.name}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, name: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
+                      className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                     <input
                       type="email"
                       placeholder="Email address *"
                       value={waitlistForm.email}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, email: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
+                      className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                     <input
                       type="tel"
                       placeholder="Phone (optional)"
                       value={waitlistForm.phone}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, phone: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
+                      className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                     <input
                       type="text"
                       placeholder="Notes (optional)"
                       value={waitlistForm.notes}
                       onChange={(e) => setWaitlistForm((prev) => ({ ...prev, notes: e.target.value }))}
-                      className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
+                      className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#02338D]"
                     />
                   </div>
 
@@ -494,36 +551,36 @@ const TicketBox = ({
             </AnimatePresence>
           </div>
         )}
-
       </div>
 
-      <div className="p-6 border-t border-[#E2E8F0] bg-white lg:sticky lg:bottom-0 lg:z-10">
-        {/* CTA Button */}
+      <div className={footerClasses}>
         <CustomButton
           variant="primary"
           fullWidth
           onClick={handleGetTickets}
           disabled={isPastEvent || isUnavailableForSale || totalQuantity === 0}
-          className="py-4"
+          className={footerButtonClass}
           style={{ backgroundColor: themeColor }}
         >
           <span className="flex items-center justify-center gap-2">
-            <ShoppingCart className="w-5 h-5" />
+            <ShoppingCart className="h-5 w-5" />
             {isPastEvent
               ? 'Event Has Passed'
               : isUnavailableForSale
-              ? 'Awaiting Approval'
-              : totalQuantity === 0
-              ? 'Select Tickets'
-              : `Get ${totalQuantity} Ticket${totalQuantity > 1 ? 's' : ''}`
+                ? 'Awaiting Approval'
+                : totalQuantity === 0
+                  ? 'Select Tickets'
+                  : `Get ${totalQuantity} Ticket${totalQuantity > 1 ? 's' : ''}`
             }
           </span>
         </CustomButton>
 
-        {/* Trust Badges */}
-        <div className="mt-4 flex items-center justify-center gap-1 text-xs text-[#64748B]">
-          <span>🔒</span>
-          <span>Secure Checkout · Instant QR Ticket · Free Cancellation</span>
+        <div className={`mt-3 flex items-center justify-center gap-1 text-[#64748B] ${isSidebarLayout ? 'text-[11px]' : 'text-xs'}`}>
+          <span>Secure checkout</span>
+          <span>-</span>
+          <span>Instant QR ticket</span>
+          <span>-</span>
+          <span>Free cancellation</span>
         </div>
       </div>
     </div>
@@ -531,5 +588,3 @@ const TicketBox = ({
 };
 
 export default TicketBox;
-
-
