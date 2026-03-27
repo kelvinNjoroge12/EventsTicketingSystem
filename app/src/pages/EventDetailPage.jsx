@@ -404,38 +404,10 @@ const EventDetailPage = () => {
       <ClassicTicketLoader visible={showClassicLoader} />
 
       <div className="max-w-[1240px] mx-auto w-full px-4 pb-28 pt-6 sm:px-6 sm:pb-32 lg:px-8 lg:pb-10">
-        <div className="mb-5 grid grid-cols-1 gap-3 sm:gap-4 lg:mb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="mb-5 lg:mb-6">
           <h1 className="min-w-0 max-w-[58rem] break-words text-xl font-bold leading-tight text-[#0F172A] sm:text-2xl lg:text-[1.85rem] xl:text-[2rem]">
             {event.title}
           </h1>
-
-          <div className="flex flex-shrink-0 items-center gap-2 self-start lg:justify-self-end">
-            <div className="relative">
-              <button onClick={() => setShowSharePopover(!showSharePopover)} className="rounded-full border border-[#CBD5E1] bg-white p-2 text-[#475569] shadow-sm transition-colors hover:bg-[#F8FAFC]" aria-label="Share event">
-                <Share2 className="h-4 w-4" />
-              </button>
-              <AnimatePresence>
-                {showSharePopover && (
-                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl">
-                    {[
-                      { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
-                      { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
-                      { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
-                      { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
-                    ].map(({ label, platform, icon }) => (
-                      <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                        {icon} {label}
-                      </button>
-                    ))}
-                    <div className="my-1 border-t border-[#E2E8F0]" />
-                    <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
-                      {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_336px]">
@@ -447,6 +419,43 @@ const EventDetailPage = () => {
                 ) : (
                   <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${themeColor} 0%, ${accentColor} 100%)` }} />
                 )}
+
+                <div className="absolute right-4 top-4 z-10 sm:right-5 sm:top-5 lg:right-7 lg:top-6">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowSharePopover(!showSharePopover)}
+                      className="rounded-full border border-white/40 bg-white/90 p-2 text-[#0F172A] shadow-lg backdrop-blur-sm transition-colors hover:bg-white"
+                      aria-label="Share event"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                    <AnimatePresence>
+                      {showSharePopover && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="absolute right-0 top-full z-20 mt-2 min-w-[190px] rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-2xl"
+                        >
+                          {[
+                            { label: 'WhatsApp', platform: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-[#16A34A]" /> },
+                            { label: 'Twitter', platform: 'twitter', icon: <Twitter className="h-4 w-4 text-[#1DA1F2]" /> },
+                            { label: 'LinkedIn', platform: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0A66C2]" /> },
+                            { label: 'Facebook', platform: 'facebook', icon: <Facebook className="h-4 w-4 text-[#1877F2]" /> },
+                          ].map(({ label, platform, icon }) => (
+                            <button key={platform} onClick={() => handleShare(platform)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                              {icon} {label}
+                            </button>
+                          ))}
+                          <div className="my-1 border-t border-[#E2E8F0]" />
+                          <button onClick={() => handleShare('copy')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[#F1F5F9]">
+                            {linkCopied ? (<><Check className="h-4 w-4 text-[#16A34A]" /><span className="text-[#16A34A]">Copied!</span></>) : (<><Share2 className="h-4 w-4 text-[#64748B]" /><span>Copy Link</span></>)}
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
 
                 {!event.bannerImage && (
                   <div className="absolute inset-0 opacity-10">
