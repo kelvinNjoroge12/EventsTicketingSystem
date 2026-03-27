@@ -445,7 +445,7 @@ const EventDetailPage = () => {
       <ClassicTicketLoader visible={showClassicLoader} />
 
       {/* ── MAIN CONTENT AREA ── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10 w-full">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10 w-full">
 
         {/* ── EVENT TITLE ── */}
         <div className="mb-4">
@@ -460,7 +460,7 @@ const EventDetailPage = () => {
         </div>
 
         {/* ── TWO-COLUMN LAYOUT ── */}
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 relative">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 relative">
 
           {/* ── LEFT COLUMN (scrollable content) ── */}
           <div className="flex-1 min-w-0">
@@ -809,8 +809,8 @@ const EventDetailPage = () => {
           </div>
 
           {/* ── RIGHT SIDEBAR — Ticket (sticky, desktop only) ── */}
-          <aside className="hidden lg:block w-[360px] flex-shrink-0">
-            <div className="sticky top-[5.5rem]">
+          <aside className="hidden lg:block w-[320px] flex-shrink-0">
+            <div className="sticky top-[6rem]">
               <div className="flex items-center justify-between px-4 py-2.5 rounded-t-xl text-sm font-medium text-white"
                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                 <div className="flex items-center gap-2">

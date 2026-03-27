@@ -8,7 +8,7 @@ const PageWrapper = ({
     <main
       id="main-content"
       className={`min-h-screen bg-white w-full ${className}`}
-      style={{ overflowX: 'hidden', width: '100%', position: 'relative' }}
+      style={{ overflowX: 'clip', width: '100%', position: 'relative' }}
     >
       {children}
     </main>
