@@ -626,11 +626,11 @@ const EventDetailPage = () => {
 
           <aside
             className="hidden lg:block lg:self-start"
-            style={{ position: 'sticky', top: 'calc(var(--app-navbar-height, 80px) + 16px)' }}
+            style={{ position: 'sticky', top: 'calc(var(--app-navbar-height, 120px) + 16px)', zIndex: 20 }}
           >
             <div
-              className="z-30 flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]"
-              style={{ maxHeight: 'calc(100vh - var(--app-navbar-height, 80px) - 32px)' }}
+              className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]"
+              style={{ maxHeight: 'calc(100vh - var(--app-navbar-height, 120px) - 32px)' }}
             >
                 <div className="flex items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                   <div className="flex items-center gap-2">
