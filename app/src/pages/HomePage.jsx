@@ -20,9 +20,9 @@ import CustomButton from '../components/ui/CustomButton';
 import CustomBadge from '../components/ui/CustomBadge';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
 import heroImage from '../assets/strathmore-hero.jpg';
-import { fetchEventLite, fetchEvents, preloadRoutes } from '../lib/eventsApi';
+import { fetchEventLite, fetchEvents, fetchCategories, preloadRoutes } from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { categories } from '../data/categories';
+import { categories as defaultCategories, getCategoryIcon } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
 import { useAuth } from '../context/AuthContext';
 import eventQueryKeys from '../lib/eventQueryKeys';
@@ -98,6 +98,23 @@ const HomePage = () => {
     queryKey: eventQueryKeys.list({ page_size: 10 }),
     queryFn: () => fetchEvents({ page_size: 10 })
   });
+
+  const { data: serverCategories = [] } = useQuery({
+    queryKey: eventQueryKeys.categories(),
+    queryFn: fetchCategories,
+    staleTime: 10 * 60 * 1000, // 10 mins
+  });
+
+  const displayCategories = useMemo(() => {
+    if (serverCategories && serverCategories.length > 0) {
+      return serverCategories.map(cat => ({
+        id: cat.id || cat.slug || cat.name,
+        name: cat.name,
+        icon: getCategoryIcon(cat.name)
+      }));
+    }
+    return defaultCategories;
+  }, [serverCategories]);
   const allEvents = allEventsData?.results || [];
   const availableEvents = useMemo(
     () => allEvents.filter((event) => !event.isPast),
@@ -406,7 +423,7 @@ const HomePage = () => {
                   >
                     <span>All Events</span>
                   </button>
-                  {categories.map((category) => (
+                  {displayCategories.map((category) => (
                     <CategoryPill
                       key={category.id}
                       category={{ ...category, count: categoryCounts[normalizeCategory(category.name)] ?? 0 }}

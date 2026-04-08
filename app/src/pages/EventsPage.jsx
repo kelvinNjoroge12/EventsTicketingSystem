@@ -14,9 +14,9 @@ import PageWrapper from '../components/layout/PageWrapper';
 import EventCard from '../components/cards/EventCard';
 import CustomButton from '../components/ui/CustomButton';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
-import { fetchEventLite, fetchEvents } from '../lib/eventsApi';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { categories } from '../data/categories';
+import { fetchEventLite, fetchEvents, fetchCategories } from '../lib/eventsApi';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { categories as defaultCategories } from '../data/categories';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
 import eventQueryKeys from '../lib/eventQueryKeys';
@@ -60,6 +60,16 @@ const EventsPage = () => {
   const [isSlowLoad, setIsSlowLoad] = useState(false);
 
   const PAGE_SIZE = 20;
+
+  const { data: serverCategories = [] } = useQuery({
+    queryKey: eventQueryKeys.categories(),
+    queryFn: fetchCategories,
+    staleTime: 10 * 60 * 1000, // 10 mins
+  });
+
+  const displayCategories = useMemo(() => {
+    return serverCategories.length > 0 ? serverCategories : defaultCategories;
+  }, [serverCategories]);
 
   const {
     data: eventsData,
@@ -267,8 +277,8 @@ const EventsPage = () => {
                 className="w-full bg-transparent outline-none focus:text-[#02338D] cursor-pointer text-[#334155] truncate"
               >
                 <option value="">All Categories</option>
-                {(Array.isArray(categories) ? categories : []).map(cat => (
-                  <option key={cat.id} value={cat.name}>{cat.name}</option>
+                {(Array.isArray(displayCategories) ? displayCategories : []).map(cat => (
+                  <option key={cat.id || cat.slug || cat.name} value={cat.name}>{cat.name}</option>
                 ))}
               </select>
             </FilterCardWrapper>
