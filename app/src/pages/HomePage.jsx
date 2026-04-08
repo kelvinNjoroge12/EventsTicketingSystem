@@ -95,8 +95,8 @@ const HomePage = () => {
   const touchStartX = useRef(0);
 
   const { data: allEventsData, isLoading } = useQuery({
-    queryKey: eventQueryKeys.list({ page_size: 12 }),
-    queryFn: () => fetchEvents({ page_size: 12 })
+    queryKey: eventQueryKeys.list({ page_size: 10 }),
+    queryFn: () => fetchEvents({ page_size: 10 })
   });
   const allEvents = allEventsData?.results || [];
   const availableEvents = useMemo(
@@ -428,13 +428,6 @@ const HomePage = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-[#0F172A]">
               Upcoming Events
             </h2>
-            <Link
-              to="/events"
-              className="text-[#02338D] font-medium hover:underline flex items-center gap-1"
-            >
-              View All
-              <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
 
           {isLoading ? (
@@ -487,6 +480,16 @@ const HomePage = () => {
                   ))
                 )}
               </AnimatePresence>
+            </div>
+          )}
+
+          {!isLoading && filteredEvents.length > 0 && (
+            <div className="mt-10 flex justify-center">
+              <Link to="/events">
+                <CustomButton variant="outline" size="lg" rightIcon={ArrowRight}>
+                  View All Events
+                </CustomButton>
+              </Link>
             </div>
           )}
         </div>

@@ -59,7 +59,7 @@ const EventsPage = () => {
   });
   const [isSlowLoad, setIsSlowLoad] = useState(false);
 
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 20;
 
   const {
     data: eventsData,
