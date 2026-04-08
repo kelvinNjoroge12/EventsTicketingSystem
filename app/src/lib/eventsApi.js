@@ -56,6 +56,19 @@ export const mapEvent = (e) => {
   const categoryName = (e.category && typeof e.category === "object" ? e.category.name : null) || e.category_name || (typeof e.category === "string" ? e.category : null) || "General";
   const mapLocation = e.venue_name || (e.city ? `${e.city}${e.country ? ', ' + e.country : ''}` : e.country || e.location || 'Location TBA');
 
+  // Format time helper (e.g. "19:28:33.370496" → "7:28 PM")
+  let formattedTime = e.start_time || '';
+  if (formattedTime && formattedTime.includes(':')) {
+    const [hStr, mStr] = formattedTime.split(':');
+    const h = parseInt(hStr, 10);
+    const m = mStr ? mStr.padStart(2, '0').slice(0, 2) : '00';
+    if (!Number.isNaN(h)) {
+      const period = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      formattedTime = `${h12}:${m} ${period}`;
+    }
+  }
+
   const base = {
     id: e.id,
     slug: e.slug,
@@ -71,7 +84,7 @@ export const mapEvent = (e) => {
     timeState: timeState || 'upcoming',
     isToday,
     isPast,
-    time: e.start_time,
+    time: formattedTime,
     endDate: e.end_date,
     endTime: e.end_time,
     location: mapLocation,
