@@ -8,6 +8,20 @@ export const logError = (context, error) => {
   }
 };
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Format raw backend time (e.g. "19:28:33.370496") → "7:28 PM" */
+const formatTimeString = (raw) => {
+  if (!raw || typeof raw !== 'string' || !raw.includes(':')) return raw || '';
+  const [hStr, mStr] = raw.split(':');
+  const h = parseInt(hStr, 10);
+  const m = mStr ? mStr.padStart(2, '0').slice(0, 2) : '00';
+  if (Number.isNaN(h)) return raw;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${m} ${period}`;
+};
+
 // ── Mappers ────────────────────────────────────────────────────────────────
 
 // Unified mapper for list item arrays and dashboard "normalizeEvent" usages.
@@ -56,18 +70,6 @@ export const mapEvent = (e) => {
   const categoryName = (e.category && typeof e.category === "object" ? e.category.name : null) || e.category_name || (typeof e.category === "string" ? e.category : null) || "General";
   const mapLocation = e.venue_name || (e.city ? `${e.city}${e.country ? ', ' + e.country : ''}` : e.country || e.location || 'Location TBA');
 
-  // Format time helper (e.g. "19:28:33.370496" → "7:28 PM")
-  let formattedTime = e.start_time || '';
-  if (formattedTime && formattedTime.includes(':')) {
-    const [hStr, mStr] = formattedTime.split(':');
-    const h = parseInt(hStr, 10);
-    const m = mStr ? mStr.padStart(2, '0').slice(0, 2) : '00';
-    if (!Number.isNaN(h)) {
-      const period = h >= 12 ? 'PM' : 'AM';
-      const h12 = h % 12 || 12;
-      formattedTime = `${h12}:${m} ${period}`;
-    }
-  }
 
   const base = {
     id: e.id,
@@ -84,9 +86,9 @@ export const mapEvent = (e) => {
     timeState: timeState || 'upcoming',
     isToday,
     isPast,
-    time: formattedTime,
+    time: formatTimeString(e.start_time),
     endDate: e.end_date,
-    endTime: e.end_time,
+    endTime: formatTimeString(e.end_time),
     location: mapLocation,
     venueName: e.venue_name || '',
     themeColor: e.theme_color || "#02338D",
@@ -165,9 +167,9 @@ export const mapDetailEvent = (e) => {
     rawCategory: e.category?.id || e.category || "",
     description: e.description || "",
     startDate: e.start_date || "",
-    startTime: e.start_time || "",
+    startTime: formatTimeString(e.start_time),
     endDate: e.end_date || "",
-    endTime: e.end_time || "",
+    endTime: formatTimeString(e.end_time),
     timezone: e.timezone || "",
     venueName: e.venue_name || "",
     address: e.venue_address || "",

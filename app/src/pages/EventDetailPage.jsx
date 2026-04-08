@@ -150,21 +150,11 @@ const EventDetailPage = () => {
   const { addMultipleToCart } = useCart();
   const { user } = useAuth();
   const detailGridRef = useRef(null);
-  const desktopTicketRailRef = useRef(null);
-  const desktopTicketCardRef = useRef(null);
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
-  const [ticketRailLayout, setTicketRailLayout] = useState({
-    mode: 'static',
-    top: 0,
-    left: 0,
-    width: 0,
-    maxHeight: 0,
-    spacerHeight: 0,
-  });
 
   useEffect(() => {
     if (slug && !location.pathname.startsWith('/admin/event-reviews/')) {
@@ -326,104 +316,6 @@ const EventDetailPage = () => {
     setIsTicketModalOpen(false);
   }, [slug]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-
-    let frameId = 0;
-    const rootStyle = document.documentElement;
-
-    const readNavbarHeight = () => {
-      const rawValue = getComputedStyle(rootStyle).getPropertyValue('--app-navbar-height');
-      const parsedValue = Number.parseFloat(rawValue);
-      return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 120;
-    };
-
-    const syncTicketRail = () => {
-      frameId = 0;
-
-      const gridElement = detailGridRef.current;
-      const railElement = desktopTicketRailRef.current;
-      const cardElement = desktopTicketCardRef.current;
-
-      if (!gridElement || !railElement || !cardElement || window.innerWidth < 1024) {
-        setTicketRailLayout((previous) => (previous.mode === 'static' && previous.spacerHeight === 0
-          ? previous
-          : {
-            mode: 'static',
-            top: 0,
-            left: 0,
-            width: 0,
-            maxHeight: 0,
-            spacerHeight: 0,
-          }));
-        return;
-      }
-
-      const navbarHeight = readNavbarHeight();
-      const railTop = navbarHeight + 16;
-      const railBottomGap = 16;
-      const viewportMaxHeight = Math.max(window.innerHeight - railTop - railBottomGap, 320);
-
-      const gridRect = gridElement.getBoundingClientRect();
-      const railRect = railElement.getBoundingClientRect();
-      const cardHeight = Math.min(cardElement.scrollHeight, viewportMaxHeight);
-      const railTopAbsolute = railRect.top + window.scrollY;
-      const gridBottomAbsolute = gridRect.bottom + window.scrollY;
-      const anchorPosition = window.scrollY + railTop;
-      const bottomLockPoint = gridBottomAbsolute - cardHeight;
-
-      let nextMode = 'static';
-      if (anchorPosition > railTopAbsolute && bottomLockPoint > railTopAbsolute) {
-        nextMode = anchorPosition < bottomLockPoint ? 'fixed' : 'bottom';
-      }
-
-      const nextLayout = {
-        mode: nextMode,
-        top: railTop,
-        left: railRect.left,
-        width: railRect.width,
-        maxHeight: viewportMaxHeight,
-        spacerHeight: cardHeight,
-      };
-
-      setTicketRailLayout((previous) => {
-        if (
-          previous.mode === nextLayout.mode &&
-          previous.top === nextLayout.top &&
-          previous.left === nextLayout.left &&
-          previous.width === nextLayout.width &&
-          previous.maxHeight === nextLayout.maxHeight &&
-          previous.spacerHeight === nextLayout.spacerHeight
-        ) {
-          return previous;
-        }
-
-        return nextLayout;
-      });
-    };
-
-    const scheduleSync = () => {
-      if (frameId) cancelAnimationFrame(frameId);
-      frameId = window.requestAnimationFrame(syncTicketRail);
-    };
-
-    scheduleSync();
-
-    const resizeObserver = new ResizeObserver(scheduleSync);
-    if (detailGridRef.current) resizeObserver.observe(detailGridRef.current);
-    if (desktopTicketRailRef.current) resizeObserver.observe(desktopTicketRailRef.current);
-    if (desktopTicketCardRef.current) resizeObserver.observe(desktopTicketCardRef.current);
-
-    window.addEventListener('scroll', scheduleSync, { passive: true });
-    window.addEventListener('resize', scheduleSync);
-
-    return () => {
-      if (frameId) cancelAnimationFrame(frameId);
-      resizeObserver.disconnect();
-      window.removeEventListener('scroll', scheduleSync);
-      window.removeEventListener('resize', scheduleSync);
-    };
-  }, []);
 
   const refreshReviewData = async () => {
     await Promise.all([
@@ -698,6 +590,20 @@ const EventDetailPage = () => {
                 </div>
               )}
 
+              {/* Organizer */}
+              <div className="border-t border-[#E2E8F0] px-5 py-5 sm:px-6 lg:px-8">
+                <div className="flex items-start gap-4">
+                  <CustomAvatar src={event.organizer.avatar} name={event.organizer.name} size="lg" fallbackColor={event.organizer.brandColor} />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-semibold text-[#0F172A]">{event.organizer.name}</h4>
+                    {event.organizer.bio && <p className="mt-1 text-sm text-[#64748B]">{event.organizer.bio}</p>}
+                    <Link to={`/organizers/${event.organizer.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium hover:underline" style={{ color: themeColor }}>
+                      View profile <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
               {relatedEvents.length > 0 && (
                 <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
                   <h2 className="mb-4 text-lg font-bold text-[#0F172A]">You Might Also Like</h2>
@@ -715,48 +621,16 @@ const EventDetailPage = () => {
                   {isLoadingSponsors ? <div className="py-6 text-sm text-[#64748B]">Loading sponsors...</div> : sponsors.length > 0 ? <SponsorsGrid sponsors={sponsors} themeColor={themeColor} /> : <p className="text-sm text-[#64748B]">No sponsors listed yet.</p>}
                 </div>
               )}
-
-              <div className="border-t border-[#E2E8F0] px-5 py-5 sm:px-6 lg:px-8">
-                <div className="flex items-start gap-4">
-                  <CustomAvatar src={event.organizer.avatar} name={event.organizer.name} size="lg" fallbackColor={event.organizer.brandColor} />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-[#0F172A]">{event.organizer.name}</h4>
-                    {event.organizer.bio && <p className="mt-1 text-sm text-[#64748B]">{event.organizer.bio}</p>}
-                    <Link to={`/organizers/${event.organizer.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium hover:underline" style={{ color: themeColor }}>
-                      View profile <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
             </section>
           </div>
 
           <aside
-            ref={desktopTicketRailRef}
-            className="hidden h-fit w-[320px] flex-shrink-0 lg:relative lg:block lg:self-start xl:w-[336px]"
-            style={ticketRailLayout.spacerHeight > 0 ? { minHeight: ticketRailLayout.spacerHeight } : undefined}
+            className="hidden lg:block lg:self-start"
+            style={{ position: 'sticky', top: 'calc(var(--app-navbar-height, 80px) + 16px)' }}
           >
             <div
-              ref={desktopTicketCardRef}
               className="z-30 flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]"
-              style={{
-                maxHeight: ticketRailLayout.maxHeight > 0 ? `${ticketRailLayout.maxHeight}px` : undefined,
-                ...(ticketRailLayout.mode === 'fixed'
-                  ? {
-                    position: 'fixed',
-                    top: `${ticketRailLayout.top}px`,
-                    left: `${ticketRailLayout.left}px`,
-                    width: `${ticketRailLayout.width}px`,
-                  }
-                  : ticketRailLayout.mode === 'bottom'
-                    ? {
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      width: '100%',
-                    }
-                    : {}),
-              }}
+              style={{ maxHeight: 'calc(100vh - var(--app-navbar-height, 80px) - 32px)' }}
             >
                 <div className="flex items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                   <div className="flex items-center gap-2">
