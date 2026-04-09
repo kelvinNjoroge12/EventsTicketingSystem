@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -149,7 +149,6 @@ const EventDetailPage = () => {
   const queryClient = useQueryClient();
   const { addMultipleToCart } = useCart();
   const { user } = useAuth();
-  const detailGridRef = useRef(null);
   const [showSharePopover, setShowSharePopover] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
@@ -392,6 +391,8 @@ const EventDetailPage = () => {
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
   const lowestTicketPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => Number(ticket.price || 0))) : Number(event.price || 0);
   const heroDateText = formatDate(event.date);
+  const ticketRailTop = 'calc(var(--app-navbar-height, 120px) + 20px)';
+  const ticketRailHeight = 'calc(100vh - var(--app-navbar-height, 120px) - 40px)';
   const reviewStatusCopy = {
     pending: { title: 'Pending approval', body: 'This event has been submitted for publication and is waiting for admin review.', tone: 'border-[#FDE68A] bg-[#FFF7E6] text-[#8A620E]' },
     rejected: { title: 'Changes requested', body: 'This event was reviewed and needs updates before it can be published again.', tone: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B]' },
@@ -410,7 +411,7 @@ const EventDetailPage = () => {
           </h1>
         </div>
 
-        <div ref={detailGridRef} className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_336px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_352px]" style={{ alignItems: 'start' }}>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_384px]" style={{ alignItems: 'start' }}>
           <div className="min-w-0">
             <section className="overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
               <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
@@ -628,13 +629,15 @@ const EventDetailPage = () => {
             className="hidden lg:flex lg:flex-col"
             style={{
               position: 'sticky',
-              top: 'calc(var(--app-navbar-height, 120px) + 16px)',
-              maxHeight: 'calc(100vh - var(--app-navbar-height, 120px) - 32px)',
-              zIndex: 20,
+              top: ticketRailTop,
+              height: ticketRailHeight,
+              minHeight: 'min(560px, calc(100vh - var(--app-navbar-height, 120px) - 40px))',
+              maxHeight: '780px',
+              zIndex: 30,
               alignSelf: 'start',
             }}
           >
-            <div className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]" style={{ maxHeight: 'inherit' }}>
+            <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]">
                 <div className="flex flex-shrink-0 items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                   <div className="flex items-center gap-2">
                     <Ticket className="h-4 w-4" />

@@ -245,19 +245,22 @@ const TicketBox = ({
     ? 'bg-white rounded-b-2xl border border-[#E2E8F0] border-t-0 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.55)] flex flex-col'
     : 'bg-white rounded-2xl shadow-lg flex flex-col';
   const shellStyle = isSidebarLayout ? undefined : { borderTop: `4px solid ${themeColor}` };
-  const bodyClasses = isSidebarLayout ? 'p-3 pb-6' : 'p-6 pb-16 lg:pb-24';
-  const sectionGapClass = isSidebarLayout ? 'mb-3' : 'mb-6';
-  const ticketListGapClass = isSidebarLayout ? 'space-y-1.5' : 'space-y-3';
-  const ticketCardClasses = isSidebarLayout ? 'rounded-lg p-2' : 'rounded-xl p-4';
-  const ticketCardMarginClass = isSidebarLayout ? 'mb-1.5 gap-1.5' : 'mb-3 gap-3';
+  const bodyClasses = isSidebarLayout ? 'p-2.5 pb-4' : 'p-6 pb-16 lg:pb-24';
+  const sectionGapClass = isSidebarLayout ? 'mb-2.5' : 'mb-6';
+  const sectionLabelClasses = isSidebarLayout
+    ? 'mb-2 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[#475569]'
+    : 'mb-3 block text-sm font-medium text-[#0F172A]';
+  const ticketListGapClass = isSidebarLayout ? 'space-y-1' : 'space-y-3';
+  const ticketCardClasses = isSidebarLayout ? 'rounded-lg p-1.5' : 'rounded-xl p-4';
+  const ticketCardMarginClass = isSidebarLayout ? 'mb-1 gap-1.5' : 'mb-3 gap-3';
   const quantityButtonClasses = isSidebarLayout ? 'h-6 w-6' : 'h-8 w-8';
   const footerClasses = isSidebarLayout
-    ? 'border-t border-[#E2E8F0] bg-white p-3 lg:sticky lg:bottom-0 lg:z-10 shadow-[0_-20px_35px_-32px_rgba(15,23,42,0.75)]'
+    ? 'border-t border-[#E2E8F0] bg-white p-2.5 lg:sticky lg:bottom-0 lg:z-10 shadow-[0_-20px_35px_-32px_rgba(15,23,42,0.75)]'
     : 'border-t border-[#E2E8F0] bg-white p-6 lg:sticky lg:bottom-0 lg:z-10';
   const footerButtonClass = isSidebarLayout ? 'py-2.5 text-sm' : 'py-4';
-  const couponClasses = isSidebarLayout ? 'rounded-lg p-2.5' : 'rounded-xl p-4';
-  const waitlistClasses = isSidebarLayout ? 'mb-3 rounded-lg p-2.5' : 'mb-6 rounded-xl p-4';
-  const breakdownClasses = isSidebarLayout ? 'mb-3 space-y-1 pb-3' : 'mb-6 space-y-2 pb-6';
+  const couponClasses = isSidebarLayout ? 'rounded-lg p-2' : 'rounded-xl p-4';
+  const waitlistClasses = isSidebarLayout ? 'mb-2.5 rounded-lg p-2.5' : 'mb-6 rounded-xl p-4';
+  const breakdownClasses = isSidebarLayout ? 'mb-2.5 space-y-1 pb-2.5' : 'mb-6 space-y-2 pb-6';
 
   return (
     <div className={shellClasses} style={shellStyle}>
@@ -276,10 +279,10 @@ const TicketBox = ({
 
         {hasCategoryTickets && categoryOptions.length > 0 && (
           <div className={sectionGapClass}>
-            <label className="mb-3 block text-sm font-medium text-[#0F172A]">
+            <label className={sectionLabelClasses}>
               Choose your category
             </label>
-            <div className="flex items-center gap-2 rounded-xl bg-[#F1F5F9] p-1">
+            <div className={`flex items-center rounded-xl bg-[#F1F5F9] p-1 ${isSidebarLayout ? 'gap-1' : 'gap-2'}`}>
               {categoryOptions.map((cat) => {
                 const active = String(cat.id) === String(selectedCategoryId);
 
@@ -288,7 +291,9 @@ const TicketBox = ({
                     key={cat.id}
                     onClick={() => handleCategoryChange(cat.id)}
                     disabled={isPastEvent || isUnavailableForSale}
-                    className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all ${
+                    className={`flex-1 rounded-lg font-semibold transition-all ${
+                      isSidebarLayout ? 'px-2 py-2 text-xs' : 'py-2.5 text-sm'
+                    } ${
                       active ? 'bg-white text-[#0F172A] shadow' : 'text-[#64748B] hover:text-[#0F172A]'
                     }`}
                   >
@@ -301,7 +306,7 @@ const TicketBox = ({
         )}
 
         <div className={sectionGapClass}>
-          <label className="mb-3 block text-sm font-medium text-[#0F172A]">
+          <label className={sectionLabelClasses}>
             Select Tickets
           </label>
           <div className={ticketListGapClass}>
@@ -377,14 +382,14 @@ const TicketBox = ({
         </div>
 
         <div className={`${sectionGapClass} border border-[#DBEAFE] bg-[#EFF6FF] ${couponClasses}`}>
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#0F172A]">
+          <div className={`flex items-center gap-2 font-semibold text-[#0F172A] ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
             <Tag className="h-4 w-4 text-[#02338D]" />
             Promo code
             <span className={`ml-auto rounded-full bg-[#DCFCE7] font-medium text-[#15803D] ${isSidebarLayout ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]'}`}>
               {isSidebarLayout ? 'Promo' : 'Save with code'}
             </span>
           </div>
-          <p className={`mt-1 text-[#64748B] ${isSidebarLayout ? 'text-[11px] leading-4' : 'text-xs'}`}>
+          <p className={`mt-1 text-[#64748B] ${isSidebarLayout ? 'text-[10px] leading-4' : 'text-xs'}`}>
             Apply your discount before checkout.
           </p>
           <div className="mt-3 flex gap-2">
@@ -395,7 +400,7 @@ const TicketBox = ({
               placeholder="Enter promo code"
               disabled={isPastEvent || isUnavailableForSale}
               className={`
-                flex-1 rounded-lg border bg-white px-3 py-2.5 text-sm
+                flex-1 rounded-lg border bg-white px-3 ${isSidebarLayout ? 'py-2 text-[13px]' : 'py-2.5 text-sm'}
                 focus:outline-none focus:ring-2 focus:ring-[#02338D]
                 ${promoError ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}
               `}
@@ -575,7 +580,7 @@ const TicketBox = ({
           </span>
         </CustomButton>
 
-        <div className={`mt-3 flex items-center justify-center gap-1 text-[#64748B] ${isSidebarLayout ? 'text-[11px]' : 'text-xs'}`}>
+        <div className={`mt-2 flex items-center justify-center gap-1 text-[#64748B] ${isSidebarLayout ? 'text-[10px]' : 'text-xs'}`}>
           <span>Secure checkout</span>
           <span>-</span>
           <span>Instant QR ticket</span>
