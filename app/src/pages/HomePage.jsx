@@ -27,7 +27,6 @@ import useCountUp from '../hooks/useCountUp';
 import { useAuth } from '../context/AuthContext';
 import eventQueryKeys from '../lib/eventQueryKeys';
 import { canAccessOrganizerDashboard } from '../lib/authAccess';
-import { sortPublicEvents } from '../lib/eventOrdering';
 
 // Statistics Component
 const StatBox = ({ value, label, suffix = '' }) => {
@@ -188,12 +187,10 @@ const HomePage = () => {
   // Derived filtered events
   const filteredEvents = useMemo(() => {
     if (activeCategory === 'All') {
-      return sortPublicEvents(availableEvents);
+      return availableEvents;
     }
     const normActive = normalizeCategory(activeCategory);
-    const fe = sortPublicEvents(
-      availableEvents.filter((e) => normalizeCategory(e.category) === normActive)
-    );
+    const fe = availableEvents.filter((e) => normalizeCategory(e.category) === normActive);
 
     if (categoryCounts[normActive] > 0 && fe.length === 0) {
       console.warn('Category mismatch:', activeCategory, 'count', categoryCounts[normActive], 'filtered 0');

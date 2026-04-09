@@ -20,7 +20,7 @@ import { categories as defaultCategories } from '../data/categories';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
 import eventQueryKeys from '../lib/eventQueryKeys';
-import { sortPastEvents, sortPublicEvents } from '../lib/eventOrdering';
+import { sortPastEvents } from '../lib/eventOrdering';
 
 // Define filter cards styling statically 
 const filterCards = [
@@ -182,7 +182,7 @@ const EventsPage = () => {
   }, [filters, allEvents]);
 
   const sortEvents = (events, { past = false } = {}) => {
-    const result = past ? sortPastEvents(events) : sortPublicEvents(events);
+    const result = [...events];
 
     switch (filters.sort) {
       case 'upcoming':
@@ -198,6 +198,9 @@ const EventsPage = () => {
         result.sort((a, b) => b.price - a.price);
         break;
       default:
+        if (past) {
+          return sortPastEvents(result);
+        }
         break;
     }
 

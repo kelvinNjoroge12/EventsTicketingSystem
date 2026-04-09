@@ -170,6 +170,7 @@ class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
             "is_featured",
             "status",
             "display_priority",
+            "published_at",
             "time_state",
             "is_today",
             "is_past",

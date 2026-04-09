@@ -43,6 +43,7 @@ import { useAuth } from '../context/AuthContext';
 import { capEventLocation, capEventTitle } from '../lib/eventText';
 import { heroImage, heroSrcSet, avatarImage, logoImage } from '../lib/imageUtils';
 import eventQueryKeys from '../lib/eventQueryKeys';
+import { sortPublicEvents } from '../lib/eventOrdering';
 
 const ScheduleTimeline = ({ schedule, themeColor }) => (
   <div className="space-y-0">
@@ -194,6 +195,11 @@ const EventDetailPage = () => {
     enabled: !!slug,
     staleTime: 10 * 60 * 1000,
   });
+
+  const orderedRelatedEvents = useMemo(
+    () => sortPublicEvents(relatedEvents),
+    [relatedEvents]
+  );
 
   const event = baseEvent ?? null;
   const isAdminUser = Boolean(user && (user.role === 'admin' || user.is_staff));
@@ -615,11 +621,11 @@ const EventDetailPage = () => {
                 </div>
               </div>
 
-              {relatedEvents.length > 0 && (
+              {orderedRelatedEvents.length > 0 && (
                 <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
                   <h2 className="mb-4 text-lg font-bold text-[#0F172A]">You Might Also Like</h2>
                   <div className="grid gap-5 sm:grid-cols-2">
-                    {relatedEvents.slice(0, 3).map((relatedEvent, index) => (
+                    {orderedRelatedEvents.slice(0, 3).map((relatedEvent, index) => (
                       <EventCard key={relatedEvent.id} event={relatedEvent} index={index} />
                     ))}
                   </div>

@@ -539,16 +539,16 @@ def related_events(request, slug: str):
     event = get_object_or_404(qs_base.distinct(), slug=slug)
     
     version = _get_cache_version()
-    cache_key = f"events:related:v{version}:{slug}"
+    cache_key = f"events:related:v2:{version}:{slug}"
     cached = cache.get(cache_key)
     if cached:
         return Response(cached)
         
-    qs = _with_list_optimizations(
-        Event.objects.filter(category=event.category, status="published")
-        .exclude(id=event.id)
-        .order_by("-attendee_count")[:4]
-    )
+    qs = _apply_public_event_ordering(
+        _with_list_optimizations(
+            Event.objects.filter(category=event.category, status="published").exclude(id=event.id)
+        )
+    )[:4]
     serializer = EventListSerializer(qs, many=True, context={"request": request})
     cache.set(cache_key, serializer.data, 900)  # 15 minutes
     return Response(serializer.data)
