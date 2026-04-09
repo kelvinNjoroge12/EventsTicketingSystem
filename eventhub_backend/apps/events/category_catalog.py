@@ -138,6 +138,30 @@ def resolve_category_name(value: str | None) -> str:
     return (value or "").strip()
 
 
+def serialize_category_payload(category) -> dict:
+    definition = get_curated_category_definition(getattr(category, "slug", None) or getattr(category, "name", None))
+    if definition:
+        return {
+            "id": category.pk,
+            "name": definition["name"],
+            "slug": definition["slug"],
+            "icon": definition["icon"],
+            "description": definition["description"],
+            "is_active": getattr(category, "is_active", True),
+            "sort_order": definition["sort_order"],
+        }
+
+    return {
+        "id": category.pk,
+        "name": getattr(category, "name", ""),
+        "slug": getattr(category, "slug", ""),
+        "icon": getattr(category, "icon", ""),
+        "description": getattr(category, "description", ""),
+        "is_active": getattr(category, "is_active", True),
+        "sort_order": getattr(category, "sort_order", 0),
+    }
+
+
 def ensure_curated_categories(category_model, event_model=None):
     curated_records = {}
 

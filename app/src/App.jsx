@@ -166,11 +166,13 @@ const AppRoutes = ({ onLocationKey }) => {
   const isPublicRoute = publicRoutes.some((regex) => regex.test(location.pathname));
 
   const hideFooter =
-    /^\/checkout\/[^/]+\/?$/.test(location.pathname) ||
-    /^\/confirmation\/[^/]+\/?$/.test(location.pathname) ||
-    /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
-    /^\/organizer-checkin\/?$/.test(location.pathname) ||
-    /^\/force-password-reset\/?$/.test(location.pathname) ||
+      /^\/checkout\/[^/]+\/?$/.test(location.pathname) ||
+      /^\/confirmation\/[^/]+\/?$/.test(location.pathname) ||
+      /^\/events\/[^/]+\/?$/.test(location.pathname) ||
+      /^\/admin\/event-reviews\/[^/]+\/?$/.test(location.pathname) ||
+      /^\/organizer\/events\/[^/]+\/checkin\/?$/.test(location.pathname) ||
+      /^\/organizer-checkin\/?$/.test(location.pathname) ||
+      /^\/force-password-reset\/?$/.test(location.pathname) ||
     /^\/settings\/?$/.test(location.pathname) ||
     /^\/create-event\/?$/.test(location.pathname) ||
     /^\/edit-event\/[^/]+\/?$/.test(location.pathname) ||

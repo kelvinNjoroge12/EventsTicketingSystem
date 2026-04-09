@@ -12,6 +12,7 @@ from apps.speakers.serializers import SpeakerSerializer
 from apps.schedules.serializers import ScheduleItemSerializer
 from apps.sponsors.serializers import SponsorSerializer
 from .compat import get_event_attr
+from .category_catalog import ensure_curated_categories, resolve_category_name, serialize_category_payload
 from .models import Category, Event, Tag
 
 
@@ -31,9 +32,33 @@ def _safe_media_url(file_obj, request=None):
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    slug = serializers.SerializerMethodField()
+    icon = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+    sort_order = serializers.SerializerMethodField()
+
     class Meta:
         model = Category
-        fields = "__all__"
+        fields = ["id", "name", "slug", "icon", "description", "is_active", "sort_order"]
+
+    def _payload(self, obj):
+        return serialize_category_payload(obj)
+
+    def get_name(self, obj):
+        return self._payload(obj)["name"]
+
+    def get_slug(self, obj):
+        return self._payload(obj)["slug"]
+
+    def get_icon(self, obj):
+        return self._payload(obj)["icon"]
+
+    def get_description(self, obj):
+        return self._payload(obj)["description"]
+
+    def get_sort_order(self, obj):
+        return self._payload(obj)["sort_order"]
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -115,7 +140,7 @@ class EventTimeStateMixin(serializers.Serializer):
 
 
 class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
-    category_name = serializers.CharField(source="category.name", read_only=True)
+    category_name = serializers.SerializerMethodField()
     organizer = OrganizerMiniSerializer(read_only=True)
     lowest_ticket_price = serializers.SerializerMethodField()
     is_free = serializers.SerializerMethodField()
@@ -180,6 +205,12 @@ class EventListSerializer(EventTimeStateMixin, serializers.ModelSerializer):
 
     def get_display_priority(self, obj: Event):
         return get_event_attr(obj, "display_priority", 0) or 0
+
+    def get_category_name(self, obj: Event):
+        category = getattr(obj, "category", None)
+        if not category:
+            return None
+        return serialize_category_payload(category)["name"]
 
 
 class TicketTypeSerializer(serializers.ModelSerializer):
@@ -469,6 +500,14 @@ class EventCreateSerializer(serializers.ModelSerializer):
     # Accept a list of tag names for create/update instead of tag IDs.
     tags = serializers.ListField(child=serializers.CharField(), required=False, write_only=True)
     stickers = serializers.JSONField(required=False)
+
+    def validate_category(self, value):
+        if value is None:
+            return value
+
+        ensure_curated_categories(Category, Event)
+        resolved_name = resolve_category_name(getattr(value, "slug", None) or getattr(value, "name", None))
+        return Category.objects.filter(name=resolved_name).first() or value
 
     def validate_stickers(self, value):
         if isinstance(value, str):

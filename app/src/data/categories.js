@@ -21,6 +21,20 @@ const ICON_COLORS = {
   red: "text-[#7A0019]",
 };
 
+const LEGACY_CATEGORY_ALIASES = {
+  marketing: "networking",
+  music: "arts-culture",
+  "music-arts": "arts-culture",
+  "music-and-arts": "arts-culture",
+  creative: "arts-culture",
+  tech: "entrepreneurship-innovation",
+  technology: "entrepreneurship-innovation",
+  business: "corporate-executive",
+  education: "knowledge-series",
+  health: "wellness-events",
+  "university-events": "conferences-seminars",
+};
+
 export const categories = [
   {
     id: "cat-001",
@@ -136,15 +150,20 @@ const slugifyCategoryName = (value = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const resolveCategoryKey = (value = "") => {
+  const slugified = slugifyCategoryName(value);
+  return LEGACY_CATEGORY_ALIASES[slugified] || slugified;
+};
+
 export const getCategoryByName = (value) => {
-  const normalized = normalizeCategoryKey(value);
+  const normalized = resolveCategoryKey(value);
   if (!normalized) return undefined;
 
   return categories.find((cat) => {
     return (
-      normalizeCategoryKey(cat.name) === normalized ||
+      resolveCategoryKey(cat.name) === normalized ||
       cat.slug === normalized ||
-      cat.slug === slugifyCategoryName(value)
+      cat.slug === resolveCategoryKey(value)
     );
   });
 };
@@ -160,17 +179,28 @@ export const enrichCategory = (category) => {
   return {
     ...raw,
     id: raw.id || match.id,
-    slug: raw.slug || match.slug,
-    name: raw.name || match.name,
+    slug: match.slug,
+    name: match.name,
     icon: match.icon,
     iconColor: match.iconColor,
-    description: raw.description || match.description,
+    description: match.description,
   };
 };
 
 export const sortCategoriesLikeCatalog = (list = []) => {
   const order = new Map(categories.map((category, index) => [category.slug, index]));
-  return [...list].sort((left, right) => {
+  const deduped = [];
+  const seen = new Set();
+
+  list.forEach((item) => {
+    const normalized = enrichCategory(item);
+    const key = normalized.slug || normalizeCategoryKey(normalized.name);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    deduped.push(normalized);
+  });
+
+  return deduped.sort((left, right) => {
     const leftMeta = enrichCategory(left);
     const rightMeta = enrichCategory(right);
     const leftIndex = order.get(leftMeta.slug) ?? Number.MAX_SAFE_INTEGER;

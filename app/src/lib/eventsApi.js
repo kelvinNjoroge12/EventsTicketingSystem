@@ -68,7 +68,13 @@ export const mapEvent = (e) => {
   const isToday = e.is_today ?? (timeState === 'today' || timeState === 'live');
   const isPast = e.is_past ?? (timeState === 'past' || resolvedStatus === 'completed');
 
-  const categoryName = (e.category && typeof e.category === "object" ? e.category.name : null) || e.category_name || (typeof e.category === "string" ? e.category : null) || "General";
+  const rawCategory =
+    (e.category && typeof e.category === "object" ? e.category.name : null) ||
+    e.category_name ||
+    (typeof e.category === "string" ? e.category : null) ||
+    "General";
+  const normalizedCategory = enrichCategory(rawCategory);
+  const categoryName = normalizedCategory?.name || rawCategory;
   const mapLocation = e.venue_name || (e.city ? `${e.city}${e.country ? ', ' + e.country : ''}` : e.country || e.location || 'Location TBA');
 
 
