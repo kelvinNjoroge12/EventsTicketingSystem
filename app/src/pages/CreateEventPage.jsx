@@ -13,7 +13,6 @@ import Modal from '../components/ui/Modal';
 import { api } from '../lib/apiClient';
 import { fetchCategories, fetchEvent } from '../lib/eventsApi';
 import eventQueryKeys from '../lib/eventQueryKeys';
-import { useAuth } from '../context/AuthContext';
 import {
   BasicInfoStep,
   DateLocationStep,
@@ -99,9 +98,7 @@ const CreateEventPage = ({
   const { slug } = useParams();
   const navigate = useNavigate();
   const isSubmittingRef = useRef(false);
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const canManagePriority = user?.role === 'admin' || user?.is_staff;
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState('forward');
   const [completedSteps, setCompletedSteps] = useState([]);
@@ -252,7 +249,6 @@ const CreateEventPage = ({
             customRefundPolicy: eventData.customRefundPolicy || '',
             enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
             sendReminders: eventData.sendReminders ?? eventData.send_reminders ?? true,
-            displayPriority: eventData.displayPriority || 0,
           });
           setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
           setInitialSubresources({
@@ -307,7 +303,6 @@ const CreateEventPage = ({
     customRefundPolicy: '',
     enableWaitlist: false,
     sendReminders: true,
-    displayPriority: 0,
   });
 
   const [errors, setErrors] = useState({});
@@ -438,7 +433,6 @@ const CreateEventPage = ({
       accent_color: formData.accentColor || '#7C3AED',
       enable_waitlist: Boolean(formData.enableWaitlist),
       send_reminders: Boolean(formData.sendReminders),
-      ...(canManagePriority ? { display_priority: Number(formData.displayPriority) || 0 } : {}),
       ...(status === 'draft' && { status: 'draft' }),
     };
 
@@ -761,7 +755,7 @@ const CreateEventPage = ({
     }
 
     switch (currentStep) {
-      case 0: return <BasicInfoStep data={formData} onChange={handleChange} errors={errors} categories={categories} canManagePriority={canManagePriority} />;
+      case 0: return <BasicInfoStep data={formData} onChange={handleChange} errors={errors} categories={categories} />;
       case 1: return <DateLocationStep data={formData} onChange={handleChange} errors={errors} />;
       case 2: return <DescriptionStep data={formData} onChange={handleChange} errors={errors} />;
       case 3: return <SpeakersStep data={formData} onChange={handleChange} />;
@@ -886,14 +880,6 @@ const CreateEventPage = ({
                       <p className="text-sm text-[#64748B]">No tickets set</p>
                     )}
                   </div>
-                  {canManagePriority && (
-                    <div className="pt-4 border-t border-[#E2E8F0]">
-                      <p className="text-[10px] text-[#64748B] uppercase font-bold tracking-tight mb-2">Homepage Priority</p>
-                      <p className="text-xl font-black text-[#0F172A]">
-                        {Number(formData.displayPriority) || 0}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {formData.sponsors.length > 0 && (
