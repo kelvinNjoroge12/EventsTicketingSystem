@@ -4,8 +4,6 @@ import { motion } from 'framer-motion';
 import {
   Calendar,
   MapPin,
-  Users,
-  ArrowRight,
   Bookmark,
   BookmarkCheck
 } from 'lucide-react';
@@ -13,8 +11,6 @@ import useSavedEvents from '../../hooks/useSavedEvents';
 import { fetchEventLite } from '../../lib/eventsApi';
 import { useQueryClient } from '@tanstack/react-query';
 import eventQueryKeys from '../../lib/eventQueryKeys';
-import CustomAvatar from '../ui/CustomAvatar';
-import CustomBadge from '../ui/CustomBadge';
 import ProgressiveImage from '../ui/ProgressiveImage';
 import { cardImage, cardSrcSet } from '../../lib/imageUtils';
 
@@ -31,11 +27,13 @@ const cardTints = [
 
 const EventCard = ({
   event,
+  variant = 'default',
   showBookmark = true,
   onBookmarkToggle,
 }) => {
   const { isSaved, toggleSave } = useSavedEvents();
   const saved = isSaved({ id: event.id, slug: event.slug });
+  const isCompactListing = variant === 'listingCompact';
 
   // Use event's own theme colors for consistency with detail page
   const themeColor = event.themeColor || '#02338D';
@@ -97,6 +95,66 @@ const EventCard = ({
       : event.isToday
         ? { text: 'Today', className: 'bg-sky-500 text-white' }
         : null;
+
+  if (isCompactListing) {
+    return (
+      <Link
+        to={`/events/${event.slug}`}
+        className="block h-full group"
+        onMouseEnter={handlePrefetch}
+        onFocus={handlePrefetch}
+        onTouchStart={handlePrefetch}
+      >
+        <motion.article
+          className="h-full overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          whileHover={{ y: -4, boxShadow: '0 14px 30px -18px rgba(15, 23, 42, 0.32)' }}
+        >
+          <div className="relative aspect-square overflow-hidden bg-[#F8FAFC]">
+            {event.coverImage ? (
+              <ProgressiveImage
+                src={cardImage(event.coverImage)}
+                srcSet={cardSrcSet(event.coverImage)}
+                sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 20vw"
+                alt={event.title}
+                loading="lazy"
+                placeholderColor={themeColor}
+                accentColor={accentColor}
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                style={{ position: 'absolute', inset: 0 }}
+              />
+            ) : (
+              <div
+                className="flex h-full w-full items-center justify-center"
+                style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}
+              >
+                <Calendar className="h-10 w-10 text-white/75" />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2 px-3 py-3 sm:px-4">
+            <h3 className="line-clamp-2 text-sm font-bold leading-snug text-[#0F172A] transition-colors group-hover:text-[#02338D]">
+              {event.title}
+            </h3>
+
+            <div className="space-y-1.5 text-[11px] text-[#64748B] sm:text-xs">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-[#02338D]" />
+                <span className="truncate">{formatDate(event.date)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-[#02338D]" />
+                <span className="truncate">{event.location || 'Online'}</span>
+              </div>
+            </div>
+          </div>
+        </motion.article>
+      </Link>
+    );
+  }
 
   return (
     <Link

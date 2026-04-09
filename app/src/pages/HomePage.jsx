@@ -465,6 +465,8 @@ const HomePage = () => {
                     >
                       <EventCard
                         event={event}
+                        variant="listingCompact"
+                        showBookmark={false}
                         index={0}
                         onBookmarkToggle={handleBookmarkToggle}
                       />

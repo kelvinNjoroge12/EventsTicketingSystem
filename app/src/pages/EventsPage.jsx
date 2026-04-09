@@ -415,6 +415,8 @@ const EventsPage = () => {
                         >
                           <EventCard
                             event={event}
+                            variant="listingCompact"
+                            showBookmark={false}
                             index={index}
                           />
                         </motion.div>
@@ -449,6 +451,8 @@ const EventsPage = () => {
                         >
                           <EventCard
                             event={event}
+                            variant="listingCompact"
+                            showBookmark={false}
                             index={index}
                           />
                         </motion.div>
