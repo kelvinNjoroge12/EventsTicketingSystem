@@ -410,7 +410,7 @@ const EventDetailPage = () => {
           </h1>
         </div>
 
-        <div ref={detailGridRef} className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_336px]">
+        <div ref={detailGridRef} className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_336px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_352px]" style={{ alignItems: 'start' }}>
           <div className="min-w-0">
             <section className="overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
               <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
@@ -624,17 +624,18 @@ const EventDetailPage = () => {
             </section>
           </div>
 
-          <aside className="hidden lg:block">
-            <div
-              className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]"
-              style={{
-                position: 'sticky',
-                top: 'calc(var(--app-navbar-height, 120px) + 16px)',
-                maxHeight: 'calc(100vh - var(--app-navbar-height, 120px) - 32px)',
-                zIndex: 20
-              }}
-            >
-                <div className="flex items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
+          <aside
+            className="hidden lg:flex lg:flex-col"
+            style={{
+              position: 'sticky',
+              top: 'calc(var(--app-navbar-height, 120px) + 16px)',
+              maxHeight: 'calc(100vh - var(--app-navbar-height, 120px) - 32px)',
+              zIndex: 20,
+              alignSelf: 'start',
+            }}
+          >
+            <div className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]" style={{ maxHeight: 'inherit' }}>
+                <div className="flex flex-shrink-0 items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                   <div className="flex items-center gap-2">
                     <Ticket className="h-4 w-4" />
                     <span>{event.isFree || lowestTicketPrice === 0 ? 'Free Event' : `From ${event.currency} ${lowestTicketPrice.toLocaleString()}`}</span>
@@ -644,7 +645,7 @@ const EventDetailPage = () => {
                     <span className="text-xs">{event.attendeeCount?.toLocaleString() || 0} going</span>
                   </div>
                 </div>
-                <div className="min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#E2E8F0]">
+                <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#E2E8F0]">
                   <TicketBox event={event} onGetTickets={handleGetTickets} themeColor={themeColor} layout="sidebar" />
                 </div>
             </div>

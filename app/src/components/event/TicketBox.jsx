@@ -245,19 +245,19 @@ const TicketBox = ({
     ? 'bg-white rounded-b-2xl border border-[#E2E8F0] border-t-0 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.55)] flex flex-col'
     : 'bg-white rounded-2xl shadow-lg flex flex-col';
   const shellStyle = isSidebarLayout ? undefined : { borderTop: `4px solid ${themeColor}` };
-  const bodyClasses = isSidebarLayout ? 'p-4 pb-10' : 'p-6 pb-16 lg:pb-24';
-  const sectionGapClass = isSidebarLayout ? 'mb-5' : 'mb-6';
-  const ticketListGapClass = isSidebarLayout ? 'space-y-2.5' : 'space-y-3';
-  const ticketCardClasses = isSidebarLayout ? 'rounded-lg p-3' : 'rounded-xl p-4';
-  const ticketCardMarginClass = isSidebarLayout ? 'mb-2 gap-2' : 'mb-3 gap-3';
-  const quantityButtonClasses = isSidebarLayout ? 'h-7 w-7' : 'h-8 w-8';
+  const bodyClasses = isSidebarLayout ? 'p-3 pb-6' : 'p-6 pb-16 lg:pb-24';
+  const sectionGapClass = isSidebarLayout ? 'mb-3' : 'mb-6';
+  const ticketListGapClass = isSidebarLayout ? 'space-y-1.5' : 'space-y-3';
+  const ticketCardClasses = isSidebarLayout ? 'rounded-lg p-2' : 'rounded-xl p-4';
+  const ticketCardMarginClass = isSidebarLayout ? 'mb-1.5 gap-1.5' : 'mb-3 gap-3';
+  const quantityButtonClasses = isSidebarLayout ? 'h-6 w-6' : 'h-8 w-8';
   const footerClasses = isSidebarLayout
-    ? 'border-t border-[#E2E8F0] bg-white p-4 lg:sticky lg:bottom-0 lg:z-10 shadow-[0_-20px_35px_-32px_rgba(15,23,42,0.75)]'
+    ? 'border-t border-[#E2E8F0] bg-white p-3 lg:sticky lg:bottom-0 lg:z-10 shadow-[0_-20px_35px_-32px_rgba(15,23,42,0.75)]'
     : 'border-t border-[#E2E8F0] bg-white p-6 lg:sticky lg:bottom-0 lg:z-10';
-  const footerButtonClass = isSidebarLayout ? 'py-3.5 text-sm' : 'py-4';
-  const couponClasses = isSidebarLayout ? 'rounded-lg p-3' : 'rounded-xl p-4';
-  const waitlistClasses = isSidebarLayout ? 'mb-5 rounded-lg p-3.5' : 'mb-6 rounded-xl p-4';
-  const breakdownClasses = isSidebarLayout ? 'mb-5 space-y-1.5 pb-5' : 'mb-6 space-y-2 pb-6';
+  const footerButtonClass = isSidebarLayout ? 'py-2.5 text-sm' : 'py-4';
+  const couponClasses = isSidebarLayout ? 'rounded-lg p-2.5' : 'rounded-xl p-4';
+  const waitlistClasses = isSidebarLayout ? 'mb-3 rounded-lg p-2.5' : 'mb-6 rounded-xl p-4';
+  const breakdownClasses = isSidebarLayout ? 'mb-3 space-y-1 pb-3' : 'mb-6 space-y-2 pb-6';
 
   return (
     <div className={shellClasses} style={shellStyle}>
