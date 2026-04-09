@@ -27,6 +27,7 @@ import useCountUp from '../hooks/useCountUp';
 import { useAuth } from '../context/AuthContext';
 import eventQueryKeys from '../lib/eventQueryKeys';
 import { canAccessOrganizerDashboard } from '../lib/authAccess';
+import { sortPublicEvents } from '../lib/eventOrdering';
 
 // Statistics Component
 const StatBox = ({ value, label, suffix = '' }) => {
@@ -95,8 +96,8 @@ const HomePage = () => {
   const touchStartX = useRef(0);
 
   const { data: allEventsData, isLoading } = useQuery({
-    queryKey: eventQueryKeys.list({ page_size: 10 }),
-    queryFn: () => fetchEvents({ page_size: 10 })
+    queryKey: eventQueryKeys.list({ page_size: 12 }),
+    queryFn: () => fetchEvents({ page_size: 12 })
   });
 
   const { data: serverCategories = [] } = useQuery({
@@ -205,10 +206,12 @@ const HomePage = () => {
   // Derived filtered events
   const filteredEvents = useMemo(() => {
     if (activeCategory === 'All') {
-      return availableEvents;
+      return sortPublicEvents(availableEvents);
     }
     const normActive = normalizeCategory(activeCategory);
-    const fe = availableEvents.filter((e) => normalizeCategory(e.category) === normActive);
+    const fe = sortPublicEvents(
+      availableEvents.filter((e) => normalizeCategory(e.category) === normActive)
+    );
 
     if (categoryCounts[normActive] > 0 && fe.length === 0) {
       console.warn('Category mismatch:', activeCategory, 'count', categoryCounts[normActive], 'filtered 0');
