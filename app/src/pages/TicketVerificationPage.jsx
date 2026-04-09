@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, XCircle, Clock, Calendar, MapPin, Search, AlertCircle, ArrowLeft } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import { api } from '../lib/apiClient';
+import { capEventTitle } from '../lib/eventText';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
@@ -158,7 +159,7 @@ const TicketVerificationPage = () => {
 
                         {/* Event Details */}
                         <div className="text-center mb-8">
-                            <h2 className="text-2xl font-bold text-[#0F172A] mb-2">{ticketData.event.title}</h2>
+                            <h2 className="text-2xl font-bold text-[#0F172A] mb-2" title={ticketData.event.title}>{capEventTitle(ticketData.event.title, 'Untitled Event')}</h2>
                             <div className="inline-flex items-center justify-center gap-2 text-[#64748B] text-sm bg-gray-50 px-4 py-2 rounded-full font-medium">
                                 <Calendar className="w-4 h-4" />
                                 {new Date(ticketData.event.start_date).toLocaleDateString()} at {ticketData.event.start_time.substring(0, 5)}

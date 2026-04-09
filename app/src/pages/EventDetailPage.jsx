@@ -26,6 +26,7 @@ import EventCard from '../components/cards/EventCard';
 import CustomAvatar from '../components/ui/CustomAvatar';
 import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
 import Modal from '../components/ui/Modal';
+import RichTextContent from '../components/ui/RichTextContent';
 import {
   buildEventDetailPlaceholderFromList,
   approveEventReview,
@@ -39,6 +40,7 @@ import {
 } from '../lib/eventsApi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { capEventLocation, capEventTitle } from '../lib/eventText';
 import { heroImage, heroSrcSet, avatarImage, logoImage } from '../lib/imageUtils';
 import eventQueryKeys from '../lib/eventQueryKeys';
 
@@ -386,6 +388,8 @@ const EventDetailPage = () => {
   const hasMC = event.mc?.name;
   const showClassicLoader = !detailAlreadyCached && (isPlaceholderData || (isFetching && isLoading));
   const locationName = typeof event.location === 'object' ? event.location.name : (event.location || 'Online event');
+  const displayEventTitle = capEventTitle(event.title, 'Untitled Event');
+  const displayLocationName = capEventLocation(locationName, 'Online event');
   const eventFormatLabel = event.format === 'in_person' ? 'In-person' : event.format === 'online' ? 'Online' : event.format === 'hybrid' ? 'Hybrid' : event.format || 'Event';
   const eventTimeLabel = [event.time, event.endTime].filter(Boolean).join(' - ');
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
@@ -407,8 +411,8 @@ const EventDetailPage = () => {
 
       <div className="max-w-[1240px] mx-auto w-full px-4 pb-28 pt-6 sm:px-6 sm:pb-32 lg:px-8 lg:pb-10">
         <div className="mb-5 lg:mb-6">
-          <h1 className="min-w-0 max-w-[58rem] break-words text-xl font-bold leading-tight text-[#0F172A] sm:text-2xl lg:text-[1.85rem] xl:text-[2rem]">
-            {event.title}
+          <h1 className="min-w-0 max-w-[58rem] break-words text-xl font-bold leading-tight text-[#0F172A] sm:text-2xl lg:text-[1.85rem] xl:text-[2rem]" title={event.title}>
+            {displayEventTitle}
           </h1>
         </div>
 
@@ -488,7 +492,7 @@ const EventDetailPage = () => {
                       </div>
                       <div className="inline-flex min-w-0 items-center gap-1.5 sm:flex-1">
                         <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">{locationName}</span>
+                      <span className="truncate" title={locationName}>{displayLocationName}</span>
                     </div>
                   </div>
                 </div>
@@ -501,11 +505,11 @@ const EventDetailPage = () => {
                   {event.isFeatured && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Featured event</span>}
                 </div>
 
-                <div className="prose prose-slate max-w-full break-words overflow-hidden">
-                  {event.description ? event.description.split('\n\n').map((para, index) => (
-                    <p key={index} className="mb-4 whitespace-normal break-words text-[#475569] sm:break-normal" style={{ wordBreak: 'break-word' }}>{para}</p>
-                  )) : <p className="text-[#64748B]">No description provided.</p>}
-                </div>
+                <RichTextContent
+                  value={event.description}
+                  className="max-w-full overflow-hidden"
+                  emptyFallback={<p className="text-[#64748B]">No description provided.</p>}
+                />
               </div>
 
             {canViewReviewState && reviewBanner && (

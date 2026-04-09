@@ -40,6 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { capEventLocation, capEventTitle } from '@/lib/eventText';
 import { cn } from '@/lib/utils';
 
 const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
@@ -300,7 +301,7 @@ const OrganizerMyEvents = ({
 
             <CardContent className="p-2.5 lg:p-3">
               <h3 className="font-bold text-sm lg:text-base text-[#0F172A] mb-1.5 group-hover:text-[#C58B1A] transition-colors line-clamp-1">
-                {event.name}
+                <span title={event.name}>{capEventTitle(event.name, 'Untitled Event')}</span>
               </h3>
 
               <div className="space-y-1 mb-2.5">
@@ -310,7 +311,7 @@ const OrganizerMyEvents = ({
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] lg:text-xs text-gray-500">
                   <MapPin className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-                  <span className="line-clamp-1">{event.location || 'Online'}</span>
+                  <span className="line-clamp-1" title={event.location || 'Online'}>{capEventLocation(event.location, 'Online')}</span>
                 </div>
               </div>
 

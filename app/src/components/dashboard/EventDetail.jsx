@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import {
   XAxis,
   YAxis,
@@ -49,6 +50,7 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/apiClient';
+import { richTextToPlainText } from '@/lib/richText';
 import { toast } from 'sonner';
 
 import WaitlistTab from './tabs/WaitlistTab';
@@ -297,7 +299,7 @@ const OrganizerEventDetail = ({
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 text-white">
-              <p className="text-sm lg:text-base opacity-90 line-clamp-2">{detail?.description || 'No description provided.'}</p>
+              <p className="text-sm lg:text-base opacity-90 line-clamp-2">{richTextToPlainText(detail?.description) || 'No description provided.'}</p>
             </div>
           </div>
 
@@ -735,11 +737,13 @@ const OrganizerEventDetail = ({
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C58B1A]/20 focus:border-[#C58B1A] resize-none"
-                  rows={4}
+                <RichTextEditor
                   value={quickEdit.description}
-                  onChange={(e) => updateQuickEditField('description', e.target.value)}
+                  onChange={(nextValue) => updateQuickEditField('description', nextValue)}
+                  placeholder="Update the event description with headings, lists, links, colors, and spacing."
+                  helperText="Formatting is preserved when you save quick edits."
+                  className="rounded-lg"
+                  editorClassName="min-h-[220px]"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -857,6 +861,5 @@ const OrganizerEventDetail = ({
 };
 
 export default OrganizerEventDetail;
-
 
 

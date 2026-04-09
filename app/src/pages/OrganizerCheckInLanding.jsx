@@ -5,6 +5,7 @@ import PageWrapper from '../components/layout/PageWrapper';
 import CheckInStaffHeader from '../components/organizer/CheckInStaffHeader';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/apiClient';
+import { capEventLocation, capEventTitle } from '../lib/eventText';
 
 const OrganizerCheckInLanding = () => {
   const navigate = useNavigate();
@@ -112,7 +113,7 @@ const OrganizerCheckInLanding = () => {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <h2 className="text-lg font-semibold text-[#0F172A] truncate">{event.title}</h2>
+                      <h2 className="text-lg font-semibold text-[#0F172A] truncate" title={event.title}>{capEventTitle(event.title, 'Untitled Event')}</h2>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B] mt-2">
                         {(event.start_date || event.startDate) && (
                           <span className="inline-flex items-center gap-1">
@@ -123,7 +124,7 @@ const OrganizerCheckInLanding = () => {
                         {(event.venue_name || event.venueName) && (
                           <span className="inline-flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5" />
-                            {event.venue_name || event.venueName}
+                            <span title={event.venue_name || event.venueName}>{capEventLocation(event.venue_name || event.venueName, 'Online')}</span>
                           </span>
                         )}
                       </div>

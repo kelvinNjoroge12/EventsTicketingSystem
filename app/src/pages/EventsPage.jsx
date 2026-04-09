@@ -393,9 +393,6 @@ const EventsPage = () => {
                   <div className="mb-5 flex items-end justify-between gap-4">
                     <div>
                       <h2 className="text-xl font-semibold text-[#0F172A]">Happening Now and Upcoming</h2>
-                      <p className="text-sm text-[#64748B] mt-1">
-                        Today's events stay at the top automatically, with admin-prioritized events pinned first.
-                      </p>
                     </div>
                   </div>
 

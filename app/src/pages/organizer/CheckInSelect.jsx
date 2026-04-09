@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, Ticket } from 'lucide-react';
+import { capEventTitle } from '../../lib/eventText';
 
 const OrganizerCheckInSelect = ({
   events,
@@ -25,7 +26,7 @@ const OrganizerCheckInSelect = ({
             >
               {events.map((event) => (
                 <option key={event.id} value={event.id}>
-                  {event.name}
+                  {capEventTitle(event.name, 'Untitled Event')}
                 </option>
               ))}
             </select>
@@ -57,7 +58,7 @@ const OrganizerCheckInSelect = ({
                 onClick={() => onOpenCheckin(event.id)}
                 className="px-4 py-3 rounded-2xl border border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors text-sm flex items-center justify-between"
               >
-                <span className="font-medium text-[#0F172A] truncate">{event.name}</span>
+                <span className="font-medium text-[#0F172A] truncate" title={event.name}>{capEventTitle(event.name, 'Untitled Event')}</span>
                 <ArrowRight className="w-4 h-4 text-[#94A3B8]" />
               </button>
             ))}

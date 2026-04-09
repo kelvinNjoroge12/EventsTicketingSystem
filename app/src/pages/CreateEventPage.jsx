@@ -10,6 +10,7 @@ import FormStep from '../components/organizer/FormStep';
 import CustomButton from '../components/ui/CustomButton';
 import CustomAvatar from '../components/ui/CustomAvatar';
 import Modal from '../components/ui/Modal';
+import RichTextContent from '../components/ui/RichTextContent';
 import { api } from '../lib/apiClient';
 import { fetchCategories, fetchEvent } from '../lib/eventsApi';
 import eventQueryKeys from '../lib/eventQueryKeys';
@@ -799,9 +800,11 @@ const CreateEventPage = ({
               <div className="md:col-span-2 space-y-8">
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-[#94A3B8] mb-4">About Event</h3>
-                  <p className="text-[#475569] leading-relaxed whitespace-pre-line">
-                    {formData.description || 'No description provided.'}
-                  </p>
+                  <RichTextContent
+                    value={formData.description}
+                    className="text-[#475569]"
+                    emptyFallback={<p className="text-[#64748B]">No description provided.</p>}
+                  />
                 </div>
 
                 {/* Speakers Preview */}

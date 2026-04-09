@@ -3,6 +3,8 @@ import { Calendar, Clock3, Eye, MapPin, UserRound } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { capEventLocation, capEventTitle } from '@/lib/eventText';
+import { richTextToPlainText } from '@/lib/richText';
 
 const formatDateTime = (value) => {
   if (!value) return 'Not submitted yet';
@@ -85,7 +87,7 @@ const EventReviewQueue = ({ events, isLoading = false, onReviewEvent }) => {
                   <Badge variant="outline" className="capitalize border-[#C58B1A]/30 text-[#8A620E] bg-[#FFF7E6]">
                     {event.status || 'pending'}
                   </Badge>
-                  <CardTitle className="text-xl text-[#0F172A]">{event.name}</CardTitle>
+                  <CardTitle className="text-xl text-[#0F172A]" title={event.name}>{capEventTitle(event.name, 'Untitled Event')}</CardTitle>
                 </div>
                 <Button
                   type="button"
@@ -113,12 +115,12 @@ const EventReviewQueue = ({ events, isLoading = false, onReviewEvent }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-[#64748B]" />
-                  <span>{event.location || 'Location TBA'}</span>
+                  <span title={event.location || 'Location TBA'}>{capEventLocation(event.location, 'Location TBA')}</span>
                 </div>
               </div>
 
               {event.description ? (
-                <p className="text-sm text-[#64748B] line-clamp-3">{event.description}</p>
+                <p className="text-sm text-[#64748B] line-clamp-3">{richTextToPlainText(event.description)}</p>
               ) : (
                 <p className="text-sm text-[#94A3B8]">No description provided yet.</p>
               )}

@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { capEventTitle } from '@/lib/eventText';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/apiClient';
 import { useAuth } from '@/context/AuthContext';
@@ -206,14 +207,15 @@ const OrganizerSettings = ({ events = [], onTabChange }) => {
   }, [activeTab, onTabChange]);
 
   const eventOptions = useMemo(
-    () => events.map((event) => ({ id: String(event.id), slug: event.slug, label: event.name })),
+    () => events.map((event) => ({ id: String(event.id), slug: event.slug, label: capEventTitle(event.name, 'Untitled Event') })),
     [events]
   );
   const eventLookup = useMemo(() => {
     const lookup = {};
     events.forEach((event) => {
-      if (event.id) lookup[String(event.id)] = event.name;
-      if (event.slug) lookup[String(event.slug)] = event.name;
+      const label = capEventTitle(event.name, 'Untitled Event');
+      if (event.id) lookup[String(event.id)] = label;
+      if (event.slug) lookup[String(event.slug)] = label;
     });
     return lookup;
   }, [events]);

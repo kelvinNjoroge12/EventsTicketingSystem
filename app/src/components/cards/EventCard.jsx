@@ -13,6 +13,7 @@ import useSavedEvents from '../../hooks/useSavedEvents';
 import { fetchEventLite } from '../../lib/eventsApi';
 import { useQueryClient } from '@tanstack/react-query';
 import eventQueryKeys from '../../lib/eventQueryKeys';
+import { capEventLocation, capEventTitle } from '../../lib/eventText';
 import ProgressiveImage from '../ui/ProgressiveImage';
 import CustomAvatar from '../ui/CustomAvatar';
 import { cardImage, cardSrcSet } from '../../lib/imageUtils';
@@ -27,6 +28,12 @@ const cardTints = [
   '#FFFBEB', // amber
   '#FFF1F2', // rose
 ];
+
+const truncateText = (value, maxChars) => {
+  if (!value) return '';
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
+};
 
 const EventCard = ({
   event,
@@ -45,6 +52,8 @@ const EventCard = ({
   const organizerAvatar = event.organizer?.avatar || null;
   const organizerBrandColor = event.organizer?.brandColor || themeColor;
   const attendeeCount = Number(event.attendeeCount || 0);
+  const displayTitle = capEventTitle(event.title, 'Untitled Event');
+  const displayLocation = capEventLocation(event.location, 'Online');
 
   const handleBookmark = (e) => {
     e.preventDefault();
@@ -143,8 +152,11 @@ const EventCard = ({
           </div>
 
           <div className="space-y-2 px-3 py-3 sm:px-4">
-            <h3 className="line-clamp-2 text-sm font-bold leading-snug text-[#0F172A] transition-colors group-hover:text-[#02338D]">
-              {event.title}
+            <h3
+              className="line-clamp-2 text-sm font-bold leading-snug text-[#0F172A] transition-colors group-hover:text-[#02338D]"
+              title={event.title}
+            >
+              {displayTitle}
             </h3>
 
             <div className="space-y-1.5 text-[11px] text-[#64748B] sm:text-xs">
@@ -162,7 +174,7 @@ const EventCard = ({
               </div>
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-[#02338D]" />
-                <span className="truncate">{event.location || 'Online'}</span>
+                <span className="truncate" title={event.location || 'Online'}>{displayLocation}</span>
               </div>
             </div>
           </div>
@@ -265,8 +277,8 @@ const EventCard = ({
             )}
           </div>
 
-          <h3 className="text-sm md:text-xl font-bold text-white leading-tight line-clamp-2 min-h-[2.5rem] md:min-h-[3rem] group-hover:text-blue-300 transition-colors">
-            {event.title}
+          <h3 className="text-sm md:text-xl font-bold text-white leading-tight line-clamp-2 min-h-[2.5rem] md:min-h-[3rem] group-hover:text-blue-300 transition-colors" title={event.title}>
+            {displayTitle}
           </h3>
 
           <div className="flex flex-col gap-1 md:gap-2">
@@ -276,7 +288,7 @@ const EventCard = ({
             </div>
             <div className="flex items-center gap-1.5 md:gap-2 text-white/80 text-[10px] md:text-xs font-medium">
               <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5" />
-              <span className="truncate">{event.location}</span>
+              <span className="truncate" title={event.location || 'Online'}>{displayLocation}</span>
             </div>
           </div>
 

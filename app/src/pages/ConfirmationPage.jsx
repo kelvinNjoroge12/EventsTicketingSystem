@@ -10,6 +10,7 @@ import PageWrapper from '../components/layout/PageWrapper';
 import CustomButton from '../components/ui/CustomButton';
 import { useCart } from '../context/CartContext';
 import { api } from '../lib/apiClient';
+import { richTextToPlainText } from '../lib/richText';
 
 const ConfirmationPage = () => {
   const { orderId } = useParams();
@@ -71,7 +72,7 @@ const ConfirmationPage = () => {
   const eventStartTimeValue = event?.time || event?.start_time || null;
   const eventEndTimeValue = event?.endTime || event?.end_time || null;
   const eventTitle = event?.title || 'Your Event';
-  const eventDescription = event?.description || '';
+  const eventDescription = richTextToPlainText(event?.description || '');
   const eventLocation = event?.location || event?.venue_name || '';
   const hasCalendarActions = Boolean(eventDateValue && eventStartTimeValue && eventEndTimeValue && eventTitle);
   const hasShareActions = Boolean(eventTitle);

@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Upload, Bold, Italic, List, Link, ImagePlus, Clock, Trash2, Palette, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { Plus, X, Upload, ImagePlus, Clock, Trash2, Palette, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
+import RichTextEditor from '../ui/RichTextEditor';
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -283,7 +284,7 @@ export const DateLocationStep = ({ data, onChange, errors }) => (
 );
 
 // â”€â”€ Step 3: Description & Media â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export const DescriptionStep = ({ data, onChange }) => {
+export const DescriptionStep = ({ data, onChange, errors = {} }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const [coverError, setCoverError] = useState('');
@@ -310,21 +311,13 @@ export const DescriptionStep = ({ data, onChange }) => {
     <div className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-[#0F172A] mb-2">Description</label>
-        <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
-          <div className="flex items-center gap-1 p-2 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><Bold className="w-4 h-4" /></button>
-            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><Italic className="w-4 h-4" /></button>
-            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><List className="w-4 h-4" /></button>
-            <button type="button" className="p-1.5 rounded hover:bg-[#E2E8F0] text-[#64748B]"><Link className="w-4 h-4" /></button>
-          </div>
-          <textarea
-            value={data.description}
-            onChange={(e) => onChange('description', e.target.value)}
-            placeholder="Describe your event in detail..."
-            rows={8}
-            className="w-full px-4 py-3 resize-none focus:outline-none"
-          />
-        </div>
+        <RichTextEditor
+          value={data.description}
+          onChange={(nextValue) => onChange('description', nextValue)}
+          placeholder="Describe your event in detail. Formatting like headings, bold, italics, numbered lists, links, colors, spacing, and alignment will be preserved."
+          helperText="Use the toolbar to format your event description. What you see here is what attendees will see after publishing."
+          error={errors.description}
+        />
       </div>
 
       <div>

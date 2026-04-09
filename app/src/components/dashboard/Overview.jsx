@@ -25,6 +25,7 @@ import {
   YAxis,
   Legend,
 } from 'recharts';
+import { capEventLocation, capEventTitle } from '@/lib/eventText';
 import { cn } from '@/lib/utils';
 
 const StatCard = ({ title, value, icon: Icon, delay, subtitle }) => {
@@ -408,7 +409,7 @@ const OrganizerDashboardOverview = ({
                           </div>
                         )}
                         <span className="font-medium text-[#0F172A] text-sm lg:text-base group-hover:text-[#C58B1A] transition-colors line-clamp-1">
-                          {event.name}
+                          <span title={event.name}>{capEventTitle(event.name, 'Untitled Event')}</span>
                         </span>
                       </div>
                     </td>
@@ -424,7 +425,7 @@ const OrganizerDashboardOverview = ({
                     <td className="py-2 lg:py-4 px-3 lg:px-4 hidden md:table-cell">
                       <span className="text-xs lg:text-sm text-gray-600 flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
-                        {event.location || 'Online'}
+                        <span title={event.location || 'Online'}>{capEventLocation(event.location, 'Online')}</span>
                       </span>
                     </td>
                     <td className="py-2 lg:py-4 px-3 lg:px-4">

@@ -8,6 +8,7 @@ import PageWrapper from '../components/layout/PageWrapper';
 import StepIndicator from '../components/checkout/StepIndicator';
 import AttendeeForm from '../components/checkout/AttendeeForm';
 import PaymentForm from '../components/checkout/PaymentForm';
+import { capEventLocation, capEventTitle } from '../lib/eventText';
 import { fetchEvent } from '../lib/eventsApi';
 import { api } from '../lib/apiClient';
 import { useCart } from '../context/CartContext';
@@ -542,7 +543,7 @@ const CheckoutPage = () => {
                   style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}
                 >
                   <p className="text-xs font-medium opacity-80 uppercase tracking-wider">Order Summary</p>
-                  <p className="font-semibold truncate mt-0.5">{event.title}</p>
+                  <p className="font-semibold truncate mt-0.5" title={event.title}>{capEventTitle(event.title, 'Untitled Event')}</p>
                 </div>
 
                 <div className="p-6 space-y-4">
@@ -555,7 +556,7 @@ const CheckoutPage = () => {
                     {(event.venue_name || event.city) && (
                       <div className="flex items-center gap-2 text-sm text-[#64748B]">
                         <MapPin className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{event.venue_name || event.city}</span>
+                        <span className="truncate" title={event.venue_name || event.city}>{capEventLocation(event.venue_name || event.city, 'Online')}</span>
                       </div>
                     )}
                   </div>

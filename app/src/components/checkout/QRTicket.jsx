@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 import { QRCodeSVG } from 'qrcode.react';
+import { capEventTitle } from '../../lib/eventText';
 
 const QRTicket = ({
   event,
@@ -30,8 +31,8 @@ const QRTicket = ({
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="font-bold text-[#0F172A] text-lg line-clamp-2">
-              {event.title}
+            <h3 className="font-bold text-[#0F172A] text-lg line-clamp-2" title={event.title}>
+              {capEventTitle(event.title, 'Untitled Event')}
             </h3>
             <p className="text-[#64748B] text-sm mt-1">
               {formatDate(event.date)}
