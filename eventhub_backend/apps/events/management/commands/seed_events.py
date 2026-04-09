@@ -10,8 +10,9 @@ import urllib.request, os
 from django.core.management.base import BaseCommand
 from django.core.files.base import ContentFile
 from django.utils import timezone
-from django.utils.text import slugify
 from django.db import transaction
+
+from apps.events.category_catalog import ensure_curated_categories, resolve_category_name
 
 EVENTS = [
     {
@@ -305,15 +306,12 @@ class Command(BaseCommand):
             self.stderr.write("No users found. Please create a superuser first.")
             return
 
+        ensure_curated_categories(Category, Event)
+
         for idx, ev in enumerate(EVENTS, 1):
             self.stdout.write(f"[{idx}/5] Creating: {ev['title']}")
             with transaction.atomic():
-                cat = Category.objects.filter(name__icontains=ev["category"]).first()
-                if not cat:
-                    cat, _ = Category.objects.get_or_create(
-                        name=ev["category"],
-                        defaults={"slug": slugify(ev["category"]), "is_active": True},
-                    )
+                cat = Category.objects.get(name=resolve_category_name(ev["category"]))
 
                 from django.utils.timezone import make_aware
                 from datetime import datetime, date, time as dtime

@@ -22,6 +22,7 @@ from apps.schedules.models import ScheduleItem
 from apps.speakers.models import Speaker
 from apps.sponsors.models import Sponsor
 from apps.tickets.models import PromoCode, TicketType
+from .category_catalog import CURATED_CATEGORY_SLUGS, ensure_curated_categories
 from .compat import apply_event_schema_compat, has_optional_event_field
 from .filters import EventFilter
 from .models import Category, Event
@@ -482,9 +483,15 @@ class FeaturedEventsView(generics.ListAPIView):
 
 
 class CategoryListView(generics.ListAPIView):
-    queryset = Category.objects.filter(is_active=True).order_by("sort_order", "name")
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        ensure_curated_categories(Category, Event)
+        return Category.objects.filter(
+            is_active=True,
+            slug__in=CURATED_CATEGORY_SLUGS,
+        ).order_by("sort_order", "name")
 
 
 @api_view(["GET"])

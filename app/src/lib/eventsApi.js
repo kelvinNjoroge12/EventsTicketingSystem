@@ -1,4 +1,5 @@
 import { api } from "./apiClient";
+import { enrichCategory, sortCategoriesLikeCatalog } from "../data/categories";
 
 // Telemetry utility for capturing swallowed errors
 export const logError = (context, error) => {
@@ -356,7 +357,8 @@ export const searchEventsApi = async ({ q, location, date }) => {
 
 export const fetchCategories = async () => {
   const data = await api.get("/api/events/categories/");
-  return Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+  const categories = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+  return sortCategoriesLikeCatalog(categories.map((category) => enrichCategory(category)));
 };
 
 // ── Analytics ───────────────────────────────────────────────────────────────

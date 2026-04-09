@@ -22,7 +22,7 @@ import ClassicTicketLoader from '../components/ui/ClassicTicketLoader';
 import heroImage from '../assets/strathmore-hero.jpg';
 import { fetchEventLite, fetchEvents, fetchCategories, preloadRoutes } from '../lib/eventsApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { categories as defaultCategories, getCategoryIcon } from '../data/categories';
+import { categories as defaultCategories } from '../data/categories';
 import useCountUp from '../hooks/useCountUp';
 import { useAuth } from '../context/AuthContext';
 import eventQueryKeys from '../lib/eventQueryKeys';
@@ -78,7 +78,6 @@ const HomePage = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeTab, setActiveTab] = useState('attendee');
   const [searchData, setSearchData] = useState({ keyword: '', location: '', date: '' });
-  const [isSlowLoad, setIsSlowLoad] = useState(false);
 
   // Instantly redirect organizers/admins to their dashboard instead of showing the public homepage
   useEffect(() => {
@@ -107,30 +106,13 @@ const HomePage = () => {
   });
 
   const displayCategories = useMemo(() => {
-    if (serverCategories && serverCategories.length > 0) {
-      return serverCategories.map(cat => ({
-        id: cat.id || cat.slug || cat.name,
-        name: cat.name,
-        icon: getCategoryIcon(cat.name)
-      }));
-    }
-    return defaultCategories;
+    return serverCategories.length > 0 ? serverCategories : defaultCategories;
   }, [serverCategories]);
   const allEvents = allEventsData?.results || [];
   const availableEvents = useMemo(
     () => allEvents.filter((event) => !event.isPast),
     [allEvents]
   );
-
-  useEffect(() => {
-    let timer;
-    if (isLoading) {
-      timer = setTimeout(() => setIsSlowLoad(true), 4000);
-    } else {
-      setIsSlowLoad(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isLoading]);
 
   useEffect(() => {
     if (!allEvents.length) return undefined;
@@ -453,16 +435,6 @@ const HomePage = () => {
           {isLoading ? (
             <div className="min-h-[360px] flex flex-col items-center justify-center space-y-4">
               <ClassicTicketLoader visible overlay={false} ariaLabel="Loading upcoming events" />
-              {isSlowLoad && (
-                <motion.p 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  className="text-sm text-[#64748B] text-center max-w-xs"
-                >
-                  Waking up the servers... 📅<br />
-                  <span className="text-xs">(Free tiers may take up to 60s to start)</span>
-                </motion.p>
-              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">

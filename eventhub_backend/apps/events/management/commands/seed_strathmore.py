@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 # Adjust paths if models are in different apps
+from apps.events.category_catalog import ensure_curated_categories, resolve_category_name
 from apps.events.models import Event, Category
 from apps.tickets.models import TicketType, School, Course, RegistrationCategory, RegistrationQuestion
 from apps.accounts.models import User
@@ -157,10 +158,8 @@ class Command(BaseCommand):
 
         self.stdout.write("Existing events will be left untouched.")
 
-        default_category, _ = Category.objects.get_or_create(
-            name="University Events",
-            defaults={"slug": "university-events", "is_active": True}
-        )
+        ensure_curated_categories(Category, Event)
+        default_category = Category.objects.get(name=resolve_category_name("University Events"))
 
         base_date = timezone.now() + timedelta(days=10)
         events_to_create = []

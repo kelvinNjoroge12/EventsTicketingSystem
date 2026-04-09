@@ -12,9 +12,9 @@ django.setup()
 
 from django.core.files.base import ContentFile
 from django.utils import timezone
-from django.utils.text import slugify
 from django.db import transaction
 from datetime import date, time as dtime
+from apps.events.category_catalog import ensure_curated_categories, resolve_category_name
 from apps.events.models import Event, Category
 from apps.tickets.models import TicketType
 from apps.speakers.models import Speaker
@@ -242,14 +242,12 @@ EVENTS = [
 
 # â”€â”€ Seed events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 print(f"\n[3/7] Seeding {len(EVENTS)} events...\n")
+ensure_curated_categories(Category, Event)
 
 for idx, ev in enumerate(EVENTS, 1):
     print(f"  [{idx}/5] {ev['title']}")
     with transaction.atomic():
-        cat, _ = Category.objects.get_or_create(
-            name=ev["category"],
-            defaults={"slug": slugify(ev["category"]), "is_active": True},
-        )
+        cat = Category.objects.get(name=resolve_category_name(ev["category"]))
         event = Event.objects.create(
             organizer=organizer, title=ev["title"],
             description=ev["description"], category=cat,
