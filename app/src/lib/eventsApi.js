@@ -326,6 +326,11 @@ export const fetchEvent = async (slug) => {
   return mapDetailEvent(data);
 };
 
+export const fetchEditableEvent = async (slug) => {
+  const data = await api.get(`/api/events/${slug}/edit/`);
+  return mapDetailEvent(data);
+};
+
 export const fetchEventLite = async (slug) => {
   const data = await api.get(`/api/events/${slug}/?exclude=speakers,schedule,sponsors`);
   return mapDetailEvent(data);

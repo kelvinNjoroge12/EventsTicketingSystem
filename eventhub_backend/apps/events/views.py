@@ -26,6 +26,7 @@ from .category_catalog import CURATED_CATEGORY_SLUGS, ensure_curated_categories
 from .compat import apply_event_schema_compat, has_optional_event_field
 from .filters import EventFilter
 from .models import Category, Event
+from .revisions import get_editable_event
 from .serializers import (
     CategorySerializer,
     EventCreateSerializer,
@@ -291,9 +292,30 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
             return Event.objects.none()
         return apply_event_schema_compat(Event.objects.filter(organizer=self.request.user))
 
-    def perform_update(self, serializer):
+    def _get_requested_event(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_field)
+        event = queryset.filter(slug=lookup_value).first()
+        if event is None:
+            raise Http404("No Event matches the given query.")
+        self.check_object_permissions(self.request, event)
+        return event
+
+    def retrieve(self, request, *args, **kwargs):
+        requested_event = self._get_requested_event()
+        editable_event = get_editable_event(requested_event, create_if_missing=False)
+        serializer = EventDetailSerializer(editable_event, context=self.get_serializer_context())
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        requested_event = self._get_requested_event()
+        editable_event = get_editable_event(requested_event, create_if_missing=True)
+        serializer = self.get_serializer(editable_event, data=request.data, partial=kwargs.pop("partial", False))
+        serializer.is_valid(raise_exception=True)
         serializer.save()
         _bump_cache_version()
+        detail_serializer = EventDetailSerializer(serializer.instance, context=self.get_serializer_context())
+        return Response(detail_serializer.data)
         # Use serializer.instance.slug — avoids a redundant SELECT after save()
 
 
@@ -345,6 +367,7 @@ class EventPublishView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         event = self.get_object()
+        event = get_editable_event(event, create_if_missing=True)
         submit_event_for_review(event, request.user)
         _bump_cache_version()
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
@@ -433,7 +456,7 @@ class MyEventsListView(generics.ListAPIView):
         # Strict owner-only filter: regardless of any check-in assignments,
         # this endpoint only ever shows events where request.user is the organizer.
         return _with_list_optimizations(
-            Event.objects.filter(organizer=self.request.user).order_by("-created_at")
+            Event.objects.filter(organizer=self.request.user, source_event__isnull=True).order_by("-created_at")
         )
 
 

@@ -1,7 +1,9 @@
+from django.http import Http404
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
 
 from apps.events.models import Event
+from apps.events.revisions import translate_revision_object_id
 from .models import Sponsor
 from .serializers import SponsorSerializer, SponsorCreateSerializer
 
@@ -66,6 +68,20 @@ class SponsorDetailView(generics.RetrieveUpdateDestroyAPIView):
         if _can_view_unpublished_event(user, slug):
             return queryset
         return queryset.filter(event__status="published")
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_field or "pk")
+        resolved = queryset.filter(pk=lookup_value).first()
+        if resolved is None and self.request.method not in permissions.SAFE_METHODS and self.request.user.is_authenticated:
+            event = generics.get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+            translated_id = translate_revision_object_id(event, "sponsors", lookup_value)
+            if translated_id:
+                resolved = queryset.filter(pk=translated_id).first()
+        if resolved is None:
+            raise Http404("No Sponsor matches the given query.")
+        self.check_object_permissions(self.request, resolved)
+        return resolved
 
     def check_object_permissions(self, request, obj):
         super().check_object_permissions(request, obj)

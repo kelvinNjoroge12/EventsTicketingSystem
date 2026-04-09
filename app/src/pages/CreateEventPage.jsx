@@ -12,8 +12,9 @@ import CustomAvatar from '../components/ui/CustomAvatar';
 import Modal from '../components/ui/Modal';
 import RichTextContent from '../components/ui/RichTextContent';
 import { api } from '../lib/apiClient';
-import { fetchCategories, fetchEvent } from '../lib/eventsApi';
+import { fetchCategories, fetchEditableEvent } from '../lib/eventsApi';
 import eventQueryKeys from '../lib/eventQueryKeys';
+import { normalizeTimeInput } from '../lib/timeInput';
 import {
   BasicInfoStep,
   DateLocationStep,
@@ -139,7 +140,7 @@ const CreateEventPage = ({
     }
     (async () => {
       try {
-        const eventData = await fetchEvent(slug);
+        const eventData = await fetchEditableEvent(slug);
         if (!mounted) return;
 
         if (eventData) {
@@ -195,9 +196,9 @@ const CreateEventPage = ({
             themeColor: eventData.themeColor || '#02338D',
             accentColor: eventData.accentColor || '#7C3AED',
             startDate: eventData.startDate || '',
-            startTime: eventData.startTime || '',
+            startTime: normalizeTimeInput(eventData.startTime || eventData.start_time) || '',
             endDate: eventData.endDate || '',
-            endTime: eventData.endTime || '',
+            endTime: normalizeTimeInput(eventData.endTime || eventData.end_time) || '',
             timezone: eventData.timezone || 'EAT',
             venueName: eventData.venueName || '',
             address: eventData.address || '',
@@ -406,10 +407,69 @@ const CreateEventPage = ({
     return `https://${url}`;
   };
 
-  const parseStartTime = (value) => {
-    if (!value) return '';
-    const match = String(value).match(/\d{1,2}:\d{2}/);
-    return match ? match[0] : '';
+  const humanizeValidationMessage = (field, rawMessage) => {
+    const message = String(rawMessage || '').trim();
+    if (!message) return '';
+
+    if (/wrong format/i.test(message) || /hh:mm/i.test(message)) {
+      if (field === 'end_time') return 'Please use a valid end time.';
+      if (field === 'start_time') return 'Please use a valid start time.';
+      return 'Please use a valid time.';
+    }
+
+    if (/required/i.test(message)) {
+      if (field === 'start_time') return 'Please add a start time.';
+      if (field === 'end_time') return 'Please add an end time.';
+      if (field === 'start_date') return 'Please add a start date.';
+      if (field === 'end_date') return 'Please add an end date.';
+    }
+
+    return message;
+  };
+
+  const getFirstApiErrorMessage = (value) => {
+    if (Array.isArray(value)) return getFirstApiErrorMessage(value[0]);
+    if (value && typeof value === 'object') {
+      const nestedValue = Object.values(value)[0];
+      return getFirstApiErrorMessage(nestedValue);
+    }
+    return String(value || '').trim();
+  };
+
+  const applyServerValidationErrors = (response) => {
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      return {};
+    }
+
+    const fieldMap = {
+      title: 'title',
+      category: 'category',
+      start_date: 'startDate',
+      start_time: 'startTime',
+      end_date: 'endDate',
+      end_time: 'endTime',
+      venue_name: 'venueName',
+      venue_address: 'address',
+      city: 'city',
+      country: 'country',
+      streaming_link: 'streamingLink',
+    };
+
+    const nextErrors = {};
+    Object.entries(fieldMap).forEach(([apiField, formField]) => {
+      if (!(apiField in response)) return;
+      const rawMessage = getFirstApiErrorMessage(response[apiField]);
+      const humanizedMessage = humanizeValidationMessage(apiField, rawMessage);
+      if (humanizedMessage) {
+        nextErrors[formField] = humanizedMessage;
+      }
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...nextErrors }));
+    }
+
+    return nextErrors;
   };
 
   const buildPayload = (status = 'pending') => {
@@ -420,9 +480,9 @@ const CreateEventPage = ({
       event_type: formData.eventType,
       format: mapFormat(formData.format),
       start_date: formData.startDate,
-      start_time: formData.startTime,
+      start_time: normalizeTimeInput(formData.startTime),
       end_date: formData.endDate,
-      end_time: formData.endTime,
+      end_time: normalizeTimeInput(formData.endTime),
       timezone: formData.timezone === 'EAT' ? 'Africa/Nairobi' : formData.timezone,
       venue_name: formData.venueName || '',
       venue_address: formData.address || '',
@@ -609,7 +669,7 @@ const CreateEventPage = ({
         const payloadData = {
           title: item.title,
           description: item.description || '',
-          start_time: parseStartTime(item.time) || '00:00',
+          start_time: normalizeTimeInput(item.time) || '00:00',
           sort_order: idx,
         };
         if (item.id) {
@@ -660,8 +720,23 @@ const CreateEventPage = ({
     throw notFoundError || new Error('Unable to submit this event for review right now.');
   };
 
-  const getErrorMessage = (err) =>
-    err?.response?.detail || err?.response?.message || err?.message || 'Something went wrong. Please try again.';
+  const getErrorMessage = (err) => {
+    const response = err?.response;
+    const validationErrors = applyServerValidationErrors(response);
+    if (validationErrors.startTime) return validationErrors.startTime;
+    if (validationErrors.endTime) return validationErrors.endTime;
+    if (validationErrors.startDate) return validationErrors.startDate;
+    if (validationErrors.endDate) return validationErrors.endDate;
+
+    if (response && typeof response === 'object' && !Array.isArray(response)) {
+      const [firstField, firstValue] = Object.entries(response)[0] || [];
+      const firstMessage = getFirstApiErrorMessage(firstValue);
+      const humanizedFirstMessage = humanizeValidationMessage(firstField, firstMessage);
+      if (humanizedFirstMessage) return humanizedFirstMessage;
+    }
+
+    return err?.response?.detail || err?.response?.message || err?.message || 'Something went wrong. Please try again.';
+  };
 
   const handleSaveDraft = async () => {
     if (isSubmittingRef.current) return;

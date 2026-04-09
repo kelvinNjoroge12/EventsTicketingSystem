@@ -69,31 +69,38 @@ const CheckoutPage = () => {
   // Virtual Queue polling
   useEffect(() => {
     let mounted = true;
-    let pollInterval;
+    let pollTimeout;
 
-    const checkQueue = async () => {
+    const syncQueue = async () => {
       try {
-        const res = await api.post(`/api/events/${slug}/waitlist/join/`);
+        let res = await api.get(`/api/events/${slug}/queue/status/`);
+
+        if (res?.queue_active && res?.in_queue === false && !res?.can_purchase) {
+          res = await api.post(`/api/events/${slug}/queue/join/`, {});
+        }
+
         if (mounted) {
           setQueueState(res);
           setIsJoiningQueue(false);
-          // Auto-poll every 10 seconds if still in queue and cannot purchase
+
           if (res?.queue_active && !res?.can_purchase) {
-             pollInterval = setTimeout(checkQueue, 10000);
+            pollTimeout = setTimeout(syncQueue, 10000);
           }
         }
       } catch (err) {
-        // If queue fails (e.g., 404 or down), fail-open to not block checkout
         console.error('Queue error:', err);
-        if (mounted) setIsJoiningQueue(false);
+        if (mounted) {
+          setQueueState({ queue_active: false, can_purchase: true });
+          setIsJoiningQueue(false);
+        }
       }
     };
 
-    if (slug) checkQueue();
+    if (slug) syncQueue();
 
     return () => {
       mounted = false;
-      if (pollInterval) clearTimeout(pollInterval);
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, [slug]);
 

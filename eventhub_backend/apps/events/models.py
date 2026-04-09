@@ -68,6 +68,13 @@ class Event(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="events",
     )
+    source_event = models.OneToOneField(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="pending_revision",
+    )
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, max_length=300)
     description = models.TextField(blank=True)
@@ -118,6 +125,7 @@ class Event(TimeStampedModel):
         default=0,
         help_text="Higher numbers appear first in public event listings.",
     )
+    revision_metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
         indexes = [
@@ -125,6 +133,7 @@ class Event(TimeStampedModel):
             models.Index(fields=["status", "approval_requested_at"]),
             models.Index(fields=["status", "display_priority", "start_date"]),
             models.Index(fields=["organizer", "status"]),
+            models.Index(fields=["organizer", "source_event"]),
             models.Index(fields=["category", "status"]),
             models.Index(fields=["slug"]),
             models.Index(fields=["is_featured", "status"]),

@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.notifications.serializers import create_notification
 from .compat import get_event_attr, update_event_with_available_fields
+from .revisions import get_editable_event, merge_revision_into_live_event
 
 User = get_user_model()
 
@@ -28,11 +29,13 @@ def _send_email(subject: str, message: str, recipients: list[str]) -> None:
 
 
 def _event_url(event) -> str:
-    return f"{_frontend_url()}/events/{event.slug}"
+    target = event.source_event if getattr(event, "source_event_id", None) else event
+    return f"{_frontend_url()}/events/{target.slug}"
 
 
 def _edit_url(event) -> str:
-    return f"{_frontend_url()}/edit-event/{event.slug}"
+    target = event.source_event if getattr(event, "source_event_id", None) else event
+    return f"{_frontend_url()}/edit-event/{target.slug}"
 
 
 def _review_url(event) -> str:
@@ -48,6 +51,7 @@ def _admin_users():
 
 
 def submit_event_for_review(event, submitted_by=None):
+    event = get_editable_event(event, create_if_missing=True)
     now = timezone.now()
     update_event_with_available_fields(
         event,
@@ -109,6 +113,42 @@ def submit_event_for_review(event, submitted_by=None):
 
 
 def approve_event_submission(event, reviewer):
+    if getattr(event, "source_event_id", None):
+        reviewed_at = timezone.now()
+        approval_requested_at = get_event_attr(event, "approval_requested_at")
+        live_event = merge_revision_into_live_event(event)
+        update_event_with_available_fields(
+            live_event,
+            status="published",
+            approval_requested_at=approval_requested_at or reviewed_at,
+            reviewed_at=reviewed_at,
+            reviewed_by=reviewer,
+            review_notes="",
+        )
+
+        organizer = live_event.organizer
+        organizer_name = organizer.get_short_name() or organizer.get_full_name() or organizer.email
+        message = (
+            f"Hi {organizer_name},\n\n"
+            f"Good news. Your event \"{live_event.title}\" has been approved and is now live.\n\n"
+            f"View event: {_event_url(live_event)}\n\n"
+            "Strathmore University Team"
+        )
+        _send_email(
+            subject=f"Event approved: {live_event.title}",
+            message=message,
+            recipients=[organizer.email],
+        )
+        create_notification(
+            organizer,
+            "event_approved",
+            "Event approved",
+            f"\"{live_event.title}\" has been approved and published.",
+            event=live_event,
+            action_url=f"/events/{live_event.slug}",
+        )
+        return live_event
+
     organizer = event.organizer
     reviewed_at = timezone.now()
     approval_requested_at = get_event_attr(event, "approval_requested_at")

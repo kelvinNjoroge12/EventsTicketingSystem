@@ -51,6 +51,7 @@ import {
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/apiClient';
 import { richTextToPlainText } from '@/lib/richText';
+import { normalizeTimeInput } from '@/lib/timeInput';
 import { toast } from 'sonner';
 
 import WaitlistTab from './tabs/WaitlistTab';
@@ -61,6 +62,18 @@ import ScheduleTab from './tabs/ScheduleTab';
 import SponsorsTab from './tabs/SponsorsTab';
 
 const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
+
+const getQuickEditErrorMessage = (err) => {
+  const response = err?.response;
+  const startTimeError = response?.start_time;
+  const timeMessage = Array.isArray(startTimeError) ? startTimeError[0] : startTimeError;
+
+  if (timeMessage && /wrong format|hh:mm/i.test(String(timeMessage))) {
+    return 'Please use a valid start time.';
+  }
+
+  return err?.message || 'Failed to update event';
+};
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -112,7 +125,7 @@ const OrganizerEventDetail = ({
     title: detail?.title || detail?.name || '',
     description: detail?.description || '',
     date: detail?.startDate || detail?.date || '',
-    time: detail?.startTime || detail?.time || '',
+    time: normalizeTimeInput(detail?.startTime || detail?.start_time || detail?.time) || '',
     location: detail?.venueName || detail?.location || '',
     address: detail?.address || '',
     theme_color: detail?.themeColor || detail?.theme_color || '#02338D',
@@ -127,7 +140,7 @@ const OrganizerEventDetail = ({
       title: detail.title || detail.name || '',
       description: detail.description || '',
       date: detail.startDate || detail.date || '',
-      time: detail.startTime || detail.time || '',
+      time: normalizeTimeInput(detail.startTime || detail.start_time || detail.time) || '',
       location: detail.venueName || detail.location || '',
       address: detail.address || '',
       theme_color: detail.themeColor || detail.theme_color || '#02338D',
@@ -204,7 +217,7 @@ const OrganizerEventDetail = ({
         title: quickEdit.title,
         description: quickEdit.description,
         start_date: quickEdit.date,
-        start_time: quickEdit.time,
+        start_time: normalizeTimeInput(quickEdit.time),
         venue_name: quickEdit.location,
         venue_address: quickEdit.address,
         theme_color: quickEdit.theme_color,
@@ -213,7 +226,7 @@ const OrganizerEventDetail = ({
       toast.success('Event updated');
       if (onRefreshEvent) onRefreshEvent();
     } catch (err) {
-      toast.error(err?.message || 'Failed to update event');
+      toast.error(getQuickEditErrorMessage(err));
     } finally {
       setSavingQuickEdit(false);
     }

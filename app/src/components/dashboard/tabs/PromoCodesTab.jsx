@@ -10,7 +10,47 @@ import { api } from '@/lib/apiClient';
 import { toast } from 'sonner';
 
 const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
-const promoUploadTemplateUrl = `${import.meta.env.BASE_URL}templates/promo-codes-upload-template.csv`;
+const promoUploadTemplateCsv = [
+  'code,discount_value,discount_type,usage_limit,expiry,is_active,minimum_order_amount',
+  'EARLYBIRD20,20,percent,100,2026-12-31,true,0',
+  'VIP500,500,fixed,50,2026-12-31,true,2000',
+].join('\n');
+
+const getPromoErrorMessage = (err) => {
+  const response = err?.response;
+
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    if (response.event) {
+      return 'Please try again. This promo code is linked to the event automatically.';
+    }
+
+    const [firstField, firstValue] = Object.entries(response)[0] || [];
+    const firstMessage = Array.isArray(firstValue)
+      ? firstValue[0]
+      : firstValue && typeof firstValue === 'object'
+        ? Object.values(firstValue)[0]
+        : firstValue;
+    const text = String(firstMessage || '').trim();
+
+    if (firstField === 'code' && /required/i.test(text)) {
+      return 'Please add a promo code name.';
+    }
+
+    if (firstField === 'discount_value' && /required/i.test(text)) {
+      return 'Please add a discount value.';
+    }
+
+    if (firstField === 'code' && /unique|already exists/i.test(text)) {
+      return 'That promo code already exists for this event.';
+    }
+
+    if (text) {
+      return text;
+    }
+  }
+
+  return err?.message || 'Failed to create promo code.';
+};
 
 const PromoCodesTab = ({ slug }) => {
   const queryClient = useQueryClient();
@@ -52,7 +92,7 @@ const PromoCodesTab = ({ slug }) => {
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
     },
     onError: (err) => {
-      toast.error(err?.message || 'Failed to create promo code.');
+      toast.error(getPromoErrorMessage(err));
     }
   });
 
@@ -101,6 +141,19 @@ const PromoCodesTab = ({ slug }) => {
       toast.error(err?.message || 'Failed to upload promo codes.');
     }
   });
+
+  const handleDownloadTemplate = () => {
+    const blob = new Blob([promoUploadTemplateCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'promo-codes-upload-template.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success('Promo code template downloaded.');
+  };
 
   const handleCreatePromo = () => {
     if (!promoForm.code || !promoForm.discount_value) {
@@ -334,11 +387,13 @@ const PromoCodesTab = ({ slug }) => {
                   <p className="font-semibold text-[#0F172A]">Need the correct upload format?</p>
                   <p className="text-xs text-gray-500">Download the sample template and replace the example rows with your own codes.</p>
                 </div>
-                <Button asChild variant="outline" className="border-[#CBD5E1] text-[#02338D] hover:text-[#022A78]">
-                  <a href={promoUploadTemplateUrl} download="promo-codes-upload-template.csv">
-                    <Download className="w-4 h-4" />
-                    Download Template
-                  </a>
+                <Button
+                  variant="outline"
+                  className="border-[#CBD5E1] text-[#02338D] hover:text-[#022A78]"
+                  onClick={handleDownloadTemplate}
+                >
+                  <Download className="w-4 h-4" />
+                  Download Template
                 </Button>
               </div>
 

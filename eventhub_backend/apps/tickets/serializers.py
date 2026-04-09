@@ -180,6 +180,7 @@ class PromoCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = PromoCode
         fields = "__all__"
+        read_only_fields = ["id", "event", "times_used", "created_at", "updated_at"]
 
 
 class PromoCodeValidateSerializer(serializers.Serializer):

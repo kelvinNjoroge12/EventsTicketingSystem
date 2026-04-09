@@ -331,9 +331,12 @@ const EventDetailPage = () => {
     if (!slug) return;
     try {
       setIsSubmittingReview(true);
-      await approveEventReview(slug);
+      const approvedEvent = await approveEventReview(slug);
       await refreshReviewData();
       toast.success('Event approved and published.');
+      if (approvedEvent?.slug) {
+        navigate(`/events/${approvedEvent.slug}`);
+      }
     } catch (error) {
       toast.error(error?.message || 'Failed to approve this event.');
     } finally {

@@ -4,6 +4,7 @@ from decimal import Decimal
 from datetime import date as dt_date, datetime, time as dt_time
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import Http404
 from django_ratelimit.decorators import ratelimit
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
@@ -13,6 +14,7 @@ from rest_framework.response import Response
 
 from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
 from apps.events.models import Event
+from apps.events.revisions import translate_revision_object_id
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -39,7 +41,14 @@ class EventTicketTypesView(generics.ListAPIView):
 
     def get_queryset(self):
         slug = self.kwargs["slug"]
-        event = get_object_or_404(Event, slug=slug, status="published")
+        event = get_object_or_404(Event, slug=slug)
+
+        if self.request.user.is_authenticated and event.organizer_id == self.request.user.id:
+            return event.ticket_types.all()
+
+        if event.status != "published":
+            raise Http404
+
         return event.ticket_types.filter(is_active=True)
 
 
@@ -64,6 +73,20 @@ class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.ticket_types.all()
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_url_kwarg)
+        resolved = queryset.filter(id=lookup_value).first()
+        if resolved is None:
+            event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+            translated_id = translate_revision_object_id(event, "tickets", lookup_value)
+            if translated_id:
+                resolved = queryset.filter(id=translated_id).first()
+        if resolved is None:
+            raise Http404("No TicketType matches the given query.")
+        self.check_object_permissions(self.request, resolved)
+        return resolved
 
     def perform_update(self, serializer):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
@@ -93,6 +116,24 @@ class EventRegistrationSetupView(APIView):
         categories_data = payload.get("categories", [])
         if not isinstance(categories_data, list):
             raise ValidationError({"categories": "Expected a list of categories."})
+
+        if event.source_event_id:
+            translated_categories = []
+            for category in categories_data:
+                normalized = dict(category)
+                translated_id = translate_revision_object_id(event, "categories", normalized.get("id"))
+                if translated_id:
+                    normalized["id"] = translated_id
+                questions = []
+                for question in normalized.get("questions", []):
+                    normalized_question = dict(question)
+                    translated_question_id = translate_revision_object_id(event, "questions", normalized_question.get("id"))
+                    if translated_question_id:
+                        normalized_question["id"] = translated_question_id
+                    questions.append(normalized_question)
+                normalized["questions"] = questions
+                translated_categories.append(normalized)
+            categories_data = translated_categories
 
         # Map existing categories by id and by type for upsert
         existing = {str(c.id): c for c in event.registration_categories.all()}
