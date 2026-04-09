@@ -20,6 +20,7 @@ const TicketBox = ({
   const workflowStatus = event.workflowStatus || event.status;
   const isUnavailableForSale = !['published', 'completed'].includes(workflowStatus);
   const isSidebarLayout = layout === 'sidebar';
+  const isMobileLayout = layout === 'mobile';
   const registrationCategories = Array.isArray(event.registrationCategories)
     ? event.registrationCategories
     : Array.isArray(event.registration_categories)
@@ -244,23 +245,31 @@ const TicketBox = ({
   const shellClasses = isSidebarLayout
     ? 'bg-white rounded-b-2xl border border-[#E2E8F0] border-t-0 shadow-[0_22px_44px_-34px_rgba(15,23,42,0.55)] flex flex-col'
     : 'bg-white rounded-2xl shadow-lg flex flex-col';
-  const shellStyle = isSidebarLayout ? undefined : { borderTop: `4px solid ${themeColor}` };
-  const bodyClasses = isSidebarLayout ? 'p-2.5 pb-4' : 'p-6 pb-16 lg:pb-24';
-  const sectionGapClass = isSidebarLayout ? 'mb-2.5' : 'mb-6';
+  const shellStyle = isSidebarLayout || isMobileLayout ? undefined : { borderTop: `4px solid ${themeColor}` };
+  const bodyClasses = isSidebarLayout
+    ? 'p-2 pb-3'
+    : isMobileLayout
+      ? 'p-3 pb-8'
+      : 'p-6 pb-16 lg:pb-24';
+  const sectionGapClass = isSidebarLayout ? 'mb-2' : isMobileLayout ? 'mb-3' : 'mb-6';
   const sectionLabelClasses = isSidebarLayout
-    ? 'mb-2 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[#475569]'
+    ? 'mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#475569]'
+    : isMobileLayout
+      ? 'mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[#475569]'
     : 'mb-3 block text-sm font-medium text-[#0F172A]';
-  const ticketListGapClass = isSidebarLayout ? 'space-y-1' : 'space-y-3';
-  const ticketCardClasses = isSidebarLayout ? 'rounded-lg p-1.5' : 'rounded-xl p-4';
-  const ticketCardMarginClass = isSidebarLayout ? 'mb-1 gap-1.5' : 'mb-3 gap-3';
-  const quantityButtonClasses = isSidebarLayout ? 'h-6 w-6' : 'h-8 w-8';
+  const ticketListGapClass = isSidebarLayout ? 'space-y-0.5' : isMobileLayout ? 'space-y-2' : 'space-y-3';
+  const ticketCardClasses = isSidebarLayout ? 'rounded-lg p-1.5' : isMobileLayout ? 'rounded-xl p-3' : 'rounded-xl p-4';
+  const ticketCardMarginClass = isSidebarLayout ? 'mb-1 gap-1' : isMobileLayout ? 'mb-2 gap-2' : 'mb-3 gap-3';
+  const quantityButtonClasses = isSidebarLayout ? 'h-[22px] w-[22px]' : isMobileLayout ? 'h-7 w-7' : 'h-8 w-8';
   const footerClasses = isSidebarLayout
-    ? 'border-t border-[#E2E8F0] bg-white p-2.5 lg:sticky lg:bottom-0 lg:z-10 shadow-[0_-20px_35px_-32px_rgba(15,23,42,0.75)]'
+    ? 'border-t border-[#E2E8F0] bg-white p-2 lg:sticky lg:bottom-0 lg:z-10 shadow-[0_-20px_35px_-32px_rgba(15,23,42,0.75)]'
+    : isMobileLayout
+      ? 'border-t border-[#E2E8F0] bg-white p-3 sticky bottom-0 z-10 shadow-[0_-16px_24px_-20px_rgba(15,23,42,0.55)]'
     : 'border-t border-[#E2E8F0] bg-white p-6 lg:sticky lg:bottom-0 lg:z-10';
-  const footerButtonClass = isSidebarLayout ? 'py-2.5 text-sm' : 'py-4';
-  const couponClasses = isSidebarLayout ? 'rounded-lg p-2' : 'rounded-xl p-4';
-  const waitlistClasses = isSidebarLayout ? 'mb-2.5 rounded-lg p-2.5' : 'mb-6 rounded-xl p-4';
-  const breakdownClasses = isSidebarLayout ? 'mb-2.5 space-y-1 pb-2.5' : 'mb-6 space-y-2 pb-6';
+  const footerButtonClass = isSidebarLayout ? 'py-2 text-sm' : isMobileLayout ? 'py-3 text-sm' : 'py-4';
+  const couponClasses = isSidebarLayout ? 'rounded-lg p-1.5' : isMobileLayout ? 'rounded-xl p-3' : 'rounded-xl p-4';
+  const waitlistClasses = isSidebarLayout ? 'mb-2 rounded-lg p-2' : isMobileLayout ? 'mb-3 rounded-xl p-3' : 'mb-6 rounded-xl p-4';
+  const breakdownClasses = isSidebarLayout ? 'mb-2 space-y-0.5 pb-2' : isMobileLayout ? 'mb-3 space-y-1 pb-3' : 'mb-6 space-y-2 pb-6';
 
   return (
     <div className={shellClasses} style={shellStyle}>
@@ -282,7 +291,7 @@ const TicketBox = ({
             <label className={sectionLabelClasses}>
               Choose your category
             </label>
-            <div className={`flex items-center rounded-xl bg-[#F1F5F9] p-1 ${isSidebarLayout ? 'gap-1' : 'gap-2'}`}>
+            <div className={`flex items-center rounded-xl bg-[#F1F5F9] p-1 ${isSidebarLayout ? 'gap-0.5' : isMobileLayout ? 'gap-1' : 'gap-2'}`}>
               {categoryOptions.map((cat) => {
                 const active = String(cat.id) === String(selectedCategoryId);
 
@@ -292,7 +301,7 @@ const TicketBox = ({
                     onClick={() => handleCategoryChange(cat.id)}
                     disabled={isPastEvent || isUnavailableForSale}
                     className={`flex-1 rounded-lg font-semibold transition-all ${
-                      isSidebarLayout ? 'px-2 py-2 text-xs' : 'py-2.5 text-sm'
+                      isSidebarLayout ? 'px-1.5 py-1.5 text-[11px]' : isMobileLayout ? 'px-2 py-2 text-xs' : 'py-2.5 text-sm'
                     } ${
                       active ? 'bg-white text-[#0F172A] shadow' : 'text-[#64748B] hover:text-[#0F172A]'
                     }`}
@@ -329,22 +338,22 @@ const TicketBox = ({
                 >
                   <div className={`flex items-start justify-between ${ticketCardMarginClass}`}>
                     <div className="min-w-0 flex-1">
-                      <p className={`break-words leading-tight ${isSidebarLayout ? 'mb-0.5 text-sm font-semibold' : 'mb-1 font-medium'} ${isSoldOut ? 'text-[#94A3B8] line-through decoration-[#94A3B8]/50' : 'text-[#0F172A]'}`}>
+                      <p className={`break-words leading-tight ${isSidebarLayout ? 'mb-0.5 text-[13px] font-semibold' : isMobileLayout ? 'mb-0.5 text-sm font-semibold' : 'mb-1 font-medium'} ${isSoldOut ? 'text-[#94A3B8] line-through decoration-[#94A3B8]/50' : 'text-[#0F172A]'}`}>
                         {ticket.type || ticket.name}
                       </p>
-                      <p className={`break-words text-[#64748B] ${isSidebarLayout ? 'text-[11px] leading-4' : 'text-xs'}`}>
+                      <p className={`break-words text-[#64748B] ${isSidebarLayout ? 'text-[10px] leading-[0.875rem]' : isMobileLayout ? 'text-[11px] leading-4' : 'text-xs'}`}>
                         {isSoldOut ? 'Sold out' : `${ticket.remaining} remaining`}
                         {ticket.description && ` - ${ticket.description}`}
                       </p>
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <p className={`whitespace-nowrap font-semibold ${isSidebarLayout ? 'text-sm' : ''} ${isSoldOut ? 'text-[#94A3B8]' : 'text-[#02338D]'}`}>
+                      <p className={`whitespace-nowrap font-semibold ${isSidebarLayout ? 'text-[13px]' : isMobileLayout ? 'text-sm' : ''} ${isSoldOut ? 'text-[#94A3B8]' : 'text-[#02338D]'}`}>
                         {ticket.price === 0 ? 'Free' : `${event.currency} ${ticket.price.toLocaleString()}`}
                       </p>
                     </div>
                   </div>
 
-                  <div className={`flex items-center ${isSidebarLayout ? 'gap-2' : 'gap-3'}`}>
+                  <div className={`flex items-center ${isSidebarLayout ? 'gap-1.5' : isMobileLayout ? 'gap-2' : 'gap-3'}`}>
                     {isSoldOut ? (
                       <span className={`rounded-lg border border-[#E2E8F0] bg-[#F1F5F9] text-xs font-bold uppercase tracking-wider text-[#94A3B8] ${isSidebarLayout ? 'px-2.5 py-1' : 'px-3 py-1.5'}`}>
                         Sold Out
@@ -359,7 +368,7 @@ const TicketBox = ({
                         >
                           <Minus className="h-4 w-4" />
                         </button>
-                        <span className={`${isSidebarLayout ? 'w-7' : 'w-8'} text-center text-sm font-semibold`}>{qty}</span>
+                        <span className={`${isSidebarLayout ? 'w-6 text-[13px]' : isMobileLayout ? 'w-7 text-sm' : 'w-8 text-sm'} text-center font-semibold`}>{qty}</span>
                         <button
                           onClick={() => handleQuantityChange(ticket.id, 1)}
                           disabled={isPastEvent || isUnavailableForSale || qty >= Math.min(10, ticket.remaining)}
@@ -382,17 +391,17 @@ const TicketBox = ({
         </div>
 
         <div className={`${sectionGapClass} border border-[#DBEAFE] bg-[#EFF6FF] ${couponClasses}`}>
-          <div className={`flex items-center gap-2 font-semibold text-[#0F172A] ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
+          <div className={`flex items-center gap-1.5 font-semibold text-[#0F172A] ${isSidebarLayout ? 'text-[12px]' : isMobileLayout ? 'text-sm' : 'text-sm'}`}>
             <Tag className="h-4 w-4 text-[#02338D]" />
             Promo code
             <span className={`ml-auto rounded-full bg-[#DCFCE7] font-medium text-[#15803D] ${isSidebarLayout ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]'}`}>
               {isSidebarLayout ? 'Promo' : 'Save with code'}
             </span>
           </div>
-          <p className={`mt-1 text-[#64748B] ${isSidebarLayout ? 'text-[10px] leading-4' : 'text-xs'}`}>
+          <p className={`mt-1 text-[#64748B] ${isSidebarLayout ? 'text-[10px] leading-[0.875rem]' : isMobileLayout ? 'text-[11px] leading-4' : 'text-xs'}`}>
             Apply your discount before checkout.
           </p>
-          <div className="mt-3 flex gap-2">
+          <div className={`flex gap-2 ${isSidebarLayout ? 'mt-2' : isMobileLayout ? 'mt-2.5' : 'mt-3'}`}>
             <input
               type="text"
               value={promoCode}
@@ -400,7 +409,7 @@ const TicketBox = ({
               placeholder="Enter promo code"
               disabled={isPastEvent || isUnavailableForSale}
               className={`
-                flex-1 rounded-lg border bg-white px-3 ${isSidebarLayout ? 'py-2 text-[13px]' : 'py-2.5 text-sm'}
+                flex-1 rounded-lg border bg-white px-2.5 ${isSidebarLayout ? 'py-1.5 text-[12px]' : isMobileLayout ? 'py-2 text-sm' : 'py-2.5 text-sm'}
                 focus:outline-none focus:ring-2 focus:ring-[#02338D]
                 ${promoError ? 'border-[#DC2626]' : 'border-[#E2E8F0]'}
               `}
@@ -442,7 +451,7 @@ const TicketBox = ({
 
         <div className={`${breakdownClasses} border-b border-[#E2E8F0]`}>
           {selectedTickets.map((ticket) => (
-            <div key={ticket.id} className={`flex justify-between ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
+            <div key={ticket.id} className={`flex justify-between ${isSidebarLayout ? 'text-[12px]' : isMobileLayout ? 'text-sm' : 'text-sm'}`}>
               <span className="text-[#64748B]">
                 {ticket.type || ticket.name} x {quantities[ticket.id]}
               </span>
@@ -459,7 +468,7 @@ const TicketBox = ({
           )}
 
           {discount > 0 && (
-            <div className={`flex justify-between ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
+            <div className={`flex justify-between ${isSidebarLayout ? 'text-[12px]' : isMobileLayout ? 'text-sm' : 'text-sm'}`}>
               <span className="text-[#16A34A]">Discount</span>
               <span className="text-[#16A34A]">-{event.currency} {discount.toLocaleString()}</span>
             </div>
@@ -467,11 +476,11 @@ const TicketBox = ({
 
           {totalQuantity > 0 && (
             <>
-              <div className={`flex justify-between ${isSidebarLayout ? 'text-[13px]' : 'text-sm'}`}>
+              <div className={`flex justify-between ${isSidebarLayout ? 'text-[12px]' : isMobileLayout ? 'text-sm' : 'text-sm'}`}>
                 <span className="text-[#64748B]">Service fee</span>
                 <span className="text-[#0F172A]">{event.currency} {serviceFee.toLocaleString()}</span>
               </div>
-              <div className={`flex justify-between font-semibold ${isSidebarLayout ? 'pt-1 text-base' : 'pt-2 text-lg'}`}>
+              <div className={`flex justify-between font-semibold ${isSidebarLayout ? 'pt-1 text-[15px]' : isMobileLayout ? 'pt-1.5 text-lg' : 'pt-2 text-lg'}`}>
                 <span className="text-[#0F172A]">Total</span>
                 <span style={{ color: themeColor }}>{event.currency} {total.toLocaleString()}</span>
               </div>
@@ -580,7 +589,7 @@ const TicketBox = ({
           </span>
         </CustomButton>
 
-        <div className={`mt-2 flex items-center justify-center gap-1 text-[#64748B] ${isSidebarLayout ? 'text-[10px]' : 'text-xs'}`}>
+        <div className={`mt-1.5 flex items-center justify-center gap-1 text-[#64748B] ${isSidebarLayout ? 'text-[9px]' : isMobileLayout ? 'text-[10px]' : 'text-xs'}`}>
           <span>Secure checkout</span>
           <span>-</span>
           <span>Instant QR ticket</span>

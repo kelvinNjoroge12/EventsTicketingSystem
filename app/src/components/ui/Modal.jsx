@@ -12,6 +12,7 @@ const Modal = ({
   closeOnOverlayClick = true,
   footer,
   className = '',
+  contentClassName = '',
 }) => {
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -47,7 +48,7 @@ const Modal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-2 sm:items-center sm:p-4">
           {/* Overlay */}
           <motion.div
             className="absolute inset-0 bg-black/50"
@@ -61,9 +62,9 @@ const Modal = ({
           {/* Modal */}
           <motion.div
             className={`
-              relative w-full ${sizes[size]} mx-4
+              relative mx-auto flex w-full ${sizes[size]} flex-col
               bg-white rounded-3xl shadow-2xl
-              max-h-[90vh] overflow-auto
+              max-h-[96dvh] overflow-hidden
               ${className}
             `}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -77,9 +78,9 @@ const Modal = ({
           >
             {/* Header */}
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3 sm:px-6 sm:py-4">
                 {title && (
-                  <h2 id="modal-title" className="text-xl font-semibold text-[#0F172A]">
+                  <h2 id="modal-title" className="text-lg font-semibold text-[#0F172A] sm:text-xl">
                     {title}
                   </h2>
                 )}
@@ -96,7 +97,7 @@ const Modal = ({
             )}
             
             {/* Content */}
-            <div className="p-6">
+            <div className={`min-h-0 flex-1 overflow-auto px-4 py-3 sm:p-6 ${contentClassName}`}>
               {children}
             </div>
             

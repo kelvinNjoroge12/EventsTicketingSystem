@@ -392,7 +392,8 @@ const EventDetailPage = () => {
   const lowestTicketPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => Number(ticket.price || 0))) : Number(event.price || 0);
   const heroDateText = formatDate(event.date);
   const ticketRailTop = 'calc(var(--app-navbar-height, 120px) + 20px)';
-  const ticketRailHeight = 'calc(100vh - var(--app-navbar-height, 120px) - 40px)';
+  const ticketRailRight = 'max(2rem, calc((100vw - 1240px) / 2 + 2rem))';
+  const ticketRailHeight = 'calc(100vh - var(--app-navbar-height, 120px) - 36px)';
   const reviewStatusCopy = {
     pending: { title: 'Pending approval', body: 'This event has been submitted for publication and is waiting for admin review.', tone: 'border-[#FDE68A] bg-[#FFF7E6] text-[#8A620E]' },
     rejected: { title: 'Changes requested', body: 'This event was reviewed and needs updates before it can be published again.', tone: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#991B1B]' },
@@ -411,7 +412,7 @@ const EventDetailPage = () => {
           </h1>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_384px]" style={{ alignItems: 'start' }}>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_304px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px]" style={{ alignItems: 'start' }}>
           <div className="min-w-0">
             <section className="overflow-hidden rounded-[28px] border border-[#E2E8F0] bg-white shadow-[0_30px_60px_-48px_rgba(15,23,42,0.7)]">
               <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[16/9] lg:aspect-[16/7]">
@@ -625,39 +626,44 @@ const EventDetailPage = () => {
             </section>
           </div>
 
-          <aside
-            className="hidden lg:flex lg:flex-col"
-            style={{
-              position: 'sticky',
-              top: ticketRailTop,
-              height: ticketRailHeight,
-              minHeight: 'min(560px, calc(100vh - var(--app-navbar-height, 120px) - 40px))',
-              maxHeight: '780px',
-              zIndex: 30,
-              alignSelf: 'start',
-            }}
-          >
-            <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]">
-                <div className="flex flex-shrink-0 items-center justify-between px-4 py-3 text-sm font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
+          <aside className="hidden lg:block lg:w-[304px] xl:w-[320px]">
+            <div
+              className="fixed z-30 hidden lg:flex lg:w-[304px] lg:flex-col xl:w-[320px]"
+              style={{
+                top: ticketRailTop,
+                right: ticketRailRight,
+                height: ticketRailHeight,
+              }}
+            >
+              <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_36px_-28px_rgba(15,23,42,0.65)]">
+                <div className="flex flex-shrink-0 items-center justify-between px-3 py-2.5 text-[13px] font-medium text-white" style={{ background: `linear-gradient(135deg, ${themeColor}, ${accentColor})` }}>
                   <div className="flex items-center gap-2">
-                    <Ticket className="h-4 w-4" />
+                    <Ticket className="h-3.5 w-3.5" />
                     <span>{event.isFree || lowestTicketPrice === 0 ? 'Free Event' : `From ${event.currency} ${lowestTicketPrice.toLocaleString()}`}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-white/80">
+                  <div className="flex items-center gap-1 text-[11px] text-white/80">
                     <Users className="h-3 w-3" />
-                    <span className="text-xs">{event.attendeeCount?.toLocaleString() || 0} going</span>
+                    <span>{event.attendeeCount?.toLocaleString() || 0} going</span>
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#E2E8F0]">
                   <TicketBox event={event} onGetTickets={handleGetTickets} themeColor={themeColor} layout="sidebar" />
                 </div>
+              </div>
             </div>
           </aside>
         </div>
       </div>
 
-      <Modal isOpen={isTicketModalOpen} onClose={() => setIsTicketModalOpen(false)} title="Get Tickets" size="full" className="bg-[#F8FAFC] sm:max-w-2xl">
-        <TicketBox event={event} onGetTickets={handleGetTicketsFromModal} themeColor={themeColor} />
+      <Modal
+        isOpen={isTicketModalOpen}
+        onClose={() => setIsTicketModalOpen(false)}
+        title="Get Tickets"
+        size="full"
+        className="bg-[#F8FAFC] sm:max-w-2xl"
+        contentClassName="px-3 py-2 sm:p-6"
+      >
+        <TicketBox event={event} onGetTickets={handleGetTicketsFromModal} themeColor={themeColor} layout="mobile" />
       </Modal>
 
       <StickyMobileBar event={event} onOpenTickets={() => setIsTicketModalOpen(true)} themeColor={themeColor} />
