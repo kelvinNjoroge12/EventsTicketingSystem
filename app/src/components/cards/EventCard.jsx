@@ -3,15 +3,18 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Calendar,
+  Clock,
   MapPin,
   Bookmark,
-  BookmarkCheck
+  BookmarkCheck,
+  Users,
 } from 'lucide-react';
 import useSavedEvents from '../../hooks/useSavedEvents';
 import { fetchEventLite } from '../../lib/eventsApi';
 import { useQueryClient } from '@tanstack/react-query';
 import eventQueryKeys from '../../lib/eventQueryKeys';
 import ProgressiveImage from '../ui/ProgressiveImage';
+import CustomAvatar from '../ui/CustomAvatar';
 import { cardImage, cardSrcSet } from '../../lib/imageUtils';
 
 const PREFETCH_THROTTLE_MS = 12000;
@@ -38,6 +41,10 @@ const EventCard = ({
   // Use event's own theme colors for consistency with detail page
   const themeColor = event.themeColor || '#02338D';
   const accentColor = event.accentColor || '#7C3AED';
+  const organizerName = event.organizer?.name || 'Organizer';
+  const organizerAvatar = event.organizer?.avatar || null;
+  const organizerBrandColor = event.organizer?.brandColor || themeColor;
+  const attendeeCount = Number(event.attendeeCount || 0);
 
   const handleBookmark = (e) => {
     e.preventDefault();
@@ -84,7 +91,7 @@ const EventCard = ({
     if (event.isFree) {
       return { text: 'Free Entry', variant: 'success' };
     }
-    return { text: `KES ${event.price.toLocaleString()}`, variant: 'primary' };
+    return { text: `KES ${Number(event.price || 0).toLocaleString()}`, variant: 'primary' };
   };
 
   const badge = getBadge();
@@ -141,9 +148,17 @@ const EventCard = ({
             </h3>
 
             <div className="space-y-1.5 text-[11px] text-[#64748B] sm:text-xs">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-[#02338D]" />
-                <span className="truncate">{formatDate(event.date)}</span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <div className="inline-flex min-w-0 items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-[#02338D]" />
+                  <span className="truncate">{formatDate(event.date)}</span>
+                </div>
+                {event.time && (
+                  <div className="inline-flex min-w-0 items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 flex-shrink-0 text-[#02338D]" />
+                    <span className="truncate">{event.time}</span>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-[#02338D]" />
@@ -269,20 +284,20 @@ const EventCard = ({
           <div className="pt-2 md:pt-4 flex items-center justify-between border-t border-white/10">
             <div className="flex items-center gap-1.5 md:gap-2">
               <CustomAvatar
-                src={event.organizer.avatar}
-                name={event.organizer.name}
+                src={organizerAvatar}
+                name={organizerName}
                 size="xs"
-                fallbackColor={event.organizer.brandColor}
+                fallbackColor={organizerBrandColor}
                 className="border border-white/20"
               />
               <span className="text-[8px] md:text-[10px] font-semibold text-white/90 truncate max-w-[50px] md:max-w-[80px]">
-                {event.organizer.name}
+                {organizerName}
               </span>
             </div>
 
             <div className="flex items-center gap-1 text-[8px] md:text-[10px] font-bold text-white/70">
               <Users className="w-2.5 h-2.5 md:w-3 md:h-3" />
-              <span>{event.attendeeCount >= 1000 ? `${(event.attendeeCount / 1000).toFixed(1)}k` : event.attendeeCount} GOING</span>
+              <span>{attendeeCount >= 1000 ? `${(attendeeCount / 1000).toFixed(1)}k` : attendeeCount} GOING</span>
             </div>
           </div>
         </div>

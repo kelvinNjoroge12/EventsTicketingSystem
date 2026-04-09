@@ -387,7 +387,7 @@ const EventDetailPage = () => {
   const showClassicLoader = !detailAlreadyCached && (isPlaceholderData || (isFetching && isLoading));
   const locationName = typeof event.location === 'object' ? event.location.name : (event.location || 'Online event');
   const eventFormatLabel = event.format === 'in_person' ? 'In-person' : event.format === 'online' ? 'Online' : event.format === 'hybrid' ? 'Hybrid' : event.format || 'Event';
-  const eventTimeLabel = `${event.time}${event.endTime ? ` - ${event.endTime}` : ''}`;
+  const eventTimeLabel = [event.time, event.endTime].filter(Boolean).join(' - ');
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
   const lowestTicketPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => Number(ticket.price || 0))) : Number(event.price || 0);
   const heroDateText = formatDate(event.date);
@@ -475,17 +475,19 @@ const EventDetailPage = () => {
                 <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#02338D]/90 via-[#02338D]/30 to-transparent sm:h-20" />
 
                 <div className="absolute inset-x-0 bottom-0 px-4 py-3 sm:px-5 sm:py-4 lg:px-7">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-white sm:flex-nowrap sm:gap-x-6 sm:text-sm">
-                    <div className="inline-flex flex-shrink-0 items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span>{heroDateText}</span>
-                    </div>
-                    <div className="inline-flex flex-shrink-0 items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span>{eventTimeLabel}</span>
-                    </div>
-                    <div className="inline-flex min-w-0 items-center gap-1.5 sm:flex-1">
-                      <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-white sm:gap-x-6 sm:text-sm">
+                      <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
+                        <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{heroDateText}</span>
+                        {eventTimeLabel && (
+                          <>
+                            <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span>{eventTimeLabel}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="inline-flex min-w-0 items-center gap-1.5 sm:flex-1">
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">{locationName}</span>
                     </div>
                   </div>
