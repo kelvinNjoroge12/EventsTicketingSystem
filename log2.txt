@@ -1,0 +1,10 @@
+﻿90364e5 fix: remove align-items:start from grid to allow aside to stretch for proper sticky behavior
+00dcb80 fix: truly sticky ticket sidebar + compact ticket card sizing for more visible details
+bdddf0f feat: fetch and display event categories dynamically from backend
+8dd849e chore: rename backend folder to eventhub_backend to fix render deployment
+4eef5e0 feat: adjust event display counts and view all button placement
+419f955 fix: make ticket sidebar properly sticky by removing self-start constraint on grid column
+f960844 fix: correct sticky sidebar offset to match navbar height (120px)
+cb785b3 fix: format times, reorder organizer section, make ticket sidebar sticky
+8a4978f fix: disable Supabase image transforms (free tier) and format time display
+55dc752 style: redesign event detail page with vertical layout
