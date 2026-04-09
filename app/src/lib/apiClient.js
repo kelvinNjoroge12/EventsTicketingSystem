@@ -135,12 +135,6 @@ async function request(path, options = {}, retry = true) {
 
   // Auto-refresh on 401 and retry once
   if (res.status === 401 && retry) {
-    if (!getSessionHint() && !getStoredToken()) {
-      const error = new Error("Session expired. Please log in again.");
-      error.status = 401;
-      throw error;
-    }
-
     if (sessionDefinitelyGone) {
       const error = new Error("Session expired. Please log in again.");
       error.status = 401;

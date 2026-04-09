@@ -177,10 +177,72 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class PromoCodeSerializer(serializers.ModelSerializer):
+    applicable_ticket_types = serializers.PrimaryKeyRelatedField(
+        queryset=TicketType.objects.all(),
+        many=True,
+        required=False,
+    )
+
     class Meta:
         model = PromoCode
-        fields = "__all__"
+        fields = [
+            "id",
+            "event",
+            "code",
+            "discount_type",
+            "discount_value",
+            "expiry",
+            "usage_limit",
+            "times_used",
+            "applicable_ticket_types",
+            "is_active",
+            "minimum_order_amount",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["id", "event", "times_used", "created_at", "updated_at"]
+        extra_kwargs = {
+            "expiry": {"required": False, "allow_null": True},
+            "usage_limit": {"required": False, "allow_null": True},
+            "is_active": {"required": False},
+            "minimum_order_amount": {"required": False},
+        }
+
+    def validate_code(self, value):
+        normalized = str(value or "").strip().upper().replace(" ", "")
+        if not normalized:
+            raise serializers.ValidationError("Promo code is required.")
+        return normalized
+
+    def validate_discount_value(self, value):
+        if value is None or value <= 0:
+            raise serializers.ValidationError("Discount value must be greater than zero.")
+        return value
+
+    def validate_usage_limit(self, value):
+        if value in ("", None):
+            return None
+        if value <= 0:
+            raise serializers.ValidationError("Usage limit must be greater than zero.")
+        return value
+
+    def validate_minimum_order_amount(self, value):
+        if value in ("", None):
+            return Decimal("0")
+        if value < 0:
+            raise serializers.ValidationError("Minimum order amount cannot be negative.")
+        return value
+
+    def validate_applicable_ticket_types(self, value):
+        event = self.context.get("event")
+        if not event or not value:
+            return value
+
+        valid_ticket_ids = set(event.ticket_types.values_list("id", flat=True))
+        invalid_ids = [ticket.id for ticket in value if ticket.id not in valid_ticket_ids]
+        if invalid_ids:
+            raise serializers.ValidationError("Selected ticket types do not belong to this event.")
+        return value
 
 
 class PromoCodeValidateSerializer(serializers.Serializer):

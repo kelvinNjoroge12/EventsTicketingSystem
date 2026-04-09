@@ -331,11 +331,19 @@ class LocationSearchView(APIView):
 
 class PromoCodeManageView(generics.ListCreateAPIView):
     serializer_class = PromoCodeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     def get_queryset(self):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.promo_codes.all()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        try:
+            context["event"] = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+        except Http404:
+            context["event"] = None
+        return context
 
     def perform_create(self, serializer):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
@@ -343,7 +351,7 @@ class PromoCodeManageView(generics.ListCreateAPIView):
 
 
 class PromoCodeBulkUploadView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
 
     @staticmethod
     def _normalize_header(value) -> str:
@@ -535,13 +543,21 @@ class PromoCodeBulkUploadView(APIView):
 
 class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PromoCodeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
     lookup_url_kwarg = "promo_id"
     lookup_field = "id"
 
     def get_queryset(self):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         return event.promo_codes.all()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        try:
+            context["event"] = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+        except Http404:
+            context["event"] = None
+        return context
 
 
 class PromoCodeValidateView(generics.GenericAPIView):

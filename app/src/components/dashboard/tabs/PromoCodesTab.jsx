@@ -17,6 +17,10 @@ const promoUploadTemplateCsv = [
 ].join('\n');
 
 const getPromoErrorMessage = (err) => {
+  if (err?.status === 401) {
+    return 'Your session expired. Please sign in again, then create the promo code once more.';
+  }
+
   const response = err?.response;
 
   if (response && typeof response === 'object' && !Array.isArray(response)) {
@@ -38,6 +42,22 @@ const getPromoErrorMessage = (err) => {
 
     if (firstField === 'discount_value' && /required/i.test(text)) {
       return 'Please add a discount value.';
+    }
+
+    if (firstField === 'discount_type' && /required/i.test(text)) {
+      return 'Please choose a discount type.';
+    }
+
+    if (firstField === 'usage_limit' && /required/i.test(text)) {
+      return 'Please add a usage limit or leave it blank.';
+    }
+
+    if (firstField === 'minimum_order_amount' && /required/i.test(text)) {
+      return 'Please add a minimum order amount or leave it at zero.';
+    }
+
+    if (firstField === 'applicable_ticket_types' && /required/i.test(text)) {
+      return 'Please choose which tickets this promo code should apply to, or leave it open to all tickets.';
     }
 
     if (firstField === 'code' && /unique|already exists/i.test(text)) {
@@ -156,6 +176,10 @@ const PromoCodesTab = ({ slug }) => {
   };
 
   const handleCreatePromo = () => {
+    if (!slug) {
+      toast.error('Please wait for the event to finish loading, then try again.');
+      return;
+    }
     if (!promoForm.code || !promoForm.discount_value) {
       toast.error('Code and discount value are required.');
       return;
@@ -164,10 +188,12 @@ const PromoCodesTab = ({ slug }) => {
       code: promoForm.code.toUpperCase().replace(/\s+/g, ''),
       discount_type: promoForm.discount_type,
       discount_value: Number(promoForm.discount_value),
+      expiry: promoForm.expiry ? new Date(promoForm.expiry).toISOString() : null,
+      usage_limit: promoForm.usage_limit ? Number(promoForm.usage_limit) : null,
       is_active: promoForm.is_active,
+      minimum_order_amount: 0,
+      applicable_ticket_types: [],
     };
-    if (promoForm.usage_limit) payload.usage_limit = Number(promoForm.usage_limit);
-    if (promoForm.expiry) payload.expiry = new Date(promoForm.expiry).toISOString();
 
     createPromoMutation.mutate(payload);
   };
