@@ -49,7 +49,7 @@ const getPromoErrorMessage = (err) => {
     }
 
     if (firstField === 'usage_limit' && /required/i.test(text)) {
-      return 'Please add a usage limit or leave it blank.';
+      return 'Please add a usage limit.';
     }
 
     if (firstField === 'minimum_order_amount' && /required/i.test(text)) {
@@ -84,6 +84,7 @@ const PromoCodesTab = ({ slug }) => {
     discount_value: '',
     usage_limit: '',
     expiry: '',
+    minimum_order_amount: '',
     is_active: true
   });
 
@@ -107,6 +108,7 @@ const PromoCodesTab = ({ slug }) => {
         discount_value: '',
         usage_limit: '',
         expiry: '',
+        minimum_order_amount: '',
         is_active: true
       });
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
@@ -180,18 +182,18 @@ const PromoCodesTab = ({ slug }) => {
       toast.error('Please wait for the event to finish loading, then try again.');
       return;
     }
-    if (!promoForm.code || !promoForm.discount_value) {
-      toast.error('Code and discount value are required.');
+    if (!promoForm.code || !promoForm.discount_value || !promoForm.usage_limit || !promoForm.expiry || promoForm.minimum_order_amount === '') {
+      toast.error('All fields are required.');
       return;
     }
     const payload = {
       code: promoForm.code.toUpperCase().replace(/\s+/g, ''),
       discount_type: promoForm.discount_type,
       discount_value: Number(promoForm.discount_value),
-      expiry: promoForm.expiry ? new Date(promoForm.expiry).toISOString() : null,
-      usage_limit: promoForm.usage_limit ? Number(promoForm.usage_limit) : null,
+      expiry: new Date(promoForm.expiry).toISOString(),
+      usage_limit: Number(promoForm.usage_limit),
       is_active: promoForm.is_active,
-      minimum_order_amount: 0,
+      minimum_order_amount: Number(promoForm.minimum_order_amount),
       applicable_ticket_types: [],
     };
 
@@ -344,7 +346,7 @@ const PromoCodesTab = ({ slug }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs mb-1.5 text-gray-500 block">Usage Limit (Optional)</Label>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Usage Limit *</Label>
                   <Input
                     type="number"
                     value={promoForm.usage_limit}
@@ -353,13 +355,23 @@ const PromoCodesTab = ({ slug }) => {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 text-gray-500 block">Expiry Date (Optional)</Label>
+                  <Label className="text-xs mb-1.5 text-gray-500 block">Expiry Date *</Label>
                   <Input
                     type="date"
                     value={promoForm.expiry}
                     onChange={(e) => setPromoForm((prev) => ({ ...prev, expiry: e.target.value }))}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1.5 text-gray-500 block">Minimum Order Amount *</Label>
+                <Input
+                  type="number"
+                  value={promoForm.minimum_order_amount}
+                  onChange={(e) => setPromoForm((prev) => ({ ...prev, minimum_order_amount: e.target.value }))}
+                  placeholder="e.g. 0"
+                />
               </div>
 
               <div className="flex items-center gap-2 mt-2">

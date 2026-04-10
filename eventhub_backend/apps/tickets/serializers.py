@@ -202,10 +202,10 @@ class PromoCodeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "event", "times_used", "created_at", "updated_at"]
         extra_kwargs = {
-            "expiry": {"required": False, "allow_null": True},
-            "usage_limit": {"required": False, "allow_null": True},
+            "expiry": {"required": True, "allow_null": False},
+            "usage_limit": {"required": True, "allow_null": False},
             "is_active": {"required": False},
-            "minimum_order_amount": {"required": False},
+            "minimum_order_amount": {"required": True, "allow_null": False},
         }
 
     def validate_code(self, value):
@@ -220,8 +220,6 @@ class PromoCodeSerializer(serializers.ModelSerializer):
         return value
 
     def validate_usage_limit(self, value):
-        if value in ("", None):
-            return None
         if value <= 0:
             raise serializers.ValidationError("Usage limit must be greater than zero.")
         return value
