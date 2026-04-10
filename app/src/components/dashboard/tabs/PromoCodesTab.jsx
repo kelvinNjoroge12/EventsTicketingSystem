@@ -52,6 +52,10 @@ const getPromoErrorMessage = (err) => {
       return 'Please add a usage limit.';
     }
 
+    if (firstField === 'expiry' && /required/i.test(text)) {
+      return 'Please add an expiry date.';
+    }
+
     if (firstField === 'minimum_order_amount' && /required/i.test(text)) {
       return 'Please add a minimum order amount or leave it at zero.';
     }
@@ -67,6 +71,10 @@ const getPromoErrorMessage = (err) => {
     if (text) {
       return text;
     }
+  }
+
+  if (typeof err?.response?.detail === 'string' && err.response.detail.trim()) {
+    return err.response.detail.trim();
   }
 
   return err?.message || 'Failed to create promo code.';
@@ -113,6 +121,8 @@ const PromoCodesTab = ({ slug }) => {
       });
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
     },
     onError: (err) => {
       toast.error(getPromoErrorMessage(err));
@@ -125,6 +135,8 @@ const PromoCodesTab = ({ slug }) => {
       toast.success('Promo code deleted.');
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
     },
     onError: (err) => {
       toast.error(err?.message || 'Failed to delete promo code.');
@@ -137,6 +149,8 @@ const PromoCodesTab = ({ slug }) => {
       toast.success('Promo code status updated.');
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
     },
     onError: (err) => {
       toast.error(err?.message || 'Failed to update promo code.');
@@ -153,6 +167,8 @@ const PromoCodesTab = ({ slug }) => {
       setBulkResults(data);
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
       const created = data?.created ?? 0;
       const updated = data?.updated ?? 0;
       const errors = data?.errors || [];
@@ -186,18 +202,39 @@ const PromoCodesTab = ({ slug }) => {
       toast.error('Please wait for the event to finish loading, then try again.');
       return;
     }
-    if (!promoForm.code || !promoForm.discount_value || !promoForm.usage_limit || !promoForm.expiry || promoForm.minimum_order_amount === '') {
+    const normalizedCode = promoForm.code.trim().toUpperCase().replace(/\s+/g, '');
+    const normalizedDiscountValue = promoForm.discount_value === '' ? null : Number(promoForm.discount_value);
+    const normalizedUsageLimit = promoForm.usage_limit === '' ? null : Number(promoForm.usage_limit);
+    const normalizedMinimumOrderAmount = promoForm.minimum_order_amount === '' ? null : Number(promoForm.minimum_order_amount);
+
+    if (!normalizedCode || normalizedDiscountValue === null || normalizedUsageLimit === null || !promoForm.expiry || normalizedMinimumOrderAmount === null) {
       toast.error('All fields are required.');
       return;
     }
+
+    if (Number.isNaN(normalizedDiscountValue) || normalizedDiscountValue <= 0) {
+      toast.error('Please add a valid discount value.');
+      return;
+    }
+
+    if (Number.isNaN(normalizedUsageLimit) || normalizedUsageLimit <= 0) {
+      toast.error('Please add a valid usage limit.');
+      return;
+    }
+
+    if (Number.isNaN(normalizedMinimumOrderAmount) || normalizedMinimumOrderAmount < 0) {
+      toast.error('Please add a valid minimum order amount.');
+      return;
+    }
+
     const payload = {
-      code: promoForm.code.toUpperCase().replace(/\s+/g, ''),
+      code: normalizedCode,
       discount_type: promoForm.discount_type,
-      discount_value: Number(promoForm.discount_value),
+      discount_value: normalizedDiscountValue,
       expiry: new Date(promoForm.expiry).toISOString(),
-      usage_limit: Number(promoForm.usage_limit),
+      usage_limit: normalizedUsageLimit,
       is_active: promoForm.is_active,
-      minimum_order_amount: Number(promoForm.minimum_order_amount),
+      minimum_order_amount: normalizedMinimumOrderAmount,
       applicable_ticket_types: [],
     };
 

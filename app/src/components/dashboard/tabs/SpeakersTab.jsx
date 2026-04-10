@@ -45,6 +45,9 @@ const SpeakersTab = ({ slug }) => {
   const refreshSpeakerQueries = () => {
     queryClient.invalidateQueries({ queryKey: ['speakers', slug] });
     queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+    queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+    queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
+    queryClient.invalidateQueries({ queryKey: ['events', 'speakers', slug] });
   };
 
   const buildSpeakerPayload = () => {

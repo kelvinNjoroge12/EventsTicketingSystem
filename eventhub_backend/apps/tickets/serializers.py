@@ -202,15 +202,77 @@ class PromoCodeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "event", "times_used", "created_at", "updated_at"]
         extra_kwargs = {
-            "expiry": {"required": True, "allow_null": False},
-            "usage_limit": {"required": True, "allow_null": False},
+            "discount_type": {"required": False},
+            "discount_value": {"required": False},
+            "expiry": {"required": False, "allow_null": True},
+            "usage_limit": {"required": False, "allow_null": True},
             "is_active": {"required": False},
-            "minimum_order_amount": {"required": True, "allow_null": False},
+            "minimum_order_amount": {"required": False, "allow_null": True},
         }
         validators = []
 
+    def to_internal_value(self, data):
+        if hasattr(data, "copy"):
+            mutable = data.copy()
+        else:
+            mutable = dict(data)
+
+        aliases = {
+            "discountType": "discount_type",
+            "discountValue": "discount_value",
+            "usageLimit": "usage_limit",
+            "applicableTicketTypes": "applicable_ticket_types",
+            "isActive": "is_active",
+            "minimumOrderAmount": "minimum_order_amount",
+        }
+
+        for source_key, target_key in aliases.items():
+            if source_key in mutable and target_key not in mutable:
+                mutable[target_key] = mutable[source_key]
+
+        if "code" in mutable and mutable["code"] is not None:
+            mutable["code"] = str(mutable["code"]).strip().upper().replace(" ", "")
+
+        if "discount_type" in mutable and mutable["discount_type"] is not None:
+            discount_type = str(mutable["discount_type"]).strip().lower()
+            if discount_type in {"percentage", "pct", "%"}:
+                mutable["discount_type"] = "percent"
+            elif discount_type in {"amount", "flat", "value"}:
+                mutable["discount_type"] = "fixed"
+
+        for number_field in ("discount_value", "usage_limit", "minimum_order_amount"):
+            if number_field in mutable and mutable[number_field] == "":
+                mutable[number_field] = None
+
+        if "expiry" in mutable and mutable["expiry"] == "":
+            mutable["expiry"] = None
+
+        return super().to_internal_value(mutable)
+
     def validate(self, attrs):
         event = self.context.get("event")
+        required_fields = {
+            "code": "Please add a promo code name.",
+            "discount_type": "Please choose a discount type.",
+            "discount_value": "Please add a discount value.",
+            "usage_limit": "Please add a usage limit.",
+            "expiry": "Please add an expiry date.",
+        }
+
+        for field, message in required_fields.items():
+            value = attrs.get(field, serializers.empty)
+            if self.instance:
+                provided = field in attrs
+                if provided and value in (None, "", [], ()):
+                    raise serializers.ValidationError({field: message})
+                continue
+
+            if value in (serializers.empty, None, "", [], ()):
+                raise serializers.ValidationError({field: message})
+
+        if attrs.get("minimum_order_amount", serializers.empty) in (serializers.empty, None):
+            attrs["minimum_order_amount"] = Decimal("0")
+
         code = attrs.get("code") or (self.instance.code if self.instance else None)
         if event and code:
             qs = PromoCode.objects.filter(event=event, code__iexact=code)
@@ -232,6 +294,8 @@ class PromoCodeSerializer(serializers.ModelSerializer):
         return value
 
     def validate_usage_limit(self, value):
+        if value is None:
+            raise serializers.ValidationError("Please add a usage limit.")
         if value <= 0:
             raise serializers.ValidationError("Usage limit must be greater than zero.")
         return value
@@ -241,6 +305,11 @@ class PromoCodeSerializer(serializers.ModelSerializer):
             return Decimal("0")
         if value < 0:
             raise serializers.ValidationError("Minimum order amount cannot be negative.")
+        return value
+
+    def validate_expiry(self, value):
+        if value in ("", None):
+            raise serializers.ValidationError("Please add an expiry date.")
         return value
 
     def validate_applicable_ticket_types(self, value):

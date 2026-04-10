@@ -2,6 +2,7 @@ from django.http import Http404
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
 
+from apps.events.cache_utils import bump_cache_version
 from apps.events.models import Event
 from apps.events.revisions import (
     delete_live_schedule_item_from_pending_revision,
@@ -56,6 +57,7 @@ class ScheduleListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied("Only the event organizer can add schedule items.")
         schedule_item = serializer.save(event=event)
         sync_live_schedule_item_to_pending_revision(schedule_item)
+        bump_cache_version()
 
 
 class ScheduleItemDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -108,9 +110,11 @@ class ScheduleItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         schedule_item = serializer.save()
         sync_live_schedule_item_to_pending_revision(schedule_item)
+        bump_cache_version()
 
     def perform_destroy(self, instance):
         event = instance.event
         schedule_item_id = instance.id
         instance.delete()
         delete_live_schedule_item_from_pending_revision(event, schedule_item_id)
+        bump_cache_version()

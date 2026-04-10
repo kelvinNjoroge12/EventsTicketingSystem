@@ -34,6 +34,9 @@ const SponsorsTab = ({ slug }) => {
   const refreshSponsorQueries = () => {
     queryClient.invalidateQueries({ queryKey: ['sponsors', slug] });
     queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+    queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+    queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
+    queryClient.invalidateQueries({ queryKey: ['events', 'sponsors', slug] });
   };
 
   const resetSponsorForm = () => {

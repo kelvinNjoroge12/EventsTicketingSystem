@@ -13,6 +13,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
+from apps.events.cache_utils import bump_cache_version
 from apps.events.models import Event
 from apps.events.revisions import (
     delete_live_promo_code_from_pending_revision,
@@ -69,6 +70,7 @@ class TicketTypeCreateView(generics.CreateAPIView):
             raise ValidationError({"registration_category": "Category does not belong to this event."})
         ticket = serializer.save(event=event)
         sync_live_ticket_to_pending_revision(ticket)
+        bump_cache_version()
 
 
 class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
@@ -102,12 +104,14 @@ class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
             raise ValidationError({"registration_category": "Category does not belong to this event."})
         ticket = serializer.save()
         sync_live_ticket_to_pending_revision(ticket)
+        bump_cache_version()
 
     def perform_destroy(self, instance):
         event = instance.event
         ticket_id = instance.id
         instance.delete()
         delete_live_ticket_from_pending_revision(event, ticket_id)
+        bump_cache_version()
 
 
 class EventRegistrationSetupView(APIView):
@@ -226,6 +230,7 @@ class EventRegistrationSetupView(APIView):
                 saved.append(instance)
 
         data = RegistrationCategorySerializer(saved, many=True).data
+        bump_cache_version()
         return Response({"categories": data}, status=status.HTTP_200_OK)
 
 
@@ -363,6 +368,7 @@ class PromoCodeManageView(generics.ListCreateAPIView):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
         promo_code = serializer.save(event=event)
         sync_live_promo_code_to_pending_revision(promo_code)
+        bump_cache_version()
 
 
 class PromoCodeBulkUploadView(APIView):
@@ -528,6 +534,7 @@ class PromoCodeBulkUploadView(APIView):
                     existing.minimum_order_amount = minimum_order_amount
                     existing.save()
                     sync_live_promo_code_to_pending_revision(existing)
+                    bump_cache_version()
                     updated += 1
                 else:
                     promo_code = PromoCode.objects.create(
@@ -541,6 +548,7 @@ class PromoCodeBulkUploadView(APIView):
                         minimum_order_amount=minimum_order_amount,
                     )
                     sync_live_promo_code_to_pending_revision(promo_code)
+                    bump_cache_version()
                     created += 1
             except Exception as exc:
                 skipped += 1
@@ -593,12 +601,14 @@ class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         promo_code = serializer.save()
         sync_live_promo_code_to_pending_revision(promo_code)
+        bump_cache_version()
 
     def perform_destroy(self, instance):
         event = instance.event
         promo_id = instance.id
         instance.delete()
         delete_live_promo_code_from_pending_revision(event, promo_id)
+        bump_cache_version()
 
 
 class PromoCodeValidateView(generics.GenericAPIView):

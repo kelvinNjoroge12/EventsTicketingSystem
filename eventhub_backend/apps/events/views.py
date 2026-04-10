@@ -22,6 +22,7 @@ from apps.schedules.models import ScheduleItem
 from apps.speakers.models import Speaker
 from apps.sponsors.models import Sponsor
 from apps.tickets.models import PromoCode, TicketType
+from .cache_utils import bump_cache_version, get_cache_version
 from .category_catalog import CURATED_CATEGORY_SLUGS, ensure_curated_categories
 from .compat import apply_event_schema_compat, has_optional_event_field
 from .filters import EventFilter
@@ -155,26 +156,6 @@ def _is_admin_user(user) -> bool:
     )
 
 
-_CACHE_VERSION_KEY = "events:cache_version"
-
-
-def _get_cache_version() -> int:
-    version = cache.get(_CACHE_VERSION_KEY)
-    if not isinstance(version, int) or version < 1:
-        version = 1
-        cache.set(_CACHE_VERSION_KEY, version, None)
-    return version
-
-
-def _bump_cache_version() -> int:
-    try:
-        return cache.incr(_CACHE_VERSION_KEY)
-    except Exception:
-        version = _get_cache_version() + 1
-        cache.set(_CACHE_VERSION_KEY, version, None)
-        return version
-
-
 class EventListView(generics.ListAPIView):
     serializer_class = EventListSerializer
     permission_classes = [permissions.AllowAny]
@@ -185,7 +166,7 @@ class EventListView(generics.ListAPIView):
         return _apply_public_event_ordering(_with_list_optimizations(queryset))
 
     def list(self, request, *args, **kwargs):
-        version = _get_cache_version()
+        version = get_cache_version()
         cache_key = f"events:list:v{version}:{request.get_full_path()}"
         cached = cache.get(cache_key)
         if cached:
@@ -227,7 +208,7 @@ class EventDetailView(generics.RetrieveAPIView):
         is_anon = not request.user.is_authenticated
         exclude_fields = self._get_exclude_fields()
         exclude_key = "full" if not exclude_fields else f"exclude:{','.join(sorted(exclude_fields))}"
-        version = _get_cache_version()
+        version = get_cache_version()
 
         # Only serve cached responses to anonymous users.
         # Authenticated users bypass cache so draft/pending events
@@ -268,7 +249,7 @@ class EventDetailView(generics.RetrieveAPIView):
         event = get_object_or_404(qs, slug=kwargs.get(self.lookup_field))
         event.status = "cancelled"
         event.save(update_fields=["status"])
-        _bump_cache_version()
+        bump_cache_version()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -280,7 +261,7 @@ class EventCreateView(generics.CreateAPIView):
         if user_requires_assigned_event_scope(self.request.user):
             raise PermissionDenied("This account is limited to assigned event check-in.")
         serializer.save()
-        _bump_cache_version()
+        bump_cache_version()
 
 
 class EventUpdateView(generics.RetrieveUpdateAPIView):
@@ -314,7 +295,7 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
         serializer = self.get_serializer(editable_event, data=request.data, partial=kwargs.pop("partial", False))
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        _bump_cache_version()
+        bump_cache_version()
         detail_serializer = EventDetailSerializer(serializer.instance, context=self.get_serializer_context())
         return Response(detail_serializer.data)
         # Use serializer.instance.slug — avoids a redundant SELECT after save()
@@ -332,7 +313,7 @@ class EventDeleteView(generics.DestroyAPIView):
     def perform_destroy(self, instance):
         instance.status = "cancelled"
         instance.save(update_fields=["status"])
-        _bump_cache_version()
+        bump_cache_version()
 
 
 class EventLiveSettingsView(generics.UpdateAPIView):
@@ -370,7 +351,7 @@ class EventLiveSettingsView(generics.UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         self._sync_pending_revision(event, request.data, partial)
-        _bump_cache_version()
+        bump_cache_version()
         detail_serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(detail_serializer.data)
 
@@ -410,7 +391,7 @@ class EventPublishView(generics.UpdateAPIView):
         event = self.get_object()
         event = get_editable_event(event, create_if_missing=True)
         submit_event_for_review(event, request.user)
-        _bump_cache_version()
+        bump_cache_version()
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(serializer.data)
 
@@ -447,7 +428,7 @@ class EventApproveView(generics.UpdateAPIView):
         if event.status in {"cancelled", "completed"}:
             raise ValidationError("This event can no longer be approved.")
         approve_event_submission(event, request.user)
-        _bump_cache_version()
+        bump_cache_version()
         serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(serializer.data)
 
@@ -469,7 +450,7 @@ class EventRejectView(generics.UpdateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         reject_event_submission(event, request.user, serializer.validated_data["reason"])
-        _bump_cache_version()
+        bump_cache_version()
         detail_serializer = EventDetailSerializer(event, context=self.get_serializer_context())
         return Response(detail_serializer.data)
 
@@ -533,7 +514,7 @@ class FeaturedEventsView(generics.ListAPIView):
         )
 
     def list(self, request, *args, **kwargs):
-        version = _get_cache_version()
+        version = get_cache_version()
         cache_key = f"events:featured:v{version}"
         cached = cache.get(cache_key)
         if cached:
@@ -579,7 +560,7 @@ def related_events(request, slug: str):
     
     event = get_object_or_404(qs_base.distinct(), slug=slug)
     
-    version = _get_cache_version()
+    version = get_cache_version()
     cache_key = f"events:related:v2:{version}:{slug}"
     cached = cache.get(cache_key)
     if cached:

@@ -40,6 +40,8 @@ const TicketsTab = ({ slug }) => {
       setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to create ticket tier.')
   });
@@ -53,6 +55,8 @@ const TicketsTab = ({ slug }) => {
       setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to update ticket tier.')
   });
@@ -63,6 +67,8 @@ const TicketsTab = ({ slug }) => {
       toast.success('Ticket sales status updated.');
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to toggle ticket.')
   });
@@ -73,6 +79,8 @@ const TicketsTab = ({ slug }) => {
       toast.success('Ticket tier deleted.');
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to delete ticket tier.')
   });

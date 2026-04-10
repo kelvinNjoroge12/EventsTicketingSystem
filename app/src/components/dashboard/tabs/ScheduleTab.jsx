@@ -42,6 +42,9 @@ const ScheduleTab = ({ slug }) => {
       setScheduleForm({ title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: 0 });
       queryClient.invalidateQueries({ queryKey: ['schedule', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'schedule', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to add schedule item.')
   });
@@ -55,6 +58,9 @@ const ScheduleTab = ({ slug }) => {
       setScheduleForm({ title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: 0 });
       queryClient.invalidateQueries({ queryKey: ['schedule', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'schedule', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to update schedule item.')
   });
@@ -65,6 +71,9 @@ const ScheduleTab = ({ slug }) => {
       toast.success('Schedule item removed.');
       queryClient.invalidateQueries({ queryKey: ['schedule', slug] });
       queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'schedule', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to remove schedule item.')
   });
