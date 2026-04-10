@@ -14,6 +14,15 @@ import RichTextContent from '../components/ui/RichTextContent';
 import { api } from '../lib/apiClient';
 import { fetchCategories, fetchEditableEvent } from '../lib/eventsApi';
 import eventQueryKeys from '../lib/eventQueryKeys';
+import {
+  createDefaultRegistrationCategories,
+  mapRefundPolicy,
+  mapApiPromoToEditorPromo,
+  mapApiTicketToEditorTicket,
+  mergeRegistrationCategories,
+  TICKET_CLASS_BY_TYPE,
+  unmapRefundPolicy,
+} from '../lib/eventSetup';
 import { normalizeTimeInput } from '../lib/timeInput';
 import {
   BasicInfoStep,
@@ -24,57 +33,6 @@ import {
   SponsorsStep,
   TicketsStep
 } from '../components/organizer/EventForm';
-
-const DEFAULT_REGISTRATION_CATEGORIES = [
-  {
-    id: null,
-    category: 'student',
-    label: 'Student',
-    is_active: true,
-    sort_order: 0,
-    require_student_email: true,
-    require_admission_number: true,
-    ask_graduation_year: true,
-    ask_course: true,
-    ask_school: true,
-    ask_location: true,
-    questions: [],
-  },
-  {
-    id: null,
-    category: 'alumni',
-    label: 'Alumni',
-    is_active: true,
-    sort_order: 1,
-    require_student_email: false,
-    require_admission_number: false,
-    ask_graduation_year: true,
-    ask_course: true,
-    ask_school: true,
-    ask_location: true,
-    questions: [],
-  },
-  {
-    id: null,
-    category: 'guest',
-    label: 'Guest',
-    is_active: true,
-    sort_order: 2,
-    require_student_email: false,
-    require_admission_number: false,
-    ask_graduation_year: false,
-    ask_course: false,
-    ask_school: false,
-    ask_location: true,
-    questions: [],
-  },
-];
-
-const createDefaultRegistrationCategories = () =>
-  DEFAULT_REGISTRATION_CATEGORIES.map((cat) => ({
-    ...cat,
-    questions: Array.isArray(cat.questions) ? [...cat.questions] : [],
-  }));
 
 const normalizeEventPayload = (payload, routeSlug = '') => {
   const candidates = [payload, payload?.event, payload?.data, payload?.data?.event, payload?.event?.data]
@@ -145,43 +103,11 @@ const CreateEventPage = ({
         if (!mounted) return;
 
         if (eventData) {
-          const unmapRefundPolicy = (val) => ({ 'no_refund': 'No Refund', '48_hours': '48 Hours', '7_days': '7 Days', 'custom': 'Custom' }[val] || 'No Refund');
-          const normalizeCategory = (cat) => {
-            const def = DEFAULT_REGISTRATION_CATEGORIES.find((d) => d.category === cat.category) || {};
-            const merged = {
-              ...def,
-              ...cat,
-              questions: Array.isArray(cat.questions) ? cat.questions : [],
-            };
-
-            if (merged.category === 'student') {
-              merged.label = 'Student';
-              merged.require_student_email = true;
-              merged.require_admission_number = true;
-            } else if (merged.category === 'alumni') {
-              merged.label = 'Alumni';
-            }
-
-            return merged;
-          };
-
-          const mergeCategories = (existing = []) => {
-            const byType = new Map((existing || []).map((c) => [c.category, c]));
-            const orderedExisting = [...(existing || [])].sort(
-              (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
-            );
-            const mergedExisting = orderedExisting.map(normalizeCategory);
-            const missing = DEFAULT_REGISTRATION_CATEGORIES
-              .filter((def) => !byType.has(def.category))
-              .map(normalizeCategory);
-            return [...mergedExisting, ...missing];
-          };
-
           let registrationCategories = createDefaultRegistrationCategories();
           try {
             const regData = await api.get(`/api/events/${eventData.slug || slug}/registration/setup/`);
             if (Array.isArray(regData?.categories) && regData.categories.length > 0) {
-              registrationCategories = mergeCategories(regData.categories);
+              registrationCategories = mergeRegistrationCategories(regData.categories);
             }
           } catch {
             registrationCategories = createDefaultRegistrationCategories();
@@ -240,26 +166,9 @@ const CreateEventPage = ({
               logoPreview: s.logo || ''
             })),
             tickets: eventData.tickets.length > 0
-              ? eventData.tickets.map(t => ({
-                id: t.id,
-                type: t.type,
-                price: t.price,
-                quantity: t.quantity || 100,
-                description: t.description || '',
-                category: t.registration_category_type || 'guest',
-                registrationCategoryId: t.registration_category || null,
-              }))
+              ? eventData.tickets.map((ticket) => mapApiTicketToEditorTicket(ticket))
               : [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
-            promoCodes: (eventData.promoCodes || []).map((promo) => ({
-              id: promo.id || null,
-              code: promo.code || '',
-              discount_type: promo.discountType || 'percent',
-              discount_value: promo.discountValue ?? '',
-              usage_limit: promo.usageLimit ?? '',
-              expiry: promo.expiry ? String(promo.expiry).slice(0, 10) : '',
-              minimum_order_amount: promo.minimumOrderAmount ?? 0,
-              is_active: promo.isActive ?? true,
-            })),
+            promoCodes: (eventData.promoCodes || []).map((promo) => mapApiPromoToEditorPromo(promo)),
             registrationCategories,
             refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
             customRefundPolicy: eventData.customRefundPolicy || '',
@@ -415,7 +324,6 @@ const CreateEventPage = ({
   };
 
   const mapFormat = (fmt) => ({ 'In-Person': 'in_person', 'Online': 'online', 'Hybrid': 'hybrid' }[fmt] || 'in_person');
-  const mapRefundPolicy = (policy) => ({ 'No Refund': 'no_refund', '48 Hours': '48_hours', '7 Days': '7_days', 'Custom': 'custom' }[policy] || 'no_refund');
 
   const ensureUrl = (url) => {
     if (!url) return '';
@@ -549,14 +457,6 @@ const CreateEventPage = ({
       throw new Error('Event saved, but no event identifier was returned. Please refresh and try again.');
     }
 
-    const ticketClassMap = {
-      'Standard': 'paid',
-      'VIP': 'vip',
-      'Early Bird': 'early_bird',
-      'Free': 'free',
-      'Donation': 'donation',
-    };
-
     const tasks = [];
     const normalizeSpeakerKey = (value) => String(value || '').trim().toLowerCase();
     const looksLikeUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
@@ -611,7 +511,7 @@ const CreateEventPage = ({
         const registrationCategoryId = categoryEntry?.id || ticket.registrationCategoryId || null;
         const payloadData = {
           name: ticket.type,
-          ticket_class: ticketClassMap[ticket.type] || 'paid',
+          ticket_class: TICKET_CLASS_BY_TYPE[ticket.type] || 'paid',
           price: ticket.type === 'Free' ? 0 : ticket.price,
           quantity: ticket.quantity,
           description: ticket.description || '',

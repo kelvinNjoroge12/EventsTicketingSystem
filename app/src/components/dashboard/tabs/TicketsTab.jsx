@@ -1,277 +1,404 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Ticket, Plus, Pencil, ToggleRight, ToggleLeft, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, RotateCcw, Save, Ticket } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/apiClient';
 import { toast } from 'sonner';
-
+import { TicketsStep } from '@/components/organizer/EventForm';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+  createDefaultRegistrationCategories,
+  mapApiPromoToEditorPromo,
+  mapApiTicketToEditorTicket,
+  mapRefundPolicy,
+  mergeRegistrationCategories,
+  TICKET_CLASS_BY_TYPE,
+  unmapRefundPolicy,
+} from '@/lib/eventSetup';
 
-const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
+const getTicketSetupErrorMessage = (error) => {
+  const response = error?.response;
 
-const TicketsTab = ({ slug }) => {
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    const [firstField, firstValue] = Object.entries(response)[0] || [];
+    const firstMessage = Array.isArray(firstValue)
+      ? firstValue[0]
+      : firstValue && typeof firstValue === 'object'
+        ? Object.values(firstValue)[0]
+        : firstValue;
+
+    if (typeof firstMessage === 'string' && firstMessage.trim()) {
+      if (firstField === 'custom_refund_policy') {
+        return 'Please add your custom refund policy before saving.';
+      }
+      return firstMessage.trim();
+    }
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return 'Failed to save the ticket setup.';
+};
+
+const isMeaningfulPromo = (promo = {}) =>
+  Boolean(
+    String(promo.code || '').trim() ||
+    String(promo.discount_value ?? '').trim() ||
+    String(promo.usage_limit ?? '').trim() ||
+    String(promo.expiry || '').trim() ||
+    String(promo.minimum_order_amount ?? '').trim()
+  );
+
+const buildTicketSetupState = ({ eventDetail, managedTickets, registrationSetupData, promoCodesData }) => ({
+  themeColor: eventDetail?.themeColor || eventDetail?.theme_color || '#02338D',
+  currency: managedTickets.find((ticket) => ticket?.currency)?.currency || eventDetail?.currency || 'KES',
+  tickets: managedTickets.length > 0
+    ? managedTickets.map((ticket) => mapApiTicketToEditorTicket(ticket))
+    : [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
+  promoCodes: promoCodesData.map((promo) => mapApiPromoToEditorPromo(promo)),
+  registrationCategories: mergeRegistrationCategories(
+    registrationSetupData?.categories || eventDetail?.registrationCategories || []
+  ),
+  refundPolicy: unmapRefundPolicy(eventDetail?.refundPolicy || eventDetail?.refund_policy),
+  customRefundPolicy: eventDetail?.customRefundPolicy || eventDetail?.custom_refund_policy || '',
+  enableWaitlist: Boolean(eventDetail?.enableWaitlist ?? eventDetail?.enable_waitlist ?? false),
+  sendReminders: Boolean(eventDetail?.sendReminders ?? eventDetail?.send_reminders ?? true),
+});
+
+const TicketsTab = ({ slug, eventDetail }) => {
   const queryClient = useQueryClient();
-  const [showTicketModal, setShowTicketModal] = useState(false);
-  const [editingTicket, setEditingTicket] = useState(null);
-  const [ticketForm, setTicketForm] = useState({
-    name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true
-  });
+  const [formState, setFormState] = useState(() => buildTicketSetupState({
+    eventDetail,
+    managedTickets: [],
+    registrationSetupData: null,
+    promoCodesData: [],
+  }));
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
-  const { data: managedTickets = [], isLoading: isManagedTicketsLoading } = useQuery({
+  const { data: managedTickets = [], isLoading: isTicketsLoading } = useQuery({
     queryKey: ['managed_tickets', slug],
     queryFn: async () => {
-      const res = await api.get(`/api/events/${slug}/tickets/`);
-      return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+      const response = await api.get(`/api/events/${slug}/tickets/`);
+      return Array.isArray(response?.results) ? response.results : (Array.isArray(response) ? response : []);
     },
     enabled: !!slug,
   });
 
-  const createTicketMutation = useMutation({
-    mutationFn: async (payload) => api.post(`/api/events/${slug}/tickets/create/`, payload),
-    onSuccess: () => {
-      toast.success('Ticket tier created.');
-      setShowTicketModal(false);
-      setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
-      queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
-      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
-    },
-    onError: (err) => toast.error(err?.message || 'Failed to create ticket tier.')
+  const { data: registrationSetupData, isLoading: isRegistrationLoading } = useQuery({
+    queryKey: ['registration_setup', slug],
+    queryFn: async () => api.get(`/api/events/${slug}/registration/setup/`),
+    enabled: !!slug,
   });
 
-  const updateTicketMutation = useMutation({
-    mutationFn: async ({ id, ...payload }) => api.patch(`/api/events/${slug}/tickets/${id}/`, payload),
-    onSuccess: () => {
-      toast.success('Ticket tier updated.');
-      setShowTicketModal(false);
-      setEditingTicket(null);
-      setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
-      queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
-      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
+  const { data: promoCodesData = [], isLoading: isPromoCodesLoading } = useQuery({
+    queryKey: ['promo_codes', slug],
+    queryFn: async () => {
+      const response = await api.get(`/api/events/${slug}/promo-codes/`);
+      return Array.isArray(response?.results) ? response.results : (Array.isArray(response) ? response : []);
     },
-    onError: (err) => toast.error(err?.message || 'Failed to update ticket tier.')
+    enabled: !!slug,
   });
 
-  const toggleTicketMutation = useMutation({
-    mutationFn: async ({ id, is_active }) => api.patch(`/api/events/${slug}/tickets/${id}/`, { is_active }),
-    onSuccess: () => {
-      toast.success('Ticket sales status updated.');
-      queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
-      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
-    },
-    onError: (err) => toast.error(err?.message || 'Failed to toggle ticket.')
-  });
+  const initialState = useMemo(
+    () => buildTicketSetupState({ eventDetail, managedTickets, registrationSetupData, promoCodesData }),
+    [eventDetail, managedTickets, registrationSetupData, promoCodesData]
+  );
 
-  const deleteTicketMutation = useMutation({
-    mutationFn: async (id) => api.delete(`/api/events/${slug}/tickets/${id}/`),
-    onSuccess: () => {
-      toast.success('Ticket tier deleted.');
-      queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
-      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] });
-    },
-    onError: (err) => toast.error(err?.message || 'Failed to delete ticket tier.')
-  });
+  useEffect(() => {
+    if (!isDirty) {
+      setFormState(initialState);
+      setSaveError('');
+    }
+  }, [initialState]);
 
-  const openEditTicket = (ticket) => {
-    setEditingTicket(ticket);
-    setTicketForm({
-      name: ticket.name || '',
-      ticket_class: ticket.ticket_class || 'paid',
-      price: ticket.price ?? '',
-      quantity: ticket.quantity ?? '',
-      description: ticket.description || '',
-      is_active: ticket.is_active ?? true
-    });
-    setShowTicketModal(true);
+  const isLoading = isTicketsLoading || isRegistrationLoading || isPromoCodesLoading;
+
+  const handleChange = (field, value) => {
+    setFormState((previous) => ({ ...previous, [field]: value }));
+    setIsDirty(true);
+    if (saveError) {
+      setSaveError('');
+    }
   };
 
-  const handleSaveTicket = () => {
-    if (!ticketForm.name || !ticketForm.quantity) {
-      toast.error('Name and quantity are required.');
+  const refreshQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] }),
+      queryClient.invalidateQueries({ queryKey: ['registration_setup', slug] }),
+      queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] }),
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] }),
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', slug] }),
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', slug] }),
+      queryClient.invalidateQueries({ queryKey: ['organizer_events'] }),
+    ]);
+  };
+
+  const handleReset = () => {
+    setFormState(initialState);
+    setIsDirty(false);
+    setSaveError('');
+  };
+
+  const handleSave = async () => {
+    if (!slug || isSaving) {
       return;
     }
-    const payload = {
-      name: ticketForm.name,
-      ticket_class: ticketForm.ticket_class,
-      price: Number(ticketForm.price || 0),
-      quantity: Number(ticketForm.quantity),
-      description: ticketForm.description,
-      is_active: ticketForm.is_active,
-    };
-    if (editingTicket) {
-      updateTicketMutation.mutate({ id: editingTicket.id, ...payload });
-    } else {
-      createTicketMutation.mutate(payload);
+
+    if (!Array.isArray(formState.tickets) || formState.tickets.length === 0) {
+      const message = 'At least one ticket type is required.';
+      setSaveError(message);
+      toast.error(message);
+      return;
+    }
+
+    for (const ticket of formState.tickets || []) {
+      if (!String(ticket.type || '').trim()) {
+        const message = 'Please choose a ticket type for every ticket card.';
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+      if (!Number.isFinite(Number(ticket.quantity)) || Number(ticket.quantity) <= 0) {
+        const message = 'Please add a valid quantity for every ticket type.';
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+      if (ticket.type !== 'Free' && (!Number.isFinite(Number(ticket.price)) || Number(ticket.price) < 0)) {
+        const message = 'Please add a valid price for every paid ticket.';
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+    }
+
+    if (formState.refundPolicy === 'Custom' && !String(formState.customRefundPolicy || '').trim()) {
+      const message = 'Please add your custom refund policy before saving.';
+      setSaveError(message);
+      toast.error(message);
+      return;
+    }
+
+    const meaningfulPromos = (formState.promoCodes || []).filter(isMeaningfulPromo);
+    for (const promo of meaningfulPromos) {
+      if (!String(promo.code || '').trim()) {
+        const message = 'Please add a promo code name.';
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+      if (promo.discount_value === '' || Number(promo.discount_value) <= 0) {
+        const message = 'Please add a valid discount value for each promo code.';
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+      if (promo.usage_limit === '' || Number(promo.usage_limit) <= 0) {
+        const message = 'Please add a valid usage limit for each promo code.';
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+      if (!promo.expiry) {
+        const message = 'Please add an expiry date for each promo code.';
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      const categoriesPayload = (formState.registrationCategories || createDefaultRegistrationCategories()).map((category, index) => {
+        const isStudent = category.category === 'student';
+        const isAlumni = category.category === 'alumni';
+
+        return {
+          id: category.id,
+          category: category.category,
+          label: isStudent ? 'Student' : isAlumni ? 'Alumni' : (category.label || 'Guest'),
+          is_active: Boolean(category.is_active),
+          sort_order: index,
+          require_student_email: isStudent ? true : Boolean(category.require_student_email),
+          require_admission_number: isStudent ? true : Boolean(category.require_admission_number),
+          ask_graduation_year: Boolean(category.ask_graduation_year),
+          ask_course: Boolean(category.ask_course),
+          ask_school: Boolean(category.ask_school),
+          ask_location: Boolean(category.ask_location),
+          questions: (category.questions || [])
+            .filter((question) => String(question.label || '').trim())
+            .map((question, questionIndex) => ({
+              id: question.id,
+              label: question.label,
+              field_type: question.field_type || 'text',
+              is_required: Boolean(question.is_required),
+              options: Array.isArray(question.options) ? question.options : [],
+              sort_order: question.sort_order ?? questionIndex,
+            })),
+        };
+      });
+
+      const registrationResponse = await api.post(`/api/events/${slug}/registration/setup/`, {
+        categories: categoriesPayload,
+      });
+      const savedCategories = Array.isArray(registrationResponse?.categories)
+        ? registrationResponse.categories
+        : [];
+      const registrationMap = new Map(savedCategories.map((category) => [category.category, category]));
+
+      const ticketRequests = [];
+      const activeTicketIds = new Set((formState.tickets || []).map((ticket) => ticket.id).filter(Boolean));
+
+      (formState.tickets || []).forEach((ticket, index) => {
+        const categoryType = ticket.category || 'guest';
+        const categoryEntry = registrationMap.get(categoryType);
+        const payload = {
+          name: ticket.type,
+          ticket_class: TICKET_CLASS_BY_TYPE[ticket.type] || 'paid',
+          price: ticket.type === 'Free' ? 0 : Number(ticket.price || 0),
+          quantity: Number(ticket.quantity || 0),
+          description: ticket.description || '',
+          registration_category: categoryEntry?.id || ticket.registrationCategoryId || null,
+          sort_order: index,
+        };
+
+        if (ticket.id) {
+          ticketRequests.push(api.patch(`/api/events/${slug}/tickets/${ticket.id}/`, payload));
+          return;
+        }
+
+        ticketRequests.push(api.post(`/api/events/${slug}/tickets/create/`, payload));
+      });
+
+      managedTickets
+        .filter((ticket) => !activeTicketIds.has(ticket.id))
+        .forEach((ticket) => {
+          ticketRequests.push(api.delete(`/api/events/${slug}/tickets/${ticket.id}/`));
+        });
+
+      const promoRequests = [];
+      const activePromoIds = new Set(meaningfulPromos.map((promo) => promo.id).filter(Boolean));
+
+      meaningfulPromos.forEach((promo) => {
+        const payload = {
+          code: String(promo.code || '').trim().toUpperCase().replace(/\s+/g, ''),
+          discount_type: promo.discount_type || 'percent',
+          discount_value: Number(promo.discount_value || 0),
+          usage_limit: Number(promo.usage_limit || 0),
+          expiry: new Date(promo.expiry).toISOString(),
+          is_active: promo.is_active ?? true,
+          minimum_order_amount: Number(promo.minimum_order_amount || 0),
+          applicable_ticket_types: [],
+        };
+
+        if (promo.id) {
+          promoRequests.push(api.patch(`/api/events/${slug}/promo-codes/${promo.id}/`, payload));
+          return;
+        }
+
+        promoRequests.push(api.post(`/api/events/${slug}/promo-codes/`, payload));
+      });
+
+      promoCodesData
+        .filter((promo) => !activePromoIds.has(promo.id))
+        .forEach((promo) => {
+          promoRequests.push(api.delete(`/api/events/${slug}/promo-codes/${promo.id}/`));
+        });
+
+      const liveSettingsRequest = api.patch(`/api/events/${slug}/live-settings/`, {
+        refund_policy: mapRefundPolicy(formState.refundPolicy),
+        custom_refund_policy: formState.refundPolicy === 'Custom' ? formState.customRefundPolicy : '',
+        enable_waitlist: Boolean(formState.enableWaitlist),
+        send_reminders: Boolean(formState.sendReminders),
+      });
+
+      const results = await Promise.allSettled([
+        liveSettingsRequest,
+        ...ticketRequests,
+        ...promoRequests,
+      ]);
+
+      const failedRequest = results.find((result) => result.status === 'rejected');
+      if (failedRequest?.status === 'rejected') {
+        throw failedRequest.reason;
+      }
+
+      await refreshQueries();
+      setIsDirty(false);
+      toast.success('Ticket setup updated.');
+    } catch (error) {
+      const message = getTicketSetupErrorMessage(error);
+      setSaveError(message);
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
     <div className="space-y-4 lg:space-y-6">
       <Card>
-        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Ticket Tiers</CardTitle>
-            <p className="text-sm text-gray-500 mt-1">Manage pricing, quantities, and sales status for each tier.</p>
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-[#0F172A] lg:text-lg">
+              <Ticket className="h-5 w-5 text-[#02338D]" />
+              Tickets, Registration and Checkout Setup
+            </CardTitle>
+            <p className="mt-1 text-sm text-gray-500">
+              This quick edit now mirrors the original create-event ticket flow, including registration questions,
+              refund policy, waitlist, reminders, and promo codes.
+            </p>
           </div>
-          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => { setEditingTicket(null); setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true }); setShowTicketModal(true); }}>
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Add Ticket Tier
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={handleReset} disabled={!isDirty || isSaving || isLoading}>
+              <RotateCcw className="mr-1.5 h-4 w-4" />
+              Reset
+            </Button>
+            <Button className="bg-[#02338D] text-white hover:bg-[#022A78]" onClick={handleSave} disabled={isSaving || isLoading}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-1.5 h-4 w-4" />
+                  Save Ticket Setup
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent>
-          {isManagedTicketsLoading ? (
-            <p className="text-sm text-gray-500">Loading tickets...</p>
-          ) : managedTickets && managedTickets.length > 0 ? (
-            <div className="space-y-3">
-              {managedTickets.map(ticket => {
-                const soldPct = ticket.quantity ? Math.round((ticket.quantity_sold / ticket.quantity) * 100) : 0;
-                return (
-                  <div key={ticket.id} className="border border-gray-100 rounded-xl p-4 hover:shadow-md transition-shadow">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Ticket className="w-4 h-4 text-[#C58B1A]" />
-                          <h4 className="font-bold text-[#0F172A]">{ticket.name}</h4>
-                          <Badge className={ticket.is_active ? 'bg-green-100 text-green-700 text-[10px]' : 'bg-gray-100 text-gray-500 text-[10px]'} variant="outline">
-                            {ticket.is_active ? 'On Sale' : 'Paused'}
-                          </Badge>
-                          {ticket.is_sold_out && <Badge className="bg-red-100 text-red-700 text-[10px]" variant="outline">Sold Out</Badge>}
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
-                          <span>Class: <strong className="text-[#0F172A] capitalize">{ticket.ticket_class}</strong></span>
-                          <span>Price: <strong className="text-[#0F172A]">{formatMoney(ticket.price)}</strong></span>
-                          <span>Sold: <strong className="text-[#0F172A]">{ticket.quantity_sold || 0}</strong> / {ticket.quantity}</span>
-                          <span>Available: <strong className="text-[#0F172A]">{ticket.quantity_available ?? (ticket.quantity - (ticket.quantity_sold || 0))}</strong></span>
-                        </div>
-                        <div className="w-full max-w-xs h-1.5 bg-gray-200 rounded-full overflow-hidden mt-2">
-                          <div className="h-full bg-[#C58B1A] rounded-full transition-all" style={{ width: `${soldPct}%` }} />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditTicket(ticket)} className="text-gray-400 hover:text-[#02338D]">
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title={ticket.is_active ? 'Pause Sales' : 'Resume Sales'} onClick={() => toggleTicketMutation.mutate({ id: ticket.id, is_active: !ticket.is_active })} className="text-gray-400 hover:text-[#C58B1A]">
-                          {ticket.is_active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Delete" onClick={() => { if (window.confirm('Delete this ticket tier?')) deleteTicketMutation.mutate(ticket.id); }} className="text-gray-400 hover:text-red-500">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+        <CardContent className="space-y-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center rounded-2xl border border-dashed border-[#E2E8F0] px-6 py-16 text-sm text-gray-500">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading ticket setup...
             </div>
           ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <Ticket className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-[#0F172A] font-medium text-sm">No ticket tiers</p>
-              <p className="text-gray-500 text-xs mt-1">Create your first ticket tier to start selling.</p>
-            </div>
+            <>
+              {saveError && (
+                <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
+                  {saveError}
+                </div>
+              )}
+              <TicketsStep
+                data={formState}
+                onChange={handleChange}
+                errors={{}}
+              />
+            </>
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={showTicketModal} onOpenChange={setShowTicketModal}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{editingTicket ? 'Edit Ticket Tier' : 'Create Ticket Tier'}</DialogTitle>
-            <DialogDescription>Set pricing and availability for this ticket type.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="ticketName">Tier Name</Label>
-              <Input
-                id="ticketName"
-                value={ticketForm.name}
-                onChange={(e) => setTicketForm({ ...ticketForm, name: e.target.value })}
-                placeholder="e.g., Early Bird, VIP"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Ticket Class</Label>
-                <select
-                  className="w-full px-3 py-2 border rounded-md text-sm"
-                  value={ticketForm.ticket_class}
-                  onChange={(e) => setTicketForm({ ...ticketForm, ticket_class: e.target.value })}
-                >
-                  <option value="free">Free</option>
-                  <option value="paid">Paid</option>
-                  <option value="donation">Donation</option>
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="ticketQuantity">Quantity</Label>
-                <Input
-                  id="ticketQuantity"
-                  type="number"
-                  min="1"
-                  value={ticketForm.quantity}
-                  onChange={(e) => setTicketForm({ ...ticketForm, quantity: e.target.value === '' ? '' : Math.max(1, Number(e.target.value)) })}
-                  placeholder="Total tickets"
-                />
-              </div>
-            </div>
-            {ticketForm.ticket_class === 'paid' && (
-              <div className="grid gap-2">
-                <Label htmlFor="ticketPrice">Price (KES)</Label>
-                <Input
-                  id="ticketPrice"
-                  type="number"
-                  min="0"
-                  value={ticketForm.price}
-                  onChange={(e) => setTicketForm({ ...ticketForm, price: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) })}
-                  placeholder="e.g., 2000"
-                />
-              </div>
-            )}
-            <div className="grid gap-2">
-              <Label htmlFor="ticketDesc">Description (Optional)</Label>
-              <Input
-                id="ticketDesc"
-                value={ticketForm.description}
-                onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
-                placeholder="What is included in this tier?"
-              />
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                id="ticketActive"
-                checked={ticketForm.is_active}
-                onChange={(e) => setTicketForm({ ...ticketForm, is_active: e.target.checked })}
-                className="rounded border-gray-300"
-              />
-              <Label htmlFor="ticketActive" className="text-sm font-normal">Active (available for purchase)</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTicketModal(false)}>Cancel</Button>
-            <Button onClick={handleSaveTicket} disabled={createTicketMutation.isPending || updateTicketMutation.isPending} className="bg-[#02338D] text-white">
-              {editingTicket ? 'Update Tier' : 'Create Tier'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
 export default TicketsTab;
-
-

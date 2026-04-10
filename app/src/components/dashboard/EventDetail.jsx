@@ -784,7 +784,7 @@ const OrganizerEventDetail = ({
         </TabsContent>
 
         <TabsContent value="tickets" className="space-y-4 lg:space-y-6">
-          <TicketsTab slug={detail?.slug} />
+          <TicketsTab slug={detail?.slug} eventDetail={detail} />
         </TabsContent>
 
         <TabsContent value="speakers" className="space-y-4 lg:space-y-6">

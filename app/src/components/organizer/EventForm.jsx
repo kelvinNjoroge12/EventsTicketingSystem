@@ -4,6 +4,7 @@ import { Plus, X, Upload, ImagePlus, Clock, Trash2, Palette, ChevronUp, ChevronD
 import CustomInput from '../ui/CustomInput';
 import CustomButton from '../ui/CustomButton';
 import RichTextEditor from '../ui/RichTextEditor';
+import { REFUND_POLICY_OPTIONS, TICKET_TYPE_OPTIONS } from '../../lib/eventSetup';
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -942,7 +943,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
                                     onChange={(e) => updateTicket(ticketIndex, 'type', e.target.value)}
                                     className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
                                   >
-                                    {['Standard', 'VIP', 'Early Bird', 'Free', 'Donation'].map((t) => <option key={t}>{t}</option>)}
+                                    {TICKET_TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
                                   </select>
                                 </div>
                                 <div>
@@ -1001,7 +1002,7 @@ export const TicketsStep = ({ data, onChange, errors }) => {
       <div className="pt-6 border-t border-[#E2E8F0]">
         <label className="block text-sm font-semibold text-[#0F172A] mb-3">Refund Policy</label>
         <div className="grid grid-cols-2 gap-2">
-          {['No Refund', '48 Hours', '7 Days', 'Custom'].map((policy) => (
+          {REFUND_POLICY_OPTIONS.map((policy) => (
             <button
               key={policy}
               type="button"
