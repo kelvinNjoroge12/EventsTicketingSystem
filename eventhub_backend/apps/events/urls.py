@@ -8,6 +8,7 @@ from .views import (
     EventCreateView,
     EventDeleteView,
     EventDetailView,
+    EventLiveSettingsView,
     EventListView,
     EventPublishView,
     EventRejectView,
@@ -42,6 +43,7 @@ urlpatterns = [
     path("<slug:slug>/", EventDetailView.as_view(), name="event-detail"),
     path("<slug:slug>/publish/", EventPublishView.as_view(), name="event-publish"),
     path("<slug:slug>/edit/", EventUpdateView.as_view(), name="event-update"),
+    path("<slug:slug>/live-settings/", EventLiveSettingsView.as_view(), name="event-live-settings"),
     path("<slug:slug>/delete/", EventDeleteView.as_view(), name="event-delete"),
     path("<slug:slug>/related/", related_events, name="event-related"),
 ]

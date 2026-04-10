@@ -47,6 +47,39 @@ def _get_pending_revision(event: Event) -> Event | None:
         return None
 
 
+def _get_syncable_pending_revision(event: Event) -> Event | None:
+    if not event or event.source_event_id:
+        return None
+
+    revision = _get_pending_revision(event)
+    if revision and revision.status in {"draft", "pending", "rejected"}:
+        return revision
+    return None
+
+
+def _update_revision_resource_map(
+    revision: Event,
+    resource_key: str,
+    source_id,
+    draft_id=None,
+    *,
+    remove: bool = False,
+) -> None:
+    metadata = dict(revision.revision_metadata or {})
+    resource_map = dict(metadata.get(resource_key) or {})
+    normalized_source_id = str(source_id) if source_id else None
+
+    if normalized_source_id:
+        if remove or not draft_id:
+            resource_map.pop(normalized_source_id, None)
+        else:
+            resource_map[normalized_source_id] = str(draft_id)
+
+    metadata[resource_key] = resource_map
+    revision.revision_metadata = metadata
+    revision.save(update_fields=["revision_metadata"])
+
+
 def get_editable_event(event: Event, create_if_missing: bool = False) -> Event:
     if event.source_event_id:
         return event
@@ -151,6 +184,35 @@ def _clone_ticket_types(source: Event, clone: Event, category_map: dict[str, str
     return ticket_map
 
 
+def _clone_promo_codes(source: Event, clone: Event, ticket_map: dict[str, str]) -> dict[str, str]:
+    from apps.tickets.models import PromoCode
+
+    promo_map: dict[str, str] = {}
+    promo_codes = source.promo_codes.prefetch_related("applicable_ticket_types").all().order_by("created_at", "code")
+    for promo in promo_codes:
+        cloned_promo = PromoCode.objects.create(
+            event=clone,
+            code=promo.code,
+            discount_type=promo.discount_type,
+            discount_value=promo.discount_value,
+            expiry=promo.expiry,
+            usage_limit=promo.usage_limit,
+            times_used=promo.times_used,
+            is_active=promo.is_active,
+            minimum_order_amount=promo.minimum_order_amount,
+        )
+        mapped_ticket_ids = [
+            ticket_map[str(ticket_id)]
+            for ticket_id in promo.applicable_ticket_types.values_list("id", flat=True)
+            if str(ticket_id) in ticket_map
+        ]
+        if mapped_ticket_ids:
+            cloned_promo.applicable_ticket_types.set(mapped_ticket_ids)
+        promo_map[str(promo.id)] = str(cloned_promo.id)
+
+    return promo_map
+
+
 def _clone_speakers(source: Event, clone: Event) -> dict[str, str]:
     from apps.speakers.models import Speaker
 
@@ -221,6 +283,7 @@ def create_revision_from_live_event(source: Event) -> Event:
     clone = _clone_basic_fields(source)
     category_map, question_map = _clone_registration_setup(source, clone)
     ticket_map = _clone_ticket_types(source, clone, category_map)
+    promo_map = _clone_promo_codes(source, clone, ticket_map)
     speaker_map = _clone_speakers(source, clone)
     schedule_map = _clone_schedule(source, clone, speaker_map)
     sponsor_map = _clone_sponsors(source, clone)
@@ -229,6 +292,7 @@ def create_revision_from_live_event(source: Event) -> Event:
         "categories": category_map,
         "questions": question_map,
         "tickets": ticket_map,
+        "promo_codes": promo_map,
         "speakers": speaker_map,
         "schedule": schedule_map,
         "sponsors": sponsor_map,
@@ -316,12 +380,13 @@ def _sync_registration_setup(revision: Event, live_event: Event) -> dict[str, st
     return merged_category_ids
 
 
-def _sync_ticket_types(revision: Event, live_event: Event, merged_category_ids: dict[str, str]) -> None:
+def _sync_ticket_types(revision: Event, live_event: Event, merged_category_ids: dict[str, str]) -> dict[str, str]:
     from apps.tickets.models import TicketType
 
     ticket_map = (revision.revision_metadata or {}).get("tickets") or {}
     draft_to_source_ticket = {draft_id: source_id for source_id, draft_id in ticket_map.items()}
     live_tickets_by_id = {str(ticket.id): ticket for ticket in live_event.ticket_types.all()}
+    merged_ticket_ids: dict[str, str] = {}
 
     for draft_ticket in revision.ticket_types.all().order_by("sort_order", "price"):
         source_ticket_id = draft_to_source_ticket.get(str(draft_ticket.id))
@@ -345,22 +410,25 @@ def _sync_ticket_types(revision: Event, live_event: Event, merged_category_ids: 
                 is_active=draft_ticket.is_active,
                 sort_order=draft_ticket.sort_order,
             )
-            continue
+        else:
+            live_ticket.registration_category_id = registration_category_id
+            live_ticket.name = draft_ticket.name
+            live_ticket.ticket_class = draft_ticket.ticket_class
+            live_ticket.price = draft_ticket.price
+            live_ticket.currency = draft_ticket.currency
+            live_ticket.quantity = draft_ticket.quantity
+            live_ticket.description = draft_ticket.description
+            live_ticket.sale_start = draft_ticket.sale_start
+            live_ticket.sale_end = draft_ticket.sale_end
+            live_ticket.min_per_order = draft_ticket.min_per_order
+            live_ticket.max_per_order = draft_ticket.max_per_order
+            live_ticket.is_active = draft_ticket.is_active
+            live_ticket.sort_order = draft_ticket.sort_order
+            live_ticket.save()
 
-        live_ticket.registration_category_id = registration_category_id
-        live_ticket.name = draft_ticket.name
-        live_ticket.ticket_class = draft_ticket.ticket_class
-        live_ticket.price = draft_ticket.price
-        live_ticket.currency = draft_ticket.currency
-        live_ticket.quantity = draft_ticket.quantity
-        live_ticket.description = draft_ticket.description
-        live_ticket.sale_start = draft_ticket.sale_start
-        live_ticket.sale_end = draft_ticket.sale_end
-        live_ticket.min_per_order = draft_ticket.min_per_order
-        live_ticket.max_per_order = draft_ticket.max_per_order
-        live_ticket.is_active = draft_ticket.is_active
-        live_ticket.sort_order = draft_ticket.sort_order
-        live_ticket.save()
+        merged_ticket_ids[str(draft_ticket.id)] = str(live_ticket.id)
+
+    return merged_ticket_ids
 
 
 def _sync_speakers(revision: Event, live_event: Event) -> dict[str, str]:
@@ -472,6 +540,49 @@ def _sync_sponsors(revision: Event, live_event: Event) -> None:
         live_sponsor.save()
 
 
+def _sync_promo_codes(revision: Event, live_event: Event, merged_ticket_ids: dict[str, str]) -> None:
+    from apps.tickets.models import PromoCode
+
+    promo_map = (revision.revision_metadata or {}).get("promo_codes") or {}
+    draft_to_source_promo = {draft_id: source_id for source_id, draft_id in promo_map.items()}
+    live_promos = live_event.promo_codes.prefetch_related("applicable_ticket_types").all()
+    live_promos_by_id = {str(promo.id): promo for promo in live_promos}
+
+    for draft_promo in revision.promo_codes.prefetch_related("applicable_ticket_types").all().order_by("created_at", "code"):
+        source_promo_id = draft_to_source_promo.get(str(draft_promo.id))
+        live_promo = live_promos_by_id.get(source_promo_id)
+        mapped_ticket_ids = [
+            merged_ticket_ids[str(ticket_id)]
+            for ticket_id in draft_promo.applicable_ticket_types.values_list("id", flat=True)
+            if str(ticket_id) in merged_ticket_ids
+        ]
+
+        if live_promo is None:
+            live_promo = PromoCode.objects.create(
+                event=live_event,
+                code=draft_promo.code,
+                discount_type=draft_promo.discount_type,
+                discount_value=draft_promo.discount_value,
+                expiry=draft_promo.expiry,
+                usage_limit=draft_promo.usage_limit,
+                times_used=draft_promo.times_used,
+                is_active=draft_promo.is_active,
+                minimum_order_amount=draft_promo.minimum_order_amount,
+            )
+        else:
+            live_promo.code = draft_promo.code
+            live_promo.discount_type = draft_promo.discount_type
+            live_promo.discount_value = draft_promo.discount_value
+            live_promo.expiry = draft_promo.expiry
+            live_promo.usage_limit = draft_promo.usage_limit
+            live_promo.times_used = max(live_promo.times_used, draft_promo.times_used)
+            live_promo.is_active = draft_promo.is_active
+            live_promo.minimum_order_amount = draft_promo.minimum_order_amount
+            live_promo.save()
+
+        live_promo.applicable_ticket_types.set(mapped_ticket_ids)
+
+
 @transaction.atomic
 def merge_revision_into_live_event(revision: Event) -> Event:
     live_event = revision.source_event
@@ -480,9 +591,225 @@ def merge_revision_into_live_event(revision: Event) -> Event:
 
     _copy_event_fields(revision, live_event)
     merged_category_ids = _sync_registration_setup(revision, live_event)
-    _sync_ticket_types(revision, live_event, merged_category_ids)
+    merged_ticket_ids = _sync_ticket_types(revision, live_event, merged_category_ids)
+    _sync_promo_codes(revision, live_event, merged_ticket_ids)
     merged_speaker_ids = _sync_speakers(revision, live_event)
     _sync_schedule(revision, live_event, merged_speaker_ids)
     _sync_sponsors(revision, live_event)
     revision.delete()
     return live_event
+
+
+def sync_live_ticket_to_pending_revision(ticket) -> None:
+    from apps.tickets.models import TicketType
+
+    live_event = getattr(ticket, "event", None)
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    ticket_map = (revision.revision_metadata or {}).get("tickets") or {}
+    draft_ticket_id = ticket_map.get(str(ticket.id))
+    draft_ticket = revision.ticket_types.filter(id=draft_ticket_id).first() if draft_ticket_id else None
+
+    if draft_ticket is None:
+        draft_ticket = TicketType(event=revision)
+
+    category_map = (revision.revision_metadata or {}).get("categories") or {}
+    draft_ticket.registration_category_id = category_map.get(str(ticket.registration_category_id))
+    draft_ticket.name = ticket.name
+    draft_ticket.ticket_class = ticket.ticket_class
+    draft_ticket.price = ticket.price
+    draft_ticket.currency = ticket.currency
+    draft_ticket.quantity = ticket.quantity
+    draft_ticket.quantity_sold = ticket.quantity_sold
+    draft_ticket.quantity_reserved = ticket.quantity_reserved
+    draft_ticket.description = ticket.description
+    draft_ticket.sale_start = ticket.sale_start
+    draft_ticket.sale_end = ticket.sale_end
+    draft_ticket.min_per_order = ticket.min_per_order
+    draft_ticket.max_per_order = ticket.max_per_order
+    draft_ticket.is_active = ticket.is_active
+    draft_ticket.sort_order = ticket.sort_order
+    draft_ticket.save()
+
+    _update_revision_resource_map(revision, "tickets", ticket.id, draft_ticket.id)
+
+
+def delete_live_ticket_from_pending_revision(live_event: Event, ticket_id) -> None:
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    ticket_map = (revision.revision_metadata or {}).get("tickets") or {}
+    draft_ticket_id = ticket_map.get(str(ticket_id))
+    if draft_ticket_id:
+        revision.ticket_types.filter(id=draft_ticket_id).delete()
+    _update_revision_resource_map(revision, "tickets", ticket_id, remove=True)
+
+
+def sync_live_speaker_to_pending_revision(speaker) -> None:
+    from apps.speakers.models import Speaker
+
+    live_event = getattr(speaker, "event", None)
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    speaker_map = (revision.revision_metadata or {}).get("speakers") or {}
+    draft_speaker_id = speaker_map.get(str(speaker.id))
+    draft_speaker = revision.speakers.filter(id=draft_speaker_id).first() if draft_speaker_id else None
+
+    if draft_speaker is None:
+        draft_speaker = Speaker(event=revision)
+
+    draft_speaker.name = speaker.name
+    draft_speaker.title = speaker.title
+    draft_speaker.organization = speaker.organization
+    draft_speaker.bio = speaker.bio
+    draft_speaker.avatar = speaker.avatar
+    draft_speaker.twitter = speaker.twitter
+    draft_speaker.linkedin = speaker.linkedin
+    draft_speaker.is_mc = speaker.is_mc
+    draft_speaker.sort_order = speaker.sort_order
+    draft_speaker.save()
+
+    _update_revision_resource_map(revision, "speakers", speaker.id, draft_speaker.id)
+
+
+def delete_live_speaker_from_pending_revision(live_event: Event, speaker_id) -> None:
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    speaker_map = (revision.revision_metadata or {}).get("speakers") or {}
+    draft_speaker_id = speaker_map.get(str(speaker_id))
+    if draft_speaker_id:
+        revision.speakers.filter(id=draft_speaker_id).delete()
+    _update_revision_resource_map(revision, "speakers", speaker_id, remove=True)
+
+
+def sync_live_schedule_item_to_pending_revision(schedule_item) -> None:
+    from apps.schedules.models import ScheduleItem
+
+    live_event = getattr(schedule_item, "event", None)
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    schedule_map = (revision.revision_metadata or {}).get("schedule") or {}
+    draft_schedule_id = schedule_map.get(str(schedule_item.id))
+    draft_schedule = revision.schedule_items.filter(id=draft_schedule_id).first() if draft_schedule_id else None
+
+    if draft_schedule is None:
+        draft_schedule = ScheduleItem(event=revision)
+
+    speaker_map = (revision.revision_metadata or {}).get("speakers") or {}
+    draft_schedule.title = schedule_item.title
+    draft_schedule.description = schedule_item.description
+    draft_schedule.speaker_id = speaker_map.get(str(schedule_item.speaker_id))
+    draft_schedule.start_time = schedule_item.start_time
+    draft_schedule.end_time = schedule_item.end_time
+    draft_schedule.day = schedule_item.day
+    draft_schedule.session_type = schedule_item.session_type
+    draft_schedule.location = schedule_item.location
+    draft_schedule.sort_order = schedule_item.sort_order
+    draft_schedule.save()
+
+    _update_revision_resource_map(revision, "schedule", schedule_item.id, draft_schedule.id)
+
+
+def delete_live_schedule_item_from_pending_revision(live_event: Event, schedule_item_id) -> None:
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    schedule_map = (revision.revision_metadata or {}).get("schedule") or {}
+    draft_schedule_id = schedule_map.get(str(schedule_item_id))
+    if draft_schedule_id:
+        revision.schedule_items.filter(id=draft_schedule_id).delete()
+    _update_revision_resource_map(revision, "schedule", schedule_item_id, remove=True)
+
+
+def sync_live_sponsor_to_pending_revision(sponsor) -> None:
+    from apps.sponsors.models import Sponsor
+
+    live_event = getattr(sponsor, "event", None)
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    sponsor_map = (revision.revision_metadata or {}).get("sponsors") or {}
+    draft_sponsor_id = sponsor_map.get(str(sponsor.id))
+    draft_sponsor = revision.event_sponsors.filter(id=draft_sponsor_id).first() if draft_sponsor_id else None
+
+    if draft_sponsor is None:
+        draft_sponsor = Sponsor(event=revision)
+
+    draft_sponsor.name = sponsor.name
+    draft_sponsor.logo = sponsor.logo
+    draft_sponsor.website = sponsor.website
+    draft_sponsor.sort_order = sponsor.sort_order
+    draft_sponsor.save()
+
+    _update_revision_resource_map(revision, "sponsors", sponsor.id, draft_sponsor.id)
+
+
+def delete_live_sponsor_from_pending_revision(live_event: Event, sponsor_id) -> None:
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    sponsor_map = (revision.revision_metadata or {}).get("sponsors") or {}
+    draft_sponsor_id = sponsor_map.get(str(sponsor_id))
+    if draft_sponsor_id:
+        revision.event_sponsors.filter(id=draft_sponsor_id).delete()
+    _update_revision_resource_map(revision, "sponsors", sponsor_id, remove=True)
+
+
+def sync_live_promo_code_to_pending_revision(promo_code) -> None:
+    from apps.tickets.models import PromoCode
+
+    live_event = getattr(promo_code, "event", None)
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    promo_map = (revision.revision_metadata or {}).get("promo_codes") or {}
+    draft_promo_id = promo_map.get(str(promo_code.id))
+    draft_promo = revision.promo_codes.filter(id=draft_promo_id).first() if draft_promo_id else None
+
+    if draft_promo is None:
+        draft_promo = PromoCode(event=revision)
+
+    ticket_map = (revision.revision_metadata or {}).get("tickets") or {}
+    mapped_ticket_ids = [
+        ticket_map[str(ticket_id)]
+        for ticket_id in promo_code.applicable_ticket_types.values_list("id", flat=True)
+        if str(ticket_id) in ticket_map
+    ]
+
+    draft_promo.code = promo_code.code
+    draft_promo.discount_type = promo_code.discount_type
+    draft_promo.discount_value = promo_code.discount_value
+    draft_promo.expiry = promo_code.expiry
+    draft_promo.usage_limit = promo_code.usage_limit
+    draft_promo.times_used = promo_code.times_used
+    draft_promo.is_active = promo_code.is_active
+    draft_promo.minimum_order_amount = promo_code.minimum_order_amount
+    draft_promo.save()
+    draft_promo.applicable_ticket_types.set(mapped_ticket_ids)
+
+    _update_revision_resource_map(revision, "promo_codes", promo_code.id, draft_promo.id)
+
+
+def delete_live_promo_code_from_pending_revision(live_event: Event, promo_code_id) -> None:
+    revision = _get_syncable_pending_revision(live_event)
+    if revision is None:
+        return
+
+    promo_map = (revision.revision_metadata or {}).get("promo_codes") or {}
+    draft_promo_id = promo_map.get(str(promo_code_id))
+    if draft_promo_id:
+        revision.promo_codes.filter(id=draft_promo_id).delete()
+    _update_revision_resource_map(revision, "promo_codes", promo_code_id, remove=True)

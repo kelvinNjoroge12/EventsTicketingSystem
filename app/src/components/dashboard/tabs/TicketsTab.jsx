@@ -39,6 +39,7 @@ const TicketsTab = ({ slug }) => {
       setShowTicketModal(false);
       setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to create ticket tier.')
   });
@@ -51,6 +52,7 @@ const TicketsTab = ({ slug }) => {
       setEditingTicket(null);
       setTicketForm({ name: '', ticket_class: 'paid', price: '', quantity: '', description: '', is_active: true });
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to update ticket tier.')
   });
@@ -60,6 +62,7 @@ const TicketsTab = ({ slug }) => {
     onSuccess: () => {
       toast.success('Ticket sales status updated.');
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to toggle ticket.')
   });
@@ -69,6 +72,7 @@ const TicketsTab = ({ slug }) => {
     onSuccess: () => {
       toast.success('Ticket tier deleted.');
       queryClient.invalidateQueries({ queryKey: ['managed_tickets', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to delete ticket tier.')
   });

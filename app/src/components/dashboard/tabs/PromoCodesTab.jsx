@@ -112,6 +112,7 @@ const PromoCodesTab = ({ slug }) => {
         is_active: true
       });
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => {
       toast.error(getPromoErrorMessage(err));
@@ -123,6 +124,7 @@ const PromoCodesTab = ({ slug }) => {
     onSuccess: () => {
       toast.success('Promo code deleted.');
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => {
       toast.error(err?.message || 'Failed to delete promo code.');
@@ -134,6 +136,7 @@ const PromoCodesTab = ({ slug }) => {
     onSuccess: () => {
       toast.success('Promo code status updated.');
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => {
       toast.error(err?.message || 'Failed to update promo code.');
@@ -149,6 +152,7 @@ const PromoCodesTab = ({ slug }) => {
     onSuccess: (data) => {
       setBulkResults(data);
       queryClient.invalidateQueries({ queryKey: ['promo_codes', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
       const created = data?.created ?? 0;
       const updated = data?.updated ?? 0;
       const errors = data?.errors || [];

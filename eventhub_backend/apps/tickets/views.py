@@ -14,7 +14,13 @@ from rest_framework.response import Response
 
 from apps.accounts.permissions import IsOrganizer, IsOrganizerRole
 from apps.events.models import Event
-from apps.events.revisions import translate_revision_object_id
+from apps.events.revisions import (
+    delete_live_promo_code_from_pending_revision,
+    delete_live_ticket_from_pending_revision,
+    sync_live_promo_code_to_pending_revision,
+    sync_live_ticket_to_pending_revision,
+    translate_revision_object_id,
+)
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -61,7 +67,8 @@ class TicketTypeCreateView(generics.CreateAPIView):
         reg_category = serializer.validated_data.get("registration_category")
         if reg_category and reg_category.event_id != event.id:
             raise ValidationError({"registration_category": "Category does not belong to this event."})
-        serializer.save(event=event)
+        ticket = serializer.save(event=event)
+        sync_live_ticket_to_pending_revision(ticket)
 
 
 class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
@@ -93,7 +100,14 @@ class TicketTypeUpdateView(generics.RetrieveUpdateDestroyAPIView):
         reg_category = serializer.validated_data.get("registration_category")
         if reg_category and reg_category.event_id != event.id:
             raise ValidationError({"registration_category": "Category does not belong to this event."})
-        serializer.save()
+        ticket = serializer.save()
+        sync_live_ticket_to_pending_revision(ticket)
+
+    def perform_destroy(self, instance):
+        event = instance.event
+        ticket_id = instance.id
+        instance.delete()
+        delete_live_ticket_from_pending_revision(event, ticket_id)
 
 
 class EventRegistrationSetupView(APIView):
@@ -347,7 +361,8 @@ class PromoCodeManageView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
-        serializer.save(event=event)
+        promo_code = serializer.save(event=event)
+        sync_live_promo_code_to_pending_revision(promo_code)
 
 
 class PromoCodeBulkUploadView(APIView):
@@ -512,9 +527,10 @@ class PromoCodeBulkUploadView(APIView):
                     existing.is_active = is_active
                     existing.minimum_order_amount = minimum_order_amount
                     existing.save()
+                    sync_live_promo_code_to_pending_revision(existing)
                     updated += 1
                 else:
-                    PromoCode.objects.create(
+                    promo_code = PromoCode.objects.create(
                         event=event,
                         code=code,
                         discount_type=discount_type,
@@ -524,6 +540,7 @@ class PromoCodeBulkUploadView(APIView):
                         is_active=is_active,
                         minimum_order_amount=minimum_order_amount,
                     )
+                    sync_live_promo_code_to_pending_revision(promo_code)
                     created += 1
             except Exception as exc:
                 skipped += 1
@@ -558,6 +575,30 @@ class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
         except Http404:
             context["event"] = None
         return context
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_url_kwarg)
+        resolved = queryset.filter(id=lookup_value).first()
+        if resolved is None:
+            event = get_object_or_404(Event, slug=self.kwargs["slug"], organizer=self.request.user)
+            translated_id = translate_revision_object_id(event, "promo_codes", lookup_value)
+            if translated_id:
+                resolved = queryset.filter(id=translated_id).first()
+        if resolved is None:
+            raise Http404("No PromoCode matches the given query.")
+        self.check_object_permissions(self.request, resolved)
+        return resolved
+
+    def perform_update(self, serializer):
+        promo_code = serializer.save()
+        sync_live_promo_code_to_pending_revision(promo_code)
+
+    def perform_destroy(self, instance):
+        event = instance.event
+        promo_id = instance.id
+        instance.delete()
+        delete_live_promo_code_from_pending_revision(event, promo_id)
 
 
 class PromoCodeValidateView(generics.GenericAPIView):

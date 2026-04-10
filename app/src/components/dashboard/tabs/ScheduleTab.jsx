@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CalendarRange, Plus, MapPin, Trash2, X } from 'lucide-react';
+import { CalendarRange, Plus, MapPin, Trash2, X, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 const ScheduleTab = ({ slug }) => {
   const queryClient = useQueryClient();
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
   const [scheduleForm, setScheduleForm] = useState({
     title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: 0
   });
@@ -40,8 +41,22 @@ const ScheduleTab = ({ slug }) => {
       setShowScheduleModal(false);
       setScheduleForm({ title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: 0 });
       queryClient.invalidateQueries({ queryKey: ['schedule', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to add schedule item.')
+  });
+
+  const updateScheduleMutation = useMutation({
+    mutationFn: async ({ id, ...payload }) => api.patch(`/api/events/${slug}/schedule/${id}/`, payload),
+    onSuccess: () => {
+      toast.success('Schedule item updated.');
+      setShowScheduleModal(false);
+      setEditingSchedule(null);
+      setScheduleForm({ title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: 0 });
+      queryClient.invalidateQueries({ queryKey: ['schedule', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to update schedule item.')
   });
 
   const deleteScheduleMutation = useMutation({
@@ -49,9 +64,44 @@ const ScheduleTab = ({ slug }) => {
     onSuccess: () => {
       toast.success('Schedule item removed.');
       queryClient.invalidateQueries({ queryKey: ['schedule', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
     },
     onError: (err) => toast.error(err?.message || 'Failed to remove schedule item.')
   });
+
+  const openCreateModal = () => {
+    setEditingSchedule(null);
+    setScheduleForm({ title: '', description: '', start_time: '', end_time: '', day: 1, session_type: '', location: '', speaker: '', sort_order: scheduleData.length });
+    setShowScheduleModal(true);
+  };
+
+  const openEditModal = (session) => {
+    setEditingSchedule(session);
+    setScheduleForm({
+      title: session.title || '',
+      description: session.description || '',
+      start_time: session.start_time || '',
+      end_time: session.end_time || '',
+      day: session.day ?? 1,
+      session_type: session.session_type || '',
+      location: session.location || '',
+      speaker: session.speaker || '',
+      sort_order: session.sort_order ?? 0,
+    });
+    setShowScheduleModal(true);
+  };
+
+  const handleSaveSchedule = () => {
+    const payload = { ...scheduleForm };
+    if (!payload.speaker) delete payload.speaker;
+
+    if (editingSchedule) {
+      updateScheduleMutation.mutate({ id: editingSchedule.id, ...payload });
+      return;
+    }
+
+    createScheduleMutation.mutate(payload);
+  };
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -61,7 +111,7 @@ const ScheduleTab = ({ slug }) => {
             <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Event Schedule</CardTitle>
             <p className="text-sm text-gray-500 mt-1">Manage event agenda and sessions.</p>
           </div>
-          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={() => setShowScheduleModal(true)}>
+          <Button className="bg-[#02338D] hover:bg-[#022A78] text-white text-xs lg:text-sm" onClick={openCreateModal}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Session
           </Button>
@@ -73,16 +123,26 @@ const ScheduleTab = ({ slug }) => {
             <div className="space-y-4">
               {scheduleData.map(session => (
                 <div key={session.id} className="flex gap-4 p-4 border border-gray-100 rounded-xl relative group hover:shadow-md transition-shadow">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => {
-                      if(window.confirm('Remove this session?')) deleteScheduleMutation.mutate(session.id);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-[#02338D]"
+                      onClick={() => openEditModal(session)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-red-500"
+                      onClick={() => {
+                        if(window.confirm('Remove this session?')) deleteScheduleMutation.mutate(session.id);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <div className="w-20 flex-shrink-0 text-center flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2">
                     <p className="text-sm font-bold text-[#0F172A]">{session.start_time?.substring(0, 5)}</p>
                     {session.end_time && <p className="text-xs text-gray-500">to {session.end_time?.substring(0, 5)}</p>}
@@ -91,6 +151,7 @@ const ScheduleTab = ({ slug }) => {
                     <h4 className="font-bold text-[#0F172A]">{session.title}</h4>
                     {session.speaker_name && <p className="text-sm text-[#02338D]">Speaker: {session.speaker_name}</p>}
                     {session.location && <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> {session.location}</p>}
+                    {session.description && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{session.description}</p>}
                   </div>
                 </div>
               ))}
@@ -108,8 +169,8 @@ const ScheduleTab = ({ slug }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowScheduleModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="bg-[#02338D] px-6 py-4 text-white flex justify-between">
-              <h3 className="font-semibold">Add Schedule Item</h3>
-              <button onClick={() => setShowScheduleModal(false)}><X className="w-4 h-4" /></button>
+              <h3 className="font-semibold">{editingSchedule ? 'Edit Schedule Item' : 'Add Schedule Item'}</h3>
+              <button onClick={() => { setShowScheduleModal(false); setEditingSchedule(null); }}><X className="w-4 h-4" /></button>
             </div>
             <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
@@ -139,13 +200,21 @@ const ScheduleTab = ({ slug }) => {
                   </select>
                 </div>
               </div>
+              <div>
+                <Label>Description</Label>
+                <textarea
+                  rows={3}
+                  value={scheduleForm.description}
+                  onChange={e => setScheduleForm(p => ({ ...p, description: e.target.value }))}
+                  className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="Optional session description"
+                />
+              </div>
               <div className="flex justify-end gap-3 mt-4">
-                <Button variant="outline" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
-                <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white" onClick={() => {
-                  const payload = { ...scheduleForm };
-                  if (!payload.speaker) delete payload.speaker;
-                  createScheduleMutation.mutate(payload);
-                }} disabled={createScheduleMutation.isPending}>Add</Button>
+                <Button variant="outline" onClick={() => { setShowScheduleModal(false); setEditingSchedule(null); }}>Cancel</Button>
+                <Button className="bg-[#C58B1A] hover:bg-[#A56F14] text-white" onClick={handleSaveSchedule} disabled={createScheduleMutation.isPending || updateScheduleMutation.isPending}>
+                  {createScheduleMutation.isPending || updateScheduleMutation.isPending ? 'Saving...' : (editingSchedule ? 'Update' : 'Add')}
+                </Button>
               </div>
             </div>
           </div>

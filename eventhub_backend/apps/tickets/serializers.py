@@ -207,6 +207,18 @@ class PromoCodeSerializer(serializers.ModelSerializer):
             "is_active": {"required": False},
             "minimum_order_amount": {"required": True, "allow_null": False},
         }
+        validators = []
+
+    def validate(self, attrs):
+        event = self.context.get("event")
+        code = attrs.get("code") or (self.instance.code if self.instance else None)
+        if event and code:
+            qs = PromoCode.objects.filter(event=event, code__iexact=code)
+            if self.instance:
+                qs = qs.exclude(id=self.instance.id)
+            if qs.exists():
+                raise serializers.ValidationError({"code": "That promo code already exists for this event."})
+        return super().validate(attrs)
 
     def validate_code(self, value):
         normalized = str(value or "").strip().upper().replace(" ", "")

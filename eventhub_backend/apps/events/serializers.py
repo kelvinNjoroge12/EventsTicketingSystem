@@ -403,15 +403,32 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
 
     def get_promo_codes(self, obj: Event):
         # For frontend convenience; validation will still happen server-side
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        can_manage = bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_staff
+                or getattr(user, "role", None) == "admin"
+                or obj.organizer_id == user.id
+            )
+        )
         prefetched = getattr(obj, "prefetched_promo_codes_active", None)
-        promo_codes = prefetched if prefetched is not None else obj.promo_codes.filter(is_active=True)
+        if can_manage:
+            promo_codes = obj.promo_codes.all()
+        else:
+            promo_codes = prefetched if prefetched is not None else obj.promo_codes.filter(is_active=True)
         return [
             {
+                "id": p.id,
                 "code": p.code,
                 "discountType": p.discount_type,
                 "discountValue": p.discount_value,
                 "expiry": p.expiry,
                 "usageLimit": p.usage_limit,
+                "isActive": p.is_active,
+                "minimumOrderAmount": p.minimum_order_amount,
             }
             for p in promo_codes
         ]
@@ -625,6 +642,86 @@ class EventCreateSerializer(serializers.ModelSerializer):
                     )
                     instance.tags.add(tag)
         return instance
+
+
+class EventLiveSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = [
+            "start_date",
+            "start_time",
+            "end_date",
+            "end_time",
+            "timezone",
+            "venue_name",
+            "venue_address",
+            "city",
+            "country",
+            "streaming_link",
+            "theme_color",
+            "accent_color",
+            "refund_policy",
+            "custom_refund_policy",
+            "send_reminders",
+            "enable_waitlist",
+        ]
+        extra_kwargs = {
+            "start_date": {"required": False},
+            "start_time": {"required": False},
+            "end_date": {"required": False},
+            "end_time": {"required": False},
+            "timezone": {"required": False},
+            "venue_name": {"required": False},
+            "venue_address": {"required": False},
+            "city": {"required": False},
+            "country": {"required": False},
+            "streaming_link": {"required": False},
+            "theme_color": {"required": False},
+            "accent_color": {"required": False},
+            "refund_policy": {"required": False},
+            "custom_refund_policy": {"required": False},
+            "send_reminders": {"required": False},
+            "enable_waitlist": {"required": False},
+        }
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date") or getattr(self.instance, "start_date", None)
+        end_date = attrs.get("end_date") or getattr(self.instance, "end_date", None)
+        start_time = attrs.get("start_time") or getattr(self.instance, "start_time", None)
+        end_time = attrs.get("end_time") or getattr(self.instance, "end_time", None)
+        format_value = getattr(self.instance, "format", None)
+        touches_timing = any(field in attrs for field in ("start_date", "end_date", "start_time", "end_time"))
+        touches_location = any(field in attrs for field in ("venue_name", "venue_address"))
+        touches_streaming = "streaming_link" in attrs
+        touches_refund = any(field in attrs for field in ("refund_policy", "custom_refund_policy"))
+
+        if touches_timing and start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({"end_date": "End date cannot be before start date."})
+
+        if touches_timing and start_date and end_date and start_date == end_date and start_time and end_time and end_time <= start_time:
+            raise serializers.ValidationError({"end_time": "End time must be after start time."})
+
+        if touches_streaming and format_value in ("online", "hybrid"):
+            if not attrs.get("streaming_link"):
+                raise serializers.ValidationError({"streaming_link": "Streaming link is required for online events."})
+
+        if touches_location and format_value in ("in_person", "hybrid"):
+            venue_name = attrs.get("venue_name") or getattr(self.instance, "venue_name", "")
+            venue_address = attrs.get("venue_address") or getattr(self.instance, "venue_address", "")
+            if not venue_name or not venue_address:
+                raise serializers.ValidationError(
+                    {"venue_name": "Venue name and address are required for in-person events."}
+                )
+
+        refund_policy = attrs.get("refund_policy") or getattr(self.instance, "refund_policy", None)
+        if touches_refund and refund_policy == "custom":
+            custom = attrs.get("custom_refund_policy") or getattr(self.instance, "custom_refund_policy", "")
+            if not custom:
+                raise serializers.ValidationError(
+                    {"custom_refund_policy": "Custom refund policy text is required when using custom policy."}
+                )
+
+        return attrs
 
 
 class EventStatusSerializer(serializers.ModelSerializer):

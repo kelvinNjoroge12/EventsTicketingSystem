@@ -3,7 +3,11 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
 
 from apps.events.models import Event
-from apps.events.revisions import translate_revision_object_id
+from apps.events.revisions import (
+    delete_live_speaker_from_pending_revision,
+    sync_live_speaker_to_pending_revision,
+    translate_revision_object_id,
+)
 from .models import Speaker
 from .serializers import SpeakerSerializer, SpeakerCreateSerializer
 
@@ -45,7 +49,8 @@ class SpeakerListCreateView(generics.ListCreateAPIView):
         event = self.get_event()
         if event.organizer != self.request.user:
             raise PermissionDenied("Only the event organizer can add speakers.")
-        serializer.save(event=event)
+        speaker = serializer.save(event=event)
+        sync_live_speaker_to_pending_revision(speaker)
 
 
 class SpeakerDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -99,3 +104,13 @@ class SpeakerDetailView(generics.RetrieveUpdateDestroyAPIView):
             is_admin = request.user.is_staff or getattr(request.user, "role", None) == "admin"
             if obj.event.organizer != request.user and not is_admin:
                 raise PermissionDenied("Only the event organizer can modify speakers.")
+
+    def perform_update(self, serializer):
+        speaker = serializer.save()
+        sync_live_speaker_to_pending_revision(speaker)
+
+    def perform_destroy(self, instance):
+        event = instance.event
+        speaker_id = instance.id
+        instance.delete()
+        delete_live_speaker_from_pending_revision(event, speaker_id)

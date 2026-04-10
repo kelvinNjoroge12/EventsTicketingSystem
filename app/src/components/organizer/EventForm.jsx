@@ -442,7 +442,7 @@ export const SpeakersStep = ({ data, onChange }) => {
 
 // â”€â”€ Step 5: Schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const ScheduleStep = ({ data, onChange }) => {
-  const addItem = () => onChange('schedule', [...data.schedule, { time: '', title: '', description: '', speaker: '' }]);
+  const addItem = () => onChange('schedule', [...data.schedule, { startTime: '', endTime: '', title: '', location: '', description: '', speaker: '' }]);
   const removeItem = (i) => onChange('schedule', data.schedule.filter((_, idx) => idx !== i));
   const updateItem = (i, field, value) => {
     const arr = [...data.schedule];
@@ -469,19 +469,25 @@ export const ScheduleStep = ({ data, onChange }) => {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-                <input type="time" value={item.time} onChange={(e) => updateItem(index, 'time', e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                  <input type="time" value={item.startTime || ''} onChange={(e) => updateItem(index, 'startTime', e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
+                </div>
+                <input type="time" placeholder="End Time" value={item.endTime || ''} onChange={(e) => updateItem(index, 'endTime', e.target.value)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
               </div>
-              <input type="text" placeholder="Session Title *" value={item.title} onChange={(e) => updateItem(index, 'title', e.target.value)}
-                className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
-            </div>
-                  <input type="text" placeholder="Speaker (optional)" value={item.speaker} onChange={(e) => updateItem(index, 'speaker', e.target.value)}
-              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
-            <textarea placeholder="Session description..." value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} rows={2}
-              className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm" />
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" placeholder="Session Title *" value={item.title} onChange={(e) => updateItem(index, 'title', e.target.value)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
+                <input type="text" placeholder="Location / Room (optional)" value={item.location || ''} onChange={(e) => updateItem(index, 'location', e.target.value)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
+              </div>
+              <input type="text" placeholder="Speaker (optional)" value={item.speaker} onChange={(e) => updateItem(index, 'speaker', e.target.value)}
+                className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm" />
+              <textarea placeholder="Session description..." value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} rows={2}
+                className="w-full px-4 py-2 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] resize-none text-sm" />
           </motion.div>
         ))}
       </AnimatePresence>
@@ -549,6 +555,7 @@ export const SponsorsStep = ({ data, onChange }) => {
 export const TicketsStep = ({ data, onChange, errors }) => {
   const categories = Array.isArray(data.registrationCategories) ? data.registrationCategories : [];
   const tickets = Array.isArray(data.tickets) ? data.tickets : [];
+  const promoCodes = Array.isArray(data.promoCodes) ? data.promoCodes : [];
   const enabledCategories = categories.filter((c) => c.is_active);
   const defaultCategoryType = enabledCategories[0]?.category || categories[0]?.category || 'guest';
   const themeColor = data.themeColor || '#02338D';
@@ -616,12 +623,32 @@ export const TicketsStep = ({ data, onChange, errors }) => {
   };
 
   const addTicket = (categoryType = defaultCategoryType) =>
-    onChange('tickets', [...tickets, { type: 'Standard', price: 0, quantity: 100, description: '', category: categoryType }]);
+      onChange('tickets', [...tickets, { type: 'Standard', price: 0, quantity: 100, description: '', category: categoryType }]);
   const removeTicket = (i) => { if (tickets.length === 1) return; onChange('tickets', tickets.filter((_, idx) => idx !== i)); };
   const updateTicket = (i, field, value) => {
     const arr = [...tickets];
     arr[i] = { ...arr[i], [field]: value };
     onChange('tickets', arr);
+  };
+  const addPromoCode = () =>
+    onChange('promoCodes', [
+      ...promoCodes,
+      {
+        code: '',
+        discount_type: 'percent',
+        discount_value: '',
+        usage_limit: '',
+        expiry: '',
+        minimum_order_amount: 0,
+        is_active: true,
+      },
+    ]);
+  const removePromoCode = (index) =>
+    onChange('promoCodes', promoCodes.filter((_, promoIndex) => promoIndex !== index));
+  const updatePromoCode = (index, field, value) => {
+    const nextPromoCodes = [...promoCodes];
+    nextPromoCodes[index] = { ...nextPromoCodes[index], [field]: value };
+    onChange('promoCodes', nextPromoCodes);
   };
 
   const categoryStyles = {
@@ -1021,6 +1048,122 @@ export const TicketsStep = ({ data, onChange, errors }) => {
             className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
           />
         </div>
+      </div>
+
+      <div className="pt-6 border-t border-[#E2E8F0] space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-[#0F172A]">Promo Codes</label>
+            <p className="text-xs text-[#64748B] mt-1">Set up discount codes before you publish the event.</p>
+          </div>
+          <CustomButton type="button" variant="outline" onClick={addPromoCode} leftIcon={Plus}>
+            Add Promo Code
+          </CustomButton>
+        </div>
+
+        <AnimatePresence>
+          {promoCodes.map((promo, index) => (
+            <motion.div
+              key={promo.id || `promo-${index}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="rounded-2xl border border-[#E2E8F0] bg-white p-4 space-y-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#0F172A]">Promo Code {index + 1}</p>
+                  <p className="text-xs text-[#64748B]">These are created as part of the main event setup flow.</p>
+                </div>
+                <button type="button" onClick={() => removePromoCode(index)} className="p-1.5 text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1">Code *</label>
+                  <input
+                    type="text"
+                    value={promo.code || ''}
+                    onChange={(e) => updatePromoCode(index, 'code', e.target.value.toUpperCase())}
+                    placeholder="EARLYBIRD20"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1">Discount Type *</label>
+                  <select
+                    value={promo.discount_type || 'percent'}
+                    onChange={(e) => updatePromoCode(index, 'discount_type', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                  >
+                    <option value="percent">Percentage</option>
+                    <option value="fixed">Fixed Amount</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1">Discount Value *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={promo.discount_value}
+                    onChange={(e) => updatePromoCode(index, 'discount_value', e.target.value)}
+                    placeholder="20"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1">Usage Limit *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={promo.usage_limit}
+                    onChange={(e) => updatePromoCode(index, 'usage_limit', e.target.value)}
+                    placeholder="100"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1">Expiry Date *</label>
+                  <input
+                    type="date"
+                    value={promo.expiry || ''}
+                    onChange={(e) => updatePromoCode(index, 'expiry', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#64748B] mb-1">Minimum Order Amount *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={promo.minimum_order_amount ?? 0}
+                    onChange={(e) => updatePromoCode(index, 'minimum_order_amount', e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02338D] text-sm bg-white"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+                <input
+                  type="checkbox"
+                  checked={promo.is_active ?? true}
+                  onChange={(e) => updatePromoCode(index, 'is_active', e.target.checked)}
+                  className="w-4 h-4 rounded border-[#CBD5E1] text-[#02338D] focus:ring-[#02338D]"
+                />
+                Activate this promo code when the event is saved
+              </label>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {promoCodes.length === 0 && (
+          <div className="rounded-xl border border-dashed border-[#E2E8F0] px-4 py-6 text-xs text-[#94A3B8] text-center">
+            No promo codes added yet.
+          </div>
+        )}
       </div>
     </div>
   );

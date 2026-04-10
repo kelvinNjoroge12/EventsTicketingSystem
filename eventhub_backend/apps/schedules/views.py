@@ -3,7 +3,11 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
 
 from apps.events.models import Event
-from apps.events.revisions import translate_revision_object_id
+from apps.events.revisions import (
+    delete_live_schedule_item_from_pending_revision,
+    sync_live_schedule_item_to_pending_revision,
+    translate_revision_object_id,
+)
 from .models import ScheduleItem
 from .serializers import ScheduleItemSerializer, ScheduleItemCreateSerializer
 
@@ -50,7 +54,8 @@ class ScheduleListCreateView(generics.ListCreateAPIView):
         event = self.get_event()
         if event.organizer != self.request.user:
             raise PermissionDenied("Only the event organizer can add schedule items.")
-        serializer.save(event=event)
+        schedule_item = serializer.save(event=event)
+        sync_live_schedule_item_to_pending_revision(schedule_item)
 
 
 class ScheduleItemDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -99,3 +104,13 @@ class ScheduleItemDetailView(generics.RetrieveUpdateDestroyAPIView):
             is_admin = request.user.is_staff or getattr(request.user, "role", None) == "admin"
             if obj.event.organizer != request.user and not is_admin:
                 raise PermissionDenied("Only the event organizer can modify schedule items.")
+
+    def perform_update(self, serializer):
+        schedule_item = serializer.save()
+        sync_live_schedule_item_to_pending_revision(schedule_item)
+
+    def perform_destroy(self, instance):
+        event = instance.event
+        schedule_item_id = instance.id
+        instance.delete()
+        delete_live_schedule_item_from_pending_revision(event, schedule_item_id)

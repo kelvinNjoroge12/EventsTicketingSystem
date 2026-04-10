@@ -66,10 +66,15 @@ const formatMoney = (value) => `KES ${(Number(value) || 0).toLocaleString()}`;
 const getQuickEditErrorMessage = (err) => {
   const response = err?.response;
   const startTimeError = response?.start_time;
+  const endTimeError = response?.end_time;
   const timeMessage = Array.isArray(startTimeError) ? startTimeError[0] : startTimeError;
+  const endTimeMessage = Array.isArray(endTimeError) ? endTimeError[0] : endTimeError;
 
   if (timeMessage && /wrong format|hh:mm/i.test(String(timeMessage))) {
     return 'Please use a valid start time.';
+  }
+  if (endTimeMessage && /wrong format|hh:mm/i.test(String(endTimeMessage))) {
+    return 'Please use a valid end time.';
   }
 
   return err?.message || 'Failed to update event';
@@ -116,7 +121,9 @@ const OrganizerEventDetail = ({
   const detail = eventDetail || event;
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
-  const [savingQuickEdit, setSavingQuickEdit] = useState(false);
+  const [isSavingReviewEdit, setIsSavingReviewEdit] = useState(false);
+  const [isSavingLiveDetails, setIsSavingLiveDetails] = useState(false);
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const queryClient = useQueryClient();
   // Queries and Mutations for extracted tabs have been moved to their respective components.
@@ -126,6 +133,8 @@ const OrganizerEventDetail = ({
     description: detail?.description || '',
     date: detail?.startDate || detail?.date || '',
     time: normalizeTimeInput(detail?.startTime || detail?.start_time || detail?.time) || '',
+    endDate: detail?.endDate || '',
+    endTime: normalizeTimeInput(detail?.endTime || detail?.end_time) || '',
     location: detail?.venueName || detail?.location || '',
     address: detail?.address || '',
     theme_color: detail?.themeColor || detail?.theme_color || '#02338D',
@@ -141,6 +150,8 @@ const OrganizerEventDetail = ({
       description: detail.description || '',
       date: detail.startDate || detail.date || '',
       time: normalizeTimeInput(detail.startTime || detail.start_time || detail.time) || '',
+      endDate: detail.endDate || '',
+      endTime: normalizeTimeInput(detail.endTime || detail.end_time) || '',
       location: detail.venueName || detail.location || '',
       address: detail.address || '',
       theme_color: detail.themeColor || detail.theme_color || '#02338D',
@@ -204,31 +215,81 @@ const OrganizerEventDetail = ({
   const eventEndTime = detail?.endTime || '';
   const eventLocation = detail?.venueName || detail?.location || '';
   const eventImage = detail?.bannerImage || detail?.coverImage || detail?.image;
+  const workflowStatus = detail?.workflowStatus || detail?.status || status;
+  const isPublishedWorkflow = workflowStatus === 'published' || status === 'live' || status === 'upcoming';
 
   const updateQuickEditField = (field, value) => {
     setQuickEdit((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleQuickSave = async () => {
+  const refreshEventData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', detail?.slug] }),
+      queryClient.invalidateQueries({ queryKey: ['organizer_events'] }),
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail', detail?.slug] }),
+      queryClient.invalidateQueries({ queryKey: ['events', 'detail-lite', detail?.slug] }),
+    ]);
+    if (onRefreshEvent) onRefreshEvent();
+  };
+
+  const handleReviewSave = async () => {
     if (!detail?.slug) return;
-    setSavingQuickEdit(true);
+    setIsSavingReviewEdit(true);
     try {
       await api.patch(`/api/events/${detail.slug}/edit/`, {
         title: quickEdit.title,
         description: quickEdit.description,
-        start_date: quickEdit.date,
-        start_time: normalizeTimeInput(quickEdit.time),
-        venue_name: quickEdit.location,
-        venue_address: quickEdit.address,
-        theme_color: quickEdit.theme_color,
-        accent_color: quickEdit.accent_color,
       });
-      toast.success('Event updated');
-      if (onRefreshEvent) onRefreshEvent();
+
+      if (isPublishedWorkflow) {
+        await api.patch(`/api/events/${detail.slug}/publish/`, {});
+        toast.success('Title and description changes were submitted for review.');
+      } else {
+        toast.success('Event details updated.');
+      }
+      await refreshEventData();
     } catch (err) {
       toast.error(getQuickEditErrorMessage(err));
     } finally {
-      setSavingQuickEdit(false);
+      setIsSavingReviewEdit(false);
+    }
+  };
+
+  const handleLiveDetailsSave = async () => {
+    if (!detail?.slug) return;
+    setIsSavingLiveDetails(true);
+    try {
+      await api.patch(`/api/events/${detail.slug}/live-settings/`, {
+        start_date: quickEdit.date,
+        start_time: normalizeTimeInput(quickEdit.time),
+        end_date: quickEdit.endDate || null,
+        end_time: normalizeTimeInput(quickEdit.endTime) || null,
+        venue_name: quickEdit.location,
+        venue_address: quickEdit.address,
+      });
+      toast.success('Live event details updated.');
+      await refreshEventData();
+    } catch (err) {
+      toast.error(getQuickEditErrorMessage(err));
+    } finally {
+      setIsSavingLiveDetails(false);
+    }
+  };
+
+  const handleBrandingSave = async () => {
+    if (!detail?.slug) return;
+    setIsSavingBranding(true);
+    try {
+      await api.patch(`/api/events/${detail.slug}/live-settings/`, {
+        theme_color: quickEdit.theme_color,
+        accent_color: quickEdit.accent_color,
+      });
+      toast.success('Event branding updated.');
+      await refreshEventData();
+    } catch (err) {
+      toast.error(getQuickEditErrorMessage(err));
+    } finally {
+      setIsSavingBranding(false);
     }
   };
 
@@ -741,7 +802,52 @@ const OrganizerEventDetail = ({
         <TabsContent value="edit" className="space-y-4 lg:space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Quick Edit</CardTitle>
+              <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Live Event Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input type="date" value={quickEdit.date} onChange={(e) => updateQuickEditField('date', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Start Time</Label>
+                  <Input type="time" value={quickEdit.time} onChange={(e) => updateQuickEditField('time', e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input type="date" value={quickEdit.endDate} onChange={(e) => updateQuickEditField('endDate', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Time</Label>
+                  <Input type="time" value={quickEdit.endTime} onChange={(e) => updateQuickEditField('endTime', e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input value={quickEdit.location} onChange={(e) => updateQuickEditField('location', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Address</Label>
+                <Input value={quickEdit.address} onChange={(e) => updateQuickEditField('address', e.target.value)} />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={onEditEvent}>Open Full Editor</Button>
+                <Button className="bg-[#02338D] hover:bg-[#022A78]" onClick={handleLiveDetailsSave} disabled={isSavingLiveDetails}>
+                  {isSavingLiveDetails ? 'Saving...' : 'Save Live Details'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base lg:text-lg font-bold text-[#0F172A]">Review Required Changes</CardTitle>
+              <p className="text-sm text-gray-500">
+                Updating the event name or description creates a revision and submits it for admin review when the event is already live.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -759,28 +865,10 @@ const OrganizerEventDetail = ({
                   editorClassName="min-h-[220px]"
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input type="date" value={quickEdit.date} onChange={(e) => updateQuickEditField('date', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Time</Label>
-                  <Input type="time" value={quickEdit.time} onChange={(e) => updateQuickEditField('time', e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Location</Label>
-                <Input value={quickEdit.location} onChange={(e) => updateQuickEditField('location', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Address</Label>
-                <Input value={quickEdit.address} onChange={(e) => updateQuickEditField('address', e.target.value)} />
-              </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={onEditEvent}>Open Full Editor</Button>
-                <Button className="bg-[#02338D] hover:bg-[#022A78]" onClick={handleQuickSave} disabled={savingQuickEdit}>
-                  {savingQuickEdit ? 'Saving...' : 'Save Changes'}
+                <Button className="bg-[#02338D] hover:bg-[#022A78]" onClick={handleReviewSave} disabled={isSavingReviewEdit}>
+                  {isSavingReviewEdit ? 'Submitting...' : (isPublishedWorkflow ? 'Submit For Review' : 'Save Changes')}
                 </Button>
               </div>
             </CardContent>
@@ -859,8 +947,8 @@ const OrganizerEventDetail = ({
               </div>
 
               <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100">
-                <Button className="bg-[#02338D] hover:bg-[#022A78]" onClick={handleQuickSave} disabled={savingQuickEdit}>
-                  {savingQuickEdit ? 'Saving...' : 'Save Theme'}
+                <Button className="bg-[#02338D] hover:bg-[#022A78]" onClick={handleBrandingSave} disabled={isSavingBranding}>
+                  {isSavingBranding ? 'Saving...' : 'Save Theme'}
                 </Button>
               </div>
             </CardContent>

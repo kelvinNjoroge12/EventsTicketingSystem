@@ -117,6 +117,7 @@ const CreateEventPage = ({
     speakers: [],
     sponsors: [],
     schedule: [],
+    promoCodes: [],
     mcId: null,
   });
   const pageTitle = slug ? 'Edit Event' : 'Create Event';
@@ -223,11 +224,14 @@ const CreateEventPage = ({
             mcPhoto: null,
             mcPhotoPreview: eventData.mc?.avatar || '',
             schedule: (eventData.schedule || []).map(item => ({
-              id: item.id,
-              title: item.title || '',
-              time: item.time || '',
-              description: item.description || ''
-            })),
+                id: item.id,
+                title: item.title || '',
+                startTime: normalizeTimeInput(item.start_time || item.time || '') || '',
+                endTime: normalizeTimeInput(item.end_time || '') || '',
+                location: item.location || '',
+                speaker: item.speaker || '',
+                description: item.description || ''
+              })),
             sponsors: (eventData.sponsors || []).map(s => ({
               id: s.id,
               name: s.name || '',
@@ -246,6 +250,16 @@ const CreateEventPage = ({
                 registrationCategoryId: t.registration_category || null,
               }))
               : [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
+            promoCodes: (eventData.promoCodes || []).map((promo) => ({
+              id: promo.id || null,
+              code: promo.code || '',
+              discount_type: promo.discountType || 'percent',
+              discount_value: promo.discountValue ?? '',
+              usage_limit: promo.usageLimit ?? '',
+              expiry: promo.expiry ? String(promo.expiry).slice(0, 10) : '',
+              minimum_order_amount: promo.minimumOrderAmount ?? 0,
+              is_active: promo.isActive ?? true,
+            })),
             registrationCategories,
             refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
             customRefundPolicy: eventData.customRefundPolicy || '',
@@ -258,6 +272,7 @@ const CreateEventPage = ({
             speakers: (eventData.speakers || []).map(s => s.id).filter(Boolean),
             sponsors: (eventData.sponsors || []).map(s => s.id).filter(Boolean),
             schedule: (eventData.schedule || []).map(item => item.id).filter(Boolean),
+            promoCodes: (eventData.promoCodes || []).map((promo) => promo.id).filter(Boolean),
             mcId: eventData.mc?.id || null,
           });
         }
@@ -300,6 +315,7 @@ const CreateEventPage = ({
     schedule: [],
     sponsors: [],
     tickets: [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
+    promoCodes: [],
     registrationCategories: createDefaultRegistrationCategories(),
     refundPolicy: 'No Refund',
     customRefundPolicy: '',
@@ -542,6 +558,9 @@ const CreateEventPage = ({
     };
 
     const tasks = [];
+    const normalizeSpeakerKey = (value) => String(value || '').trim().toLowerCase();
+    const looksLikeUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+    const speakerIdByName = new Map();
 
     // Registration categories + questions
     let registrationMap = new Map();
@@ -612,7 +631,7 @@ const CreateEventPage = ({
       });
     }
 
-    // Helper function for Speakers, MC, and Sponsors to dry up repetitive logic!
+    // Helper function for MC and Sponsors to dry up repetitive logic!
     const syncResource = (resource, endpoint, idKey, stringFields, fileFieldObj) => {
       const getPayloadData = () => {
         const data = {};
@@ -643,33 +662,91 @@ const CreateEventPage = ({
 
     // Speakers
     if (formData.speakers.length > 0) {
-      formData.speakers.forEach((speaker, idx) => {
-        if (!speaker.name) return;
-        syncResource(
-          speaker, 'speakers', 'id',
-          { name: speaker.name, title: speaker.title || '', organization: speaker.organization || '', bio: speaker.bio || '', is_mc: 'false', sort_order: String(idx) },
-          { fileKey: 'avatar', fileVal: speaker.photo }
-        );
-      });
+      for (const [idx, speaker] of formData.speakers.entries()) {
+        if (!speaker.name) continue;
+        const payloadData = {
+          name: speaker.name,
+          title: speaker.title || '',
+          organization: speaker.organization || '',
+          bio: speaker.bio || '',
+          is_mc: 'false',
+          sort_order: String(idx),
+        };
+
+        try {
+          let savedSpeaker;
+          if (speaker.id) {
+            if (speaker.photo) {
+              const fd = new FormData();
+              Object.entries(payloadData).forEach(([key, value]) => fd.append(key, value));
+              fd.append('avatar', speaker.photo);
+              savedSpeaker = await api.patchForm(`/api/events/${eventSlug}/speakers/${speaker.id}/`, fd);
+            } else {
+              savedSpeaker = await api.patch(`/api/events/${eventSlug}/speakers/${speaker.id}/`, payloadData);
+            }
+          } else {
+            const fd = new FormData();
+            Object.entries(payloadData).forEach(([key, value]) => fd.append(key, value));
+            if (speaker.photo) fd.append('avatar', speaker.photo);
+            savedSpeaker = await api.postForm(`/api/events/${eventSlug}/speakers/`, fd);
+          }
+
+          const normalizedName = normalizeSpeakerKey(savedSpeaker?.name || speaker.name);
+          const savedSpeakerId = savedSpeaker?.id || speaker.id;
+          if (normalizedName && savedSpeakerId) {
+            speakerIdByName.set(normalizedName, savedSpeakerId);
+          }
+        } catch (err) {
+          console.warn('Speakers sync failed:', err);
+        }
+      }
     }
 
     // MC
     if (formData.hasMC && formData.mcName) {
-      syncResource(
-        { id: initialSubresources.mcId }, 'speakers', 'id',
-        { name: formData.mcName, bio: formData.mcBio || '', is_mc: 'true', sort_order: '0' },
-        { fileKey: 'avatar', fileVal: formData.mcPhoto }
-      );
+      try {
+        const payloadData = { name: formData.mcName, bio: formData.mcBio || '', is_mc: 'true', sort_order: '0' };
+        let savedMc;
+        if (initialSubresources.mcId) {
+          if (formData.mcPhoto) {
+            const fd = new FormData();
+            Object.entries(payloadData).forEach(([key, value]) => fd.append(key, value));
+            fd.append('avatar', formData.mcPhoto);
+            savedMc = await api.patchForm(`/api/events/${eventSlug}/speakers/${initialSubresources.mcId}/`, fd);
+          } else {
+            savedMc = await api.patch(`/api/events/${eventSlug}/speakers/${initialSubresources.mcId}/`, payloadData);
+          }
+        } else {
+          const fd = new FormData();
+          Object.entries(payloadData).forEach(([key, value]) => fd.append(key, value));
+          if (formData.mcPhoto) fd.append('avatar', formData.mcPhoto);
+          savedMc = await api.postForm(`/api/events/${eventSlug}/speakers/`, fd);
+        }
+        const normalizedName = normalizeSpeakerKey(savedMc?.name || formData.mcName);
+        const savedMcId = savedMc?.id || initialSubresources.mcId;
+        if (normalizedName && savedMcId) {
+          speakerIdByName.set(normalizedName, savedMcId);
+        }
+      } catch (err) {
+        console.warn('MC sync failed:', err);
+      }
     }
 
     // Schedule items
     if (formData.schedule.length > 0) {
       formData.schedule.forEach((item, idx) => {
         if (!item.title) return;
+        const normalizedSpeaker = normalizeSpeakerKey(item.speaker);
+        const resolvedSpeakerId = looksLikeUuid(item.speaker)
+          ? item.speaker
+          : speakerIdByName.get(normalizedSpeaker) || null;
         const payloadData = {
           title: item.title,
           description: item.description || '',
-          start_time: normalizeTimeInput(item.time) || '00:00',
+          ...(resolvedSpeakerId ? { speaker: resolvedSpeakerId } : {}),
+          start_time: normalizeTimeInput(item.startTime || item.time) || '00:00',
+          end_time: normalizeTimeInput(item.endTime) || null,
+          location: item.location || '',
           sort_order: idx,
         };
         if (item.id) {
@@ -678,6 +755,38 @@ const CreateEventPage = ({
           tasks.push(api.post(`/api/events/${eventSlug}/schedule/`, payloadData).catch(err => console.warn('Schedule creation failed:', err)));
         }
       });
+    }
+
+    // Promo codes
+    if (Array.isArray(formData.promoCodes) && formData.promoCodes.length > 0) {
+      formData.promoCodes.forEach((promo) => {
+        if (!promo.code || promo.discount_value === '' || promo.usage_limit === '' || !promo.expiry) return;
+        const payloadData = {
+          code: promo.code.toUpperCase().replace(/\s+/g, ''),
+          discount_type: promo.discount_type || 'percent',
+          discount_value: Number(promo.discount_value || 0),
+          usage_limit: Number(promo.usage_limit || 0),
+          expiry: new Date(promo.expiry).toISOString(),
+          is_active: promo.is_active ?? true,
+          minimum_order_amount: Number(promo.minimum_order_amount || 0),
+          applicable_ticket_types: [],
+        };
+
+        if (promo.id) {
+          tasks.push(api.patch(`/api/events/${eventSlug}/promo-codes/${promo.id}/`, payloadData).catch(err => console.warn('Promo code update failed:', err)));
+        } else {
+          tasks.push(api.post(`/api/events/${eventSlug}/promo-codes/`, payloadData).catch(err => console.warn('Promo code creation failed:', err)));
+        }
+      });
+    }
+
+    if (slug && Array.isArray(initialSubresources.promoCodes) && initialSubresources.promoCodes.length > 0) {
+      const currentPromoIds = new Set((formData.promoCodes || []).map((promo) => promo.id).filter(Boolean));
+      initialSubresources.promoCodes
+        .filter((promoId) => !currentPromoIds.has(promoId))
+        .forEach((promoId) => {
+          tasks.push(api.delete(`/api/events/${eventSlug}/promo-codes/${promoId}/`).catch(err => console.warn('Promo code deletion failed:', err)));
+        });
     }
 
     // Sponsors
@@ -908,17 +1017,20 @@ const CreateEventPage = ({
                     <h3 className="text-sm font-bold uppercase tracking-wider text-[#94A3B8] mb-4 flex items-center gap-2">
                       <Clock className="w-4 h-4" /> Schedule
                     </h3>
-                    <div className="space-y-3">
-                      {formData.schedule.map((item, i) => (
-                        <div key={i} className="flex items-start gap-4">
-                          <div className="w-1.5 h-1.5 rounded-full mt-2" style={{ backgroundColor: formData.themeColor }} />
-                          <div>
-                            <p className="text-xs font-bold" style={{ color: formData.themeColor }}>{item.time}</p>
-                            <p className="text-sm font-medium text-[#0F172A]">{item.title}</p>
+                      <div className="space-y-3">
+                        {formData.schedule.map((item, i) => (
+                          <div key={i} className="flex items-start gap-4">
+                            <div className="w-1.5 h-1.5 rounded-full mt-2" style={{ backgroundColor: formData.themeColor }} />
+                            <div>
+                              <p className="text-xs font-bold" style={{ color: formData.themeColor }}>
+                                {[item.startTime, item.endTime].filter(Boolean).join(' - ')}
+                              </p>
+                              <p className="text-sm font-medium text-[#0F172A]">{item.title}</p>
+                              {item.location && <p className="text-[11px] text-[#64748B]">{item.location}</p>}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
                   </div>
                 )}
               </div>

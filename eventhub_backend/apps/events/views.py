@@ -32,6 +32,7 @@ from .serializers import (
     EventCreateSerializer,
     EventDetailSerializer,
     EventListSerializer,
+    EventLiveSettingsSerializer,
     EventReviewQueueSerializer,
     EventReviewRejectSerializer,
     EventStatusSerializer,
@@ -332,6 +333,46 @@ class EventDeleteView(generics.DestroyAPIView):
         instance.status = "cancelled"
         instance.save(update_fields=["status"])
         _bump_cache_version()
+
+
+class EventLiveSettingsView(generics.UpdateAPIView):
+    serializer_class = EventLiveSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerRole]
+    lookup_field = "slug"
+
+    def get_queryset(self):
+        if user_requires_assigned_event_scope(self.request.user):
+            return Event.objects.none()
+        return apply_event_schema_compat(Event.objects.filter(organizer=self.request.user))
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_value = self.kwargs.get(self.lookup_field)
+        event = queryset.filter(slug=lookup_value).first()
+        if event is None:
+            raise Http404("No Event matches the given query.")
+        self.check_object_permissions(self.request, event)
+        return event
+
+    def _sync_pending_revision(self, event, payload, partial):
+        pending_revision = get_editable_event(event, create_if_missing=False)
+        if pending_revision.id == event.id:
+            return
+
+        serializer = self.get_serializer(pending_revision, data=payload, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+    def update(self, request, *args, **kwargs):
+        event = self.get_object()
+        partial = kwargs.pop("partial", False)
+        serializer = self.get_serializer(event, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        self._sync_pending_revision(event, request.data, partial)
+        _bump_cache_version()
+        detail_serializer = EventDetailSerializer(event, context=self.get_serializer_context())
+        return Response(detail_serializer.data)
 
 
 class EventPublishView(generics.UpdateAPIView):

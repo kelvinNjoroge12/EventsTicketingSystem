@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Mail, CheckCircle } from 'lucide-react';
+import { Mail, CheckCircle, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,16 @@ const WaitlistTab = ({ slug, waitlistEnabled }) => {
     onError: (err) => toast.error(err?.message || 'Failed to remove entry.')
   });
 
+  const toggleWaitlistMutation = useMutation({
+    mutationFn: async (enabled) => api.patch(`/api/events/${slug}/live-settings/`, { enable_waitlist: enabled }),
+    onSuccess: (_, enabled) => {
+      toast.success(enabled ? 'Waitlist enabled.' : 'Waitlist disabled.');
+      queryClient.invalidateQueries({ queryKey: ['organizer_event_detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to update waitlist settings.')
+  });
+
   return (
     <Card>
       <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -46,6 +56,16 @@ const WaitlistTab = ({ slug, waitlistEnabled }) => {
           <p className="text-sm text-gray-500 mt-1">Guests waiting for tickets to become available.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => toggleWaitlistMutation.mutate(!waitlistEnabled)}
+            disabled={toggleWaitlistMutation.isPending}
+          >
+            {waitlistEnabled ? <ToggleRight className="w-4 h-4 mr-1.5" /> : <ToggleLeft className="w-4 h-4 mr-1.5" />}
+            {toggleWaitlistMutation.isPending ? 'Saving...' : (waitlistEnabled ? 'Disable' : 'Enable')}
+          </Button>
           <Badge variant="outline" className="text-xs">
             {waitlistUsers.length} queued
           </Badge>
