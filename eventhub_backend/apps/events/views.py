@@ -21,7 +21,7 @@ from apps.accounts.permissions import IsAdmin, IsOrganizerRole
 from apps.schedules.models import ScheduleItem
 from apps.speakers.models import Speaker
 from apps.sponsors.models import Sponsor
-from apps.tickets.models import PromoCode, TicketType
+from apps.tickets.models import PromoCode, RegistrationCategory, RegistrationQuestion, TicketType
 from .cache_utils import bump_cache_version, get_cache_version
 from .category_catalog import CURATED_CATEGORY_SLUGS, ensure_curated_categories
 from .compat import apply_event_schema_compat, has_optional_event_field
@@ -56,19 +56,47 @@ def _with_list_optimizations(queryset):
     ))
 
 
-def _with_detail_optimizations(queryset, exclude_fields: set[str] | None = None):
+def _with_detail_optimizations(
+    queryset,
+    exclude_fields: set[str] | None = None,
+    *,
+    include_management_data: bool = False,
+):
     exclude_fields = exclude_fields or set()
+    ticket_queryset = TicketType.objects.select_related("registration_category").order_by("sort_order", "price")
+    promo_queryset = PromoCode.objects.order_by("created_at", "code")
+    registration_queryset = RegistrationCategory.objects.prefetch_related(
+        Prefetch(
+            "questions",
+            queryset=RegistrationQuestion.objects.order_by("sort_order", "created_at"),
+        )
+    ).order_by("sort_order")
+
+    if not include_management_data:
+        ticket_queryset = ticket_queryset.filter(is_active=True)
+        promo_queryset = promo_queryset.filter(is_active=True)
+        registration_queryset = registration_queryset.filter(is_active=True)
+
     prefetches = [
         "tags",
         Prefetch(
             "ticket_types",
-            queryset=TicketType.objects.filter(is_active=True).order_by("sort_order", "price"),
-            to_attr="prefetched_ticket_types_active",
+            queryset=ticket_queryset,
+            to_attr="prefetched_ticket_types_all" if include_management_data else "prefetched_ticket_types_active",
         ),
         Prefetch(
             "promo_codes",
-            queryset=PromoCode.objects.filter(is_active=True),
-            to_attr="prefetched_promo_codes_active",
+            queryset=promo_queryset,
+            to_attr="prefetched_promo_codes_all" if include_management_data else "prefetched_promo_codes_active",
+        ),
+        Prefetch(
+            "registration_categories",
+            queryset=registration_queryset,
+            to_attr=(
+                "prefetched_registration_categories_all"
+                if include_management_data
+                else "prefetched_registration_categories_active"
+            ),
         ),
     ]
 
@@ -98,7 +126,7 @@ def _with_detail_optimizations(queryset, exclude_fields: set[str] | None = None)
         )
 
     return apply_event_schema_compat(
-        queryset.select_related("category", "organizer", "organizer__organizer_profile")
+        queryset.select_related("category", "organizer", "organizer__organizer_profile", "reviewed_by")
         .prefetch_related(*prefetches)
         .annotate(
             speakers_count=models.Count("speakers", filter=Q(speakers__is_mc=False), distinct=True),
@@ -195,7 +223,18 @@ class EventDetailView(generics.RetrieveAPIView):
                 status_filter |= Q(organizer=user, status__in=["draft", "pending", "rejected"])
             base_queryset = Event.objects.filter(status_filter).distinct()
         exclude_fields = self._get_exclude_fields()
-        return _with_detail_optimizations(base_queryset, exclude_fields=exclude_fields)
+        include_management_data = bool(
+            user.is_authenticated
+            and (
+                _is_admin_user(user)
+                or getattr(user, "role", None) == "organizer"
+            )
+        )
+        return _with_detail_optimizations(
+            base_queryset,
+            exclude_fields=exclude_fields,
+            include_management_data=include_management_data,
+        )
 
     def _get_exclude_fields(self) -> set[str]:
         raw = self.request.query_params.get("exclude", "")
@@ -286,7 +325,11 @@ class EventUpdateView(generics.RetrieveUpdateAPIView):
     def retrieve(self, request, *args, **kwargs):
         requested_event = self._get_requested_event()
         editable_event = get_editable_event(requested_event, create_if_missing=False)
-        serializer = EventDetailSerializer(editable_event, context=self.get_serializer_context())
+        optimized_event = _with_detail_optimizations(
+            Event.objects.filter(pk=editable_event.pk),
+            include_management_data=True,
+        ).first() or editable_event
+        serializer = EventDetailSerializer(optimized_event, context=self.get_serializer_context())
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):

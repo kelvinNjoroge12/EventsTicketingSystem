@@ -289,6 +289,19 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
             return False
         return bool(user.is_staff or getattr(user, "role", None) == "admin" or obj.organizer_id == user.id)
 
+    def _can_manage_event(self, obj: Event) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_staff
+                or getattr(user, "role", None) == "admin"
+                or obj.organizer_id == user.id
+            )
+        )
+
     class Meta:
         model = Event
         fields = [
@@ -376,8 +389,14 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
         return _safe_media_url(getattr(obj, "cover_image", None), self.context.get("request"))
 
     def get_tickets(self, obj: Event):
-        prefetched = getattr(obj, "prefetched_ticket_types_active", None)
-        qs = prefetched if prefetched is not None else obj.ticket_types.filter(is_active=True).order_by("sort_order", "price")
+        can_manage = self._can_manage_event(obj)
+        prefetched_attr = "prefetched_ticket_types_all" if can_manage else "prefetched_ticket_types_active"
+        prefetched = getattr(obj, prefetched_attr, None)
+        qs = prefetched if prefetched is not None else (
+            obj.ticket_types.select_related("registration_category").order_by("sort_order", "price")
+            if can_manage
+            else obj.ticket_types.filter(is_active=True).select_related("registration_category").order_by("sort_order", "price")
+        )
         return [
             {
                 "id": t.id,
@@ -403,22 +422,13 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
 
     def get_promo_codes(self, obj: Event):
         # For frontend convenience; validation will still happen server-side
-        request = self.context.get("request")
-        user = getattr(request, "user", None)
-        can_manage = bool(
-            user
-            and user.is_authenticated
-            and (
-                user.is_staff
-                or getattr(user, "role", None) == "admin"
-                or obj.organizer_id == user.id
-            )
-        )
-        prefetched = getattr(obj, "prefetched_promo_codes_active", None)
+        can_manage = self._can_manage_event(obj)
+        prefetched_attr = "prefetched_promo_codes_all" if can_manage else "prefetched_promo_codes_active"
+        prefetched = getattr(obj, prefetched_attr, None)
         if can_manage:
-            promo_codes = obj.promo_codes.all()
+            promo_codes = prefetched if prefetched is not None else obj.promo_codes.all().order_by("created_at", "code")
         else:
-            promo_codes = prefetched if prefetched is not None else obj.promo_codes.filter(is_active=True)
+            promo_codes = prefetched if prefetched is not None else obj.promo_codes.filter(is_active=True).order_by("created_at", "code")
         return [
             {
                 "id": p.id,
@@ -465,7 +475,19 @@ class EventDetailSerializer(EventTimeStateMixin, serializers.ModelSerializer):
         return SponsorSerializer(qs, many=True, context=self.context).data
 
     def get_registration_categories(self, obj: Event):
-        qs = obj.registration_categories.filter(is_active=True).prefetch_related("questions").order_by("sort_order")
+        can_manage = self._can_manage_event(obj)
+        prefetched_attr = (
+            "prefetched_registration_categories_all"
+            if can_manage
+            else "prefetched_registration_categories_active"
+        )
+        prefetched = getattr(obj, prefetched_attr, None)
+        if prefetched is not None:
+            qs = prefetched
+        elif can_manage:
+            qs = obj.registration_categories.prefetch_related("questions").order_by("sort_order")
+        else:
+            qs = obj.registration_categories.filter(is_active=True).prefetch_related("questions").order_by("sort_order")
         return RegistrationCategorySerializer(qs, many=True).data
 
 

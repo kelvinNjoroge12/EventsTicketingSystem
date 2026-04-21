@@ -17,7 +17,7 @@ const emptySponsorForm = {
   logoPreview: '',
 };
 
-const SponsorsTab = ({ slug }) => {
+const SponsorsTab = ({ slug, eventDetail = null }) => {
   const queryClient = useQueryClient();
   const [showSponsorModal, setShowSponsorModal] = useState(false);
   const [sponsorForm, setSponsorForm] = useState(emptySponsorForm);
@@ -29,6 +29,17 @@ const SponsorsTab = ({ slug }) => {
       return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
     },
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      if (!Array.isArray(eventDetail?.sponsors) || eventDetail.sponsors.length === 0) {
+        return undefined;
+      }
+      return eventDetail.sponsors.map((sponsor, index) => ({
+        ...sponsor,
+        logo_url: sponsor.logo_url || sponsor.logo || '',
+        sort_order: sponsor.sort_order ?? index,
+      }));
+    },
   });
 
   const refreshSponsorQueries = () => {

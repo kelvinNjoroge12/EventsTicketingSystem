@@ -23,7 +23,7 @@ const emptySpeakerForm = {
   photoPreview: '',
 };
 
-const SpeakersTab = ({ slug }) => {
+const SpeakersTab = ({ slug, eventDetail = null }) => {
   const queryClient = useQueryClient();
   const [showSpeakerModal, setShowSpeakerModal] = useState(false);
   const [speakerForm, setSpeakerForm] = useState(emptySpeakerForm);
@@ -35,6 +35,19 @@ const SpeakersTab = ({ slug }) => {
       return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
     },
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      const speakers = Array.isArray(eventDetail?.speakers) ? eventDetail.speakers : [];
+      const mc = eventDetail?.mc ? [eventDetail.mc] : [];
+      const combined = [...speakers, ...mc]
+        .filter((speaker) => speaker && (speaker.id || speaker.name))
+        .map((speaker, index) => ({
+          ...speaker,
+          avatar_url: speaker.avatar_url || speaker.avatar || '',
+          sort_order: speaker.sort_order ?? index,
+        }));
+      return combined.length > 0 ? combined : undefined;
+    },
   });
 
   const resetSpeakerForm = () => {

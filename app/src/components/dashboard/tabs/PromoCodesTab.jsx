@@ -80,7 +80,7 @@ const getPromoErrorMessage = (err) => {
   return err?.message || 'Failed to create promo code.';
 };
 
-const PromoCodesTab = ({ slug }) => {
+const PromoCodesTab = ({ slug, eventDetail = null }) => {
   const queryClient = useQueryClient();
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -96,13 +96,30 @@ const PromoCodesTab = ({ slug }) => {
     is_active: true
   });
 
-  const { data: promoCodesData, isLoading: isPromoCodesLoading } = useQuery({
+  const { data: promoCodesData = [], isLoading: isPromoCodesLoading } = useQuery({
     queryKey: ['promo_codes', slug],
     queryFn: async () => {
       const response = await api.get(`/api/events/${slug}/promo-codes/`);
       return Array.isArray(response?.results) ? response.results : (Array.isArray(response) ? response : []);
     },
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      const promoCodes = Array.isArray(eventDetail?.promoCodes)
+        ? eventDetail.promoCodes
+        : Array.isArray(eventDetail?.promo_codes)
+          ? eventDetail.promo_codes
+          : null;
+      if (!promoCodes) return undefined;
+      return promoCodes.map((promo) => ({
+        ...promo,
+        discount_type: promo.discount_type || promo.discountType || 'percent',
+        discount_value: promo.discount_value ?? promo.discountValue ?? 0,
+        usage_limit: promo.usage_limit ?? promo.usageLimit ?? null,
+        is_active: promo.is_active ?? promo.isActive ?? true,
+        minimum_order_amount: promo.minimum_order_amount ?? promo.minimumOrderAmount ?? 0,
+      }));
+    },
   });
 
   const createPromoMutation = useMutation({

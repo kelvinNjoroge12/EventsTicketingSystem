@@ -23,7 +23,10 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           'vendor': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-          'ui': ['lucide-react', 'framer-motion', 'recharts'],
+          'icons': ['lucide-react'],
+          'motion': ['framer-motion'],
+          'charts': ['recharts'],
+          'payments': ['@stripe/react-stripe-js', '@stripe/stripe-js'],
           'dashboard': ['./src/pages/OrganizerDashboardPage.jsx'],
         }
       }

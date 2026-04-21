@@ -18,6 +18,7 @@ export const eventQueryKeys = {
   listInfinite: (params = {}) => ['events', 'list-infinite', normalizeParams(params)],
   detail: (slug) => ['events', 'detail', slug],
   detailLite: (slug) => ['events', 'detail-lite', slug],
+  editable: (slug) => ['events', 'editable', slug],
   related: (slug) => ['events', 'related', slug],
   speakers: (slug) => ['events', 'speakers', slug],
   schedule: (slug) => ['events', 'schedule', slug],

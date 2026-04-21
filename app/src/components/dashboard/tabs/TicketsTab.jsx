@@ -86,12 +86,28 @@ const TicketsTab = ({ slug, eventDetail }) => {
       return Array.isArray(response?.results) ? response.results : (Array.isArray(response) ? response : []);
     },
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      if (!Array.isArray(eventDetail?.tickets) || eventDetail.tickets.length === 0) {
+        return undefined;
+      }
+      return eventDetail.tickets;
+    },
   });
 
   const { data: registrationSetupData, isLoading: isRegistrationLoading } = useQuery({
     queryKey: ['registration_setup', slug],
     queryFn: async () => api.get(`/api/events/${slug}/registration/setup/`),
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      const categories = Array.isArray(eventDetail?.registrationCategories)
+        ? eventDetail.registrationCategories
+        : Array.isArray(eventDetail?.registration_categories)
+          ? eventDetail.registration_categories
+          : null;
+      return categories ? { categories } : undefined;
+    },
   });
 
   const { data: promoCodesData = [], isLoading: isPromoCodesLoading } = useQuery({
@@ -101,6 +117,12 @@ const TicketsTab = ({ slug, eventDetail }) => {
       return Array.isArray(response?.results) ? response.results : (Array.isArray(response) ? response : []);
     },
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      if (Array.isArray(eventDetail?.promoCodes)) return eventDetail.promoCodes;
+      if (Array.isArray(eventDetail?.promo_codes)) return eventDetail.promo_codes;
+      return undefined;
+    },
   });
 
   const initialState = useMemo(
@@ -350,10 +372,6 @@ const TicketsTab = ({ slug, eventDetail }) => {
               <Ticket className="h-5 w-5 text-[#02338D]" />
               Tickets, Registration and Checkout Setup
             </CardTitle>
-            <p className="mt-1 text-sm text-gray-500">
-              This quick edit now mirrors the original create-event ticket flow, including registration questions,
-              refund policy, waitlist, reminders, and promo codes.
-            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" onClick={handleReset} disabled={!isDirty || isSaving || isLoading}>

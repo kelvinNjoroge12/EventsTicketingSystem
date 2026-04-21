@@ -29,8 +29,9 @@ import OrganizerSettings from '../components/dashboard/Settings';
 import OrganizerAttendeesModule from '../components/dashboard/AttendeesModule';
 import CreateEventPage from './CreateEventPage';
 import { api } from '../lib/apiClient';
-import { fetchEvent, fetchPendingEventReviews } from '../lib/eventsApi';
+import { fetchEditableEvent, fetchEvent, fetchPendingEventReviews } from '../lib/eventsApi';
 import { canAccessOrganizerDashboard, isCheckinOnlyUser } from '../lib/authAccess';
+import eventQueryKeys from '../lib/eventQueryKeys';
 import { toast } from 'sonner';
 
 import ExpenseFormModal from '../components/dashboard/ExpenseFormModal';
@@ -629,6 +630,11 @@ const OrganizerDashboardPage = () => {
 
   const handleEditEvent = () => {
     if (!selectedEvent?.slug) return;
+    queryClient.prefetchQuery({
+      queryKey: eventQueryKeys.editable(selectedEvent.slug),
+      queryFn: () => fetchEditableEvent(selectedEvent.slug),
+      staleTime: 30 * 1000,
+    });
     navigate(`/edit-event/${selectedEvent.slug}`);
   };
 

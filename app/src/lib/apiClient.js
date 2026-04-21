@@ -88,6 +88,14 @@ if (API_ORIGIN && typeof document !== "undefined") {
 let isRefreshing = false;
 let refreshPromise = null;
 let sessionDefinitelyGone = false;
+const inflightSafeRequests = new Map();
+
+const buildInflightRequestKey = (path, options = {}) => JSON.stringify({
+  path,
+  method: (options.method || "GET").toUpperCase(),
+  headers: options.headers || {},
+  token: getStoredToken() || "",
+});
 
 const refreshAccessToken = async () => {
   const res = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
@@ -115,6 +123,26 @@ const refreshAccessToken = async () => {
 };
 
 async function request(path, options = {}, retry = true) {
+  const method = (options.method || "GET").toUpperCase();
+  const isSafeMethod = ["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
+  if (isSafeMethod) {
+    const inflightKey = buildInflightRequestKey(path, options);
+    const existingRequest = inflightSafeRequests.get(inflightKey);
+    if (existingRequest) {
+      return existingRequest;
+    }
+
+    const safeRequest = performRequest(path, options, retry).finally(() => {
+      inflightSafeRequests.delete(inflightKey);
+    });
+    inflightSafeRequests.set(inflightKey, safeRequest);
+    return safeRequest;
+  }
+
+  return performRequest(path, options, retry);
+}
+
+async function performRequest(path, options = {}, retry = true) {
   const url = `${API_BASE_URL}${path}`;
   const token = getStoredToken();
   const method = (options.method || "GET").toUpperCase();

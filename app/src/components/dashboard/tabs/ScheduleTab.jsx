@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { api } from '@/lib/apiClient';
 import { toast } from 'sonner';
 
-const ScheduleTab = ({ slug }) => {
+const ScheduleTab = ({ slug, eventDetail = null }) => {
   const queryClient = useQueryClient();
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
@@ -23,6 +23,13 @@ const ScheduleTab = ({ slug }) => {
       return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
     },
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      if (!Array.isArray(eventDetail?.schedule) || eventDetail.schedule.length === 0) {
+        return undefined;
+      }
+      return eventDetail.schedule;
+    },
   });
 
   const { data: speakersData = [] } = useQuery({
@@ -32,6 +39,19 @@ const ScheduleTab = ({ slug }) => {
       return Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
     },
     enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => {
+      const speakers = Array.isArray(eventDetail?.speakers) ? eventDetail.speakers : [];
+      const mc = eventDetail?.mc ? [eventDetail.mc] : [];
+      const combined = [...speakers, ...mc]
+        .filter((speaker) => speaker && (speaker.id || speaker.name))
+        .map((speaker, index) => ({
+          ...speaker,
+          avatar_url: speaker.avatar_url || speaker.avatar || '',
+          sort_order: speaker.sort_order ?? index,
+        }));
+      return combined.length > 0 ? combined : undefined;
+    },
   });
 
   const createScheduleMutation = useMutation({

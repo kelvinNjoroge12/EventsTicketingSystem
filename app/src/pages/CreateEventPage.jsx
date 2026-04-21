@@ -50,6 +50,174 @@ const getEventIdentifiers = (eventPayload, routeSlug = '') => {
   return [...new Set(rawIdentifiers.filter((value) => typeof value === 'string' && value.trim().length > 0))];
 };
 
+const createDefaultTicketDraft = () => ({
+  type: 'Standard',
+  price: 0,
+  quantity: 100,
+  description: '',
+  category: 'guest',
+});
+
+const createEmptyEventFormData = () => ({
+  title: '',
+  category: '',
+  tags: [],
+  eventType: 'public',
+  format: 'In-Person',
+  themeColor: '#02338D',
+  accentColor: '#7C3AED',
+  startDate: '',
+  startTime: '',
+  endDate: '',
+  endTime: '',
+  timezone: 'EAT',
+  venueName: '',
+  address: '',
+  city: '',
+  country: 'Kenya',
+  streamingLink: '',
+  description: '',
+  coverImage: null,
+  coverImagePreview: '',
+  speakers: [],
+  hasMC: false,
+  mcName: '',
+  mcBio: '',
+  mcPhoto: null,
+  mcPhotoPreview: '',
+  schedule: [],
+  sponsors: [],
+  tickets: [createDefaultTicketDraft()],
+  promoCodes: [],
+  registrationCategories: createDefaultRegistrationCategories(),
+  refundPolicy: 'No Refund',
+  customRefundPolicy: '',
+  enableWaitlist: false,
+  sendReminders: true,
+});
+
+const buildEventEditorState = (eventData = {}) => {
+  const baseState = createEmptyEventFormData();
+  const registrationCategoryPayload = Array.isArray(eventData.registrationCategories)
+    ? eventData.registrationCategories
+    : Array.isArray(eventData.registration_categories)
+      ? eventData.registration_categories
+      : [];
+  const tickets = Array.isArray(eventData.tickets) ? eventData.tickets : [];
+  const promoCodes = Array.isArray(eventData.promoCodes)
+    ? eventData.promoCodes
+    : Array.isArray(eventData.promo_codes)
+      ? eventData.promo_codes
+      : [];
+  const speakers = Array.isArray(eventData.speakers) ? eventData.speakers : [];
+  const schedule = Array.isArray(eventData.schedule) ? eventData.schedule : [];
+  const sponsors = Array.isArray(eventData.sponsors) ? eventData.sponsors : [];
+
+  return {
+    ...baseState,
+    title: eventData.title || '',
+    category: eventData.rawCategory || '',
+    tags: Array.isArray(eventData.tags) ? eventData.tags : [],
+    format: eventData.format === 'in_person' ? 'In-Person' : eventData.format === 'online' ? 'Online' : eventData.format === 'hybrid' ? 'Hybrid' : baseState.format,
+    themeColor: eventData.themeColor || eventData.theme_color || baseState.themeColor,
+    accentColor: eventData.accentColor || eventData.accent_color || baseState.accentColor,
+    startDate: eventData.startDate || eventData.start_date || '',
+    startTime: normalizeTimeInput(eventData.startTime || eventData.start_time) || '',
+    endDate: eventData.endDate || eventData.end_date || '',
+    endTime: normalizeTimeInput(eventData.endTime || eventData.end_time) || '',
+    timezone: eventData.timezone || baseState.timezone,
+    venueName: eventData.venueName || eventData.venue_name || '',
+    address: eventData.address || eventData.venue_address || '',
+    city: eventData.city || '',
+    country: eventData.country || baseState.country,
+    streamingLink: eventData.streamingLink || eventData.streaming_link || '',
+    description: eventData.description || '',
+    coverImagePreview: eventData.bannerImage || eventData.cover_image || eventData.coverImage || '',
+    speakers: speakers.map((speaker) => ({
+      id: speaker.id,
+      name: speaker.name || '',
+      title: speaker.title || '',
+      organization: speaker.organization || '',
+      bio: speaker.bio || '',
+      photo: null,
+      photoPreview: speaker.avatar || speaker.avatar_url || '',
+    })),
+    hasMC: !!eventData.mc,
+    mcName: eventData.mc?.name || '',
+    mcBio: eventData.mc?.bio || '',
+    mcPhotoPreview: eventData.mc?.avatar || eventData.mc?.avatar_url || '',
+    schedule: schedule.map((item) => ({
+      id: item.id,
+      title: item.title || '',
+      startTime: normalizeTimeInput(item.start_time || item.time || '') || '',
+      endTime: normalizeTimeInput(item.end_time || '') || '',
+      location: item.location || '',
+      speaker: item.speaker || '',
+      description: item.description || '',
+    })),
+    sponsors: sponsors.map((sponsor) => ({
+      id: sponsor.id,
+      name: sponsor.name || '',
+      website: sponsor.website || '',
+      logo: null,
+      logoPreview: sponsor.logo || sponsor.logo_url || '',
+    })),
+    tickets: tickets.length > 0
+      ? tickets.map((ticket) => mapApiTicketToEditorTicket(ticket))
+      : [createDefaultTicketDraft()],
+    promoCodes: promoCodes.map((promo) => mapApiPromoToEditorPromo(promo)),
+    registrationCategories: mergeRegistrationCategories(registrationCategoryPayload),
+    refundPolicy: unmapRefundPolicy(eventData.refundPolicy || eventData.refund_policy),
+    customRefundPolicy: eventData.customRefundPolicy || eventData.custom_refund_policy || '',
+    enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
+    sendReminders: eventData.sendReminders ?? eventData.send_reminders ?? true,
+  };
+};
+
+const buildInitialSubresources = (eventData = {}) => ({
+  tickets: (eventData.tickets || []).map((ticket) => ticket.id).filter(Boolean),
+  speakers: (eventData.speakers || []).map((speaker) => speaker.id).filter(Boolean),
+  sponsors: (eventData.sponsors || []).map((sponsor) => sponsor.id).filter(Boolean),
+  schedule: (eventData.schedule || []).map((item) => item.id).filter(Boolean),
+  promoCodes: ((eventData.promoCodes || eventData.promo_codes || [])).map((promo) => promo.id).filter(Boolean),
+  mcId: eventData.mc?.id || null,
+});
+
+const getEditableEventSeed = (queryClient, slug) => {
+  if (!slug) return undefined;
+
+  const editableSeed = queryClient.getQueryData(eventQueryKeys.editable(slug));
+  if (editableSeed) return editableSeed;
+
+  const organizerSeed = queryClient.getQueryData(['organizer_event_detail', slug]);
+  if (organizerSeed) return organizerSeed;
+
+  const detailSeed = queryClient.getQueryData(eventQueryKeys.detail(slug))
+    || queryClient.getQueryData(eventQueryKeys.detailLite(slug));
+  if (detailSeed) return detailSeed;
+
+  const listCaches = queryClient.getQueriesData({ queryKey: eventQueryKeys.lists() });
+  return listCaches
+    .map(([, cached]) => {
+      if (Array.isArray(cached)) {
+        return cached.find((item) => item?.slug === slug);
+      }
+      if (cached?.results && Array.isArray(cached.results)) {
+        return cached.results.find((item) => item?.slug === slug);
+      }
+      if (cached?.pages && Array.isArray(cached.pages)) {
+        for (const page of cached.pages) {
+          if (page?.results && Array.isArray(page.results)) {
+            const hit = page.results.find((item) => item?.slug === slug);
+            if (hit) return hit;
+          }
+        }
+      }
+      return null;
+    })
+    .find(Boolean);
+};
+
 const CreateEventPage = ({
   embedded = false,
   onExit = null,
@@ -68,8 +236,6 @@ const CreateEventPage = ({
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(!!slug);
   const [initialSubresources, setInitialSubresources] = useState({
     tickets: [],
     speakers: [],
@@ -86,151 +252,37 @@ const CreateEventPage = ({
     staleTime: 5 * 60 * 1000,
   });
 
-  useEffect(() => {
-    setCategories(Array.isArray(categoriesData) ? categoriesData : []);
-  }, [categoriesData]);
-
-  // Fetch event if editing
-  useEffect(() => {
-    let mounted = true;
-    if (!slug) {
-      setIsLoading(false);
-      return () => { mounted = false; };
-    }
-    (async () => {
-      try {
-        const eventData = await fetchEditableEvent(slug);
-        if (!mounted) return;
-
-        if (eventData) {
-          let registrationCategories = createDefaultRegistrationCategories();
-          try {
-            const regData = await api.get(`/api/events/${eventData.slug || slug}/registration/setup/`);
-            if (Array.isArray(regData?.categories) && regData.categories.length > 0) {
-              registrationCategories = mergeRegistrationCategories(regData.categories);
-            }
-          } catch {
-            registrationCategories = createDefaultRegistrationCategories();
-          }
-
-          // Map fetched event data to form data
-          setFormData({
-            title: eventData.title || '',
-            category: eventData.rawCategory || '',
-            tags: eventData.tags || [],
-            eventType: 'public',
-            format: eventData.format === 'in_person' ? 'In-Person' : eventData.format === 'online' ? 'Online' : 'Hybrid',
-            themeColor: eventData.themeColor || '#02338D',
-            accentColor: eventData.accentColor || '#7C3AED',
-            startDate: eventData.startDate || '',
-            startTime: normalizeTimeInput(eventData.startTime || eventData.start_time) || '',
-            endDate: eventData.endDate || '',
-            endTime: normalizeTimeInput(eventData.endTime || eventData.end_time) || '',
-            timezone: eventData.timezone || 'EAT',
-            venueName: eventData.venueName || '',
-            address: eventData.address || '',
-            city: eventData.city || '',
-            country: eventData.country || 'Kenya',
-            streamingLink: eventData.streamingLink || '',
-            description: eventData.description || '',
-            coverImage: null,
-            coverImagePreview: eventData.bannerImage || '',
-            speakers: (eventData.speakers || []).map(s => ({
-              id: s.id,
-              name: s.name || '',
-              title: s.title || '',
-              organization: s.organization || '',
-              bio: s.bio || '',
-              photo: null,
-              photoPreview: s.avatar || ''
-            })),
-            hasMC: !!eventData.mc,
-            mcName: eventData.mc?.name || '',
-            mcBio: eventData.mc?.bio || '',
-            mcPhoto: null,
-            mcPhotoPreview: eventData.mc?.avatar || '',
-            schedule: (eventData.schedule || []).map(item => ({
-                id: item.id,
-                title: item.title || '',
-                startTime: normalizeTimeInput(item.start_time || item.time || '') || '',
-                endTime: normalizeTimeInput(item.end_time || '') || '',
-                location: item.location || '',
-                speaker: item.speaker || '',
-                description: item.description || ''
-              })),
-            sponsors: (eventData.sponsors || []).map(s => ({
-              id: s.id,
-              name: s.name || '',
-              website: s.website || '',
-              logo: null,
-              logoPreview: s.logo || ''
-            })),
-            tickets: eventData.tickets.length > 0
-              ? eventData.tickets.map((ticket) => mapApiTicketToEditorTicket(ticket))
-              : [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
-            promoCodes: (eventData.promoCodes || []).map((promo) => mapApiPromoToEditorPromo(promo)),
-            registrationCategories,
-            refundPolicy: unmapRefundPolicy(eventData.refundPolicy),
-            customRefundPolicy: eventData.customRefundPolicy || '',
-            enableWaitlist: eventData.enableWaitlist ?? eventData.enable_waitlist ?? false,
-            sendReminders: eventData.sendReminders ?? eventData.send_reminders ?? true,
-          });
-          setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
-          setInitialSubresources({
-            tickets: (eventData.tickets || []).map(t => t.id).filter(Boolean),
-            speakers: (eventData.speakers || []).map(s => s.id).filter(Boolean),
-            sponsors: (eventData.sponsors || []).map(s => s.id).filter(Boolean),
-            schedule: (eventData.schedule || []).map(item => item.id).filter(Boolean),
-            promoCodes: (eventData.promoCodes || []).map((promo) => promo.id).filter(Boolean),
-            mcId: eventData.mc?.id || null,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to load data', err);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [slug]);
-
-  const [formData, setFormData] = useState({
-    title: '',
-    category: '',
-    tags: [],
-    eventType: 'public',
-    format: 'In-Person',
-    themeColor: '#02338D',
-    accentColor: '#7C3AED',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: '',
-    timezone: 'EAT',
-    venueName: '',
-    address: '',
-    city: '',
-    country: 'Kenya',
-    streamingLink: '',
-    description: '',
-    coverImage: null,
-    coverImagePreview: '',
-    speakers: [],
-    hasMC: false,
-    mcName: '',
-    mcBio: '',
-    mcPhoto: null,
-    mcPhotoPreview: '',
-    schedule: [],
-    sponsors: [],
-    tickets: [{ type: 'Standard', price: 0, quantity: 100, description: '', category: 'guest' }],
-    promoCodes: [],
-    registrationCategories: createDefaultRegistrationCategories(),
-    refundPolicy: 'No Refund',
-    customRefundPolicy: '',
-    enableWaitlist: false,
-    sendReminders: true,
+  const categories = Array.isArray(categoriesData) ? categoriesData : [];
+  const editableEventSeed = getEditableEventSeed(queryClient, slug);
+  const {
+    data: editableEventData,
+    error: editableEventError,
+    isLoading: isEditableEventLoading,
+  } = useQuery({
+    queryKey: eventQueryKeys.editable(slug),
+    queryFn: () => fetchEditableEvent(slug),
+    enabled: !!slug,
+    staleTime: 30 * 1000,
+    placeholderData: () => editableEventSeed,
   });
+
+  useEffect(() => {
+    if (!editableEventError) return;
+    console.error('Failed to load data', editableEventError);
+  }, [editableEventError]);
+
+  useEffect(() => {
+    if (!slug || !editableEventData) {
+      return;
+    }
+
+    setFormData(buildEventEditorState(editableEventData));
+    setCompletedSteps([0, 1, 2, 3, 4, 5, 6]);
+    setInitialSubresources(buildInitialSubresources(editableEventData));
+  }, [editableEventData, slug]);
+
+  const [formData, setFormData] = useState(createEmptyEventFormData);
+  const isLoading = Boolean(slug && isEditableEventLoading && !editableEventData);
 
   const [errors, setErrors] = useState({});
 
@@ -747,6 +799,14 @@ const CreateEventPage = ({
     return err?.response?.detail || err?.response?.message || err?.message || 'Something went wrong. Please try again.';
   };
 
+  const invalidateEventCaches = (eventSlug = '') => {
+    queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
+    if (!eventSlug) return;
+    queryClient.invalidateQueries({ queryKey: eventQueryKeys.editable(eventSlug) });
+    queryClient.invalidateQueries({ queryKey: eventQueryKeys.detail(eventSlug) });
+    queryClient.invalidateQueries({ queryKey: eventQueryKeys.detailLite(eventSlug) });
+  };
+
   const handleSaveDraft = async () => {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
@@ -755,11 +815,10 @@ const CreateEventPage = ({
     try {
       const payload = buildPayload('draft');
       const event = await createEventAndTickets(payload);
+      invalidateEventCaches(event?.slug || slug || '');
       if (event?.slug) {
-        queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
         navigate(`/events/${event.slug}`);
       } else {
-        queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
         navigate('/organizer-dashboard?tab=events');
       }
     } catch (err) {
@@ -778,17 +837,16 @@ const CreateEventPage = ({
     try {
       const payload = buildPayload();
       const event = await createEventAndTickets(payload);
+      invalidateEventCaches(event?.slug || slug || '');
       try {
         const submittedEvent = await submitEventForReview(event);
         const submitted = normalizeEventPayload(submittedEvent, event?.slug || slug);
         setSubmittedEventSlug(submitted?.slug || event?.slug || slug || '');
-        queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
         setShowSubmissionModal(true);
       } catch (publishErr) {
         const alreadyPending = String(event?.status || '').toLowerCase() === 'pending';
         if (alreadyPending && publishErr?.status === 404) {
           setSubmittedEventSlug(event?.slug || slug || '');
-          queryClient.invalidateQueries({ queryKey: ['organizer_events'] });
           setShowSubmissionModal(true);
           return;
         }
@@ -811,6 +869,7 @@ const CreateEventPage = ({
       if (payload instanceof FormData) payload.append('scheduled_publish_at', scheduledDate);
       else payload.scheduled_publish_at = scheduledDate;
       const event = await createEventAndTickets(payload);
+      invalidateEventCaches(event?.slug || slug || '');
       setShowScheduleModal(false);
       if (event?.slug) {
         navigate(`/events/${event.slug}`);

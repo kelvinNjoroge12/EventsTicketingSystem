@@ -780,7 +780,7 @@ const OrganizerEventDetail = ({
         </TabsContent>
 
         <TabsContent value="promocodes" className="space-y-4 lg:space-y-6">
-          <PromoCodesTab slug={detail?.slug} />
+          <PromoCodesTab slug={detail?.slug} eventDetail={detail} />
         </TabsContent>
 
         <TabsContent value="tickets" className="space-y-4 lg:space-y-6">
@@ -788,15 +788,15 @@ const OrganizerEventDetail = ({
         </TabsContent>
 
         <TabsContent value="speakers" className="space-y-4 lg:space-y-6">
-          <SpeakersTab slug={detail?.slug} />
+          <SpeakersTab slug={detail?.slug} eventDetail={detail} />
         </TabsContent>
 
         <TabsContent value="schedule" className="space-y-4 lg:space-y-6">
-          <ScheduleTab slug={detail?.slug} />
+          <ScheduleTab slug={detail?.slug} eventDetail={detail} />
         </TabsContent>
 
         <TabsContent value="sponsors" className="space-y-4 lg:space-y-6">
-          <SponsorsTab slug={detail?.slug} />
+          <SponsorsTab slug={detail?.slug} eventDetail={detail} />
         </TabsContent>
 
         <TabsContent value="edit" className="space-y-4 lg:space-y-6">
