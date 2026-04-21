@@ -32,6 +32,30 @@ const ensureSocialUrl = (value, baseUrl) => {
   return `${baseUrl}${value.replace(/^@/, '')}`;
 };
 
+const buildOrganizerFallbackFromEvents = (organizerId, events = []) => {
+  const organizerPreview = events.find((event) => event?.organizer)?.organizer;
+  if (!organizerPreview) return null;
+
+  return {
+    id: organizerPreview.id || organizerId,
+    name: organizerPreview.name || 'Organizer',
+    contactName: '',
+    bio: '',
+    website: '',
+    social: {
+      twitter: '',
+      linkedin: '',
+      instagram: '',
+    },
+    brandColor: organizerPreview.brandColor || '#02338D',
+    isApproved: true,
+    isVerified: false,
+    totalEvents: Number(organizerPreview.totalEvents || events.length || 0),
+    totalAttendees: Number(organizerPreview.totalAttendees || 0),
+    avatar: organizerPreview.avatar || '',
+  };
+};
+
 const OrganizerProfileSkeleton = () => (
   <PageWrapper>
     <div className="min-h-screen bg-[linear-gradient(180deg,#F4F8FF_0%,#F8FAFC_42%,#FFFFFF_100%)]">
@@ -98,7 +122,14 @@ const OrganizerProfilePage = () => {
     [organizerEvents]
   );
 
-  if (isLoadingOrganizer) {
+  const fallbackOrganizer = useMemo(
+    () => buildOrganizerFallbackFromEvents(id, organizerEvents),
+    [id, organizerEvents]
+  );
+  const effectiveOrganizer = organizer || fallbackOrganizer;
+  const isWaitingForFallback = Boolean(organizerError?.status === 404 && isLoadingEvents && !fallbackOrganizer);
+
+  if (isLoadingOrganizer || isWaitingForFallback) {
     return <OrganizerProfileSkeleton />;
   }
 
@@ -122,7 +153,7 @@ const OrganizerProfilePage = () => {
     );
   }
 
-  if (!id || organizerError?.status === 404 || !organizer) {
+  if (!id || !effectiveOrganizer) {
     return (
       <PageWrapper>
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 lg:px-8">
@@ -142,35 +173,35 @@ const OrganizerProfilePage = () => {
     );
   }
 
-  const brandColor = organizer.brandColor || '#02338D';
-  const websiteUrl = ensureExternalUrl(organizer.website);
+  const brandColor = effectiveOrganizer.brandColor || '#02338D';
+  const websiteUrl = ensureExternalUrl(effectiveOrganizer.website);
   const socialLinks = [
-    organizer.social?.twitter
+    effectiveOrganizer.social?.twitter
       ? {
           label: 'Twitter',
-          href: ensureSocialUrl(organizer.social.twitter, 'https://twitter.com/'),
+          href: ensureSocialUrl(effectiveOrganizer.social.twitter, 'https://twitter.com/'),
           icon: Twitter,
         }
       : null,
-    organizer.social?.linkedin
+    effectiveOrganizer.social?.linkedin
       ? {
           label: 'LinkedIn',
-          href: ensureSocialUrl(organizer.social.linkedin, 'https://www.linkedin.com/in/'),
+          href: ensureSocialUrl(effectiveOrganizer.social.linkedin, 'https://www.linkedin.com/in/'),
           icon: Linkedin,
         }
       : null,
-    organizer.social?.instagram
+    effectiveOrganizer.social?.instagram
       ? {
           label: 'Instagram',
-          href: ensureSocialUrl(organizer.social.instagram, 'https://www.instagram.com/'),
+          href: ensureSocialUrl(effectiveOrganizer.social.instagram, 'https://www.instagram.com/'),
           icon: Instagram,
         }
       : null,
   ].filter(Boolean);
 
-  const hostedEventsCount = organizer.totalEvents > 0 ? organizer.totalEvents : organizerEvents.length;
-  const attendeesReached = organizer.totalAttendees > 0 ? organizer.totalAttendees : 0;
-  const aboutCopy = organizer.bio || `${organizer.name} is actively hosting experiences and bringing attendees together through curated events on the platform.`;
+  const hostedEventsCount = effectiveOrganizer.totalEvents > 0 ? effectiveOrganizer.totalEvents : organizerEvents.length;
+  const attendeesReached = effectiveOrganizer.totalAttendees > 0 ? effectiveOrganizer.totalAttendees : 0;
+  const aboutCopy = effectiveOrganizer.bio || `${effectiveOrganizer.name} is actively hosting experiences and bringing attendees together through curated events on the platform.`;
 
   const renderEventsGrid = (events, emptyTitle, emptyBody) => {
     if (isLoadingEvents && organizerEvents.length === 0) {
@@ -244,8 +275,8 @@ const OrganizerProfilePage = () => {
 
             <div className="mt-8 grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)] xl:items-end">
               <CustomAvatar
-                src={organizer.avatar}
-                name={organizer.name}
+                src={effectiveOrganizer.avatar}
+                name={effectiveOrganizer.name}
                 size="xl"
                 fallbackColor={brandColor}
                 className="h-28 w-28 rounded-[28px] border-4 border-white/25 text-3xl shadow-2xl sm:h-32 sm:w-32"
@@ -256,7 +287,7 @@ const OrganizerProfilePage = () => {
                   <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/90">
                     Organizer Profile
                   </span>
-                  {organizer.isVerified && (
+                  {effectiveOrganizer.isVerified && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0F172A]">
                       <BadgeCheck className="h-3.5 w-3.5" style={{ color: brandColor }} />
                       Verified organizer
@@ -265,12 +296,12 @@ const OrganizerProfilePage = () => {
                 </div>
 
                 <h1 className="mt-4 max-w-4xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
-                  {organizer.name}
+                  {effectiveOrganizer.name}
                 </h1>
 
-                {organizer.contactName && (
+                {effectiveOrganizer.contactName && (
                   <p className="mt-3 text-sm font-medium uppercase tracking-[0.18em] text-white/75">
-                    Managed by {organizer.contactName}
+                    Managed by {effectiveOrganizer.contactName}
                   </p>
                 )}
 

@@ -408,10 +408,10 @@ const EventDetailPage = () => {
   const organizerName = organizer.name || 'Organizer';
   const organizerProfileHref = organizer.id ? `/organizers/${organizer.id}` : '';
   const organizerBio = organizer.bio && organizer.bio !== organizerName ? organizer.bio : '';
-  const organizerStats = [
-    Number(organizer.totalEvents || 0) > 0 ? `${Number(organizer.totalEvents).toLocaleString()} events hosted` : null,
-    Number(organizer.totalAttendees || 0) > 0 ? `${Number(organizer.totalAttendees).toLocaleString()} attendees reached` : null,
-  ].filter(Boolean);
+  const organizerHostedEventsLabel =
+    Number(organizer.totalEvents || 0) > 0
+      ? `${Number(organizer.totalEvents).toLocaleString()} events hosted`
+      : '';
   const ticketRailTop = 'calc(var(--app-navbar-height, 120px) + 20px)';
   const ticketRailRight = 'max(2rem, calc((100vw - 1240px) / 2 + 2rem))';
   const ticketRailHeight = 'calc(100vh - var(--app-navbar-height, 120px) - 36px)';
@@ -636,25 +636,24 @@ const EventDetailPage = () => {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <h3 className="font-semibold text-[#0F172A]">{organizerName}</h3>
-                            <p className="mt-1 text-sm text-[#64748B]">
-                              {organizerBio || 'Open the organizer page to see more about the team behind this event.'}
-                            </p>
+                            {organizerBio && (
+                              <p className="mt-1 text-sm text-[#64748B]">
+                                {organizerBio}
+                              </p>
+                            )}
                           </div>
                           <span className="inline-flex items-center gap-1 text-sm font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: themeColor }}>
                             View details <ChevronRight className="h-4 w-4" />
                           </span>
                         </div>
 
-                        {organizerStats.length > 0 && (
+                        {organizerHostedEventsLabel && (
                           <div className="mt-4 flex flex-wrap gap-2">
-                            {organizerStats.map((stat) => (
-                              <span
-                                key={stat}
-                                className="rounded-full border border-[#DBEAFE] bg-white px-3 py-1 text-xs font-semibold text-[#1E3A8A]"
-                              >
-                                {stat}
-                              </span>
-                            ))}
+                            <span
+                              className="rounded-full border border-[#DBEAFE] bg-white px-3 py-1 text-xs font-semibold text-[#1E3A8A]"
+                            >
+                              {organizerHostedEventsLabel}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -666,9 +665,11 @@ const EventDetailPage = () => {
                       <CustomAvatar src={organizer.avatar} name={organizerName} size="lg" fallbackColor={organizer.brandColor} />
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-[#0F172A]">{organizerName}</h3>
-                        <p className="mt-1 text-sm text-[#64748B]">
-                          {organizerBio || 'Organizer details are not available yet.'}
-                        </p>
+                        {organizerBio && (
+                          <p className="mt-1 text-sm text-[#64748B]">
+                            {organizerBio}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from datetime import time
+
+from django.utils import timezone
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from apps.accounts.models import UserSession
+from apps.accounts.models import OrganizerProfile, UserSession
+from apps.events.models import Event
 from common.tokens import generate_secure_token
 from .factories import OrganizerUserFactory, UserFactory
 
@@ -158,6 +162,37 @@ def test_public_organizer_profile_hides_sensitive_fields(db):
     assert "is_email_verified" not in resp.data
     assert "must_reset_password" not in resp.data
     assert "created_at" not in resp.data
+    assert "stripe_account_id" not in resp.data["organizer_profile"]
+
+
+def test_public_organizer_profile_allows_public_event_hosts_without_approved_profile(db):
+    organizer = UserFactory(role="admin", is_staff=True)
+    OrganizerProfile.objects.create(
+        user=organizer,
+        organization_name="Admin Hosted Events",
+        is_approved=False,
+    )
+    event_date = timezone.localdate()
+    Event.objects.create(
+        organizer=organizer,
+        title="Community Showcase",
+        slug="community-showcase",
+        format="online",
+        status="published",
+        start_date=event_date,
+        start_time=time(10, 0),
+        end_date=event_date,
+        end_time=time(12, 0),
+    )
+
+    client = APIClient()
+    url = reverse("organizer_profile", kwargs={"id": organizer.id})
+    resp = client.get(url)
+
+    assert resp.status_code == status.HTTP_200_OK
+    assert resp.data["id"] == str(organizer.id)
+    assert "email" not in resp.data
+    assert resp.data["organizer_profile"]["organization_name"] == "Admin Hosted Events"
     assert "stripe_account_id" not in resp.data["organizer_profile"]
 
 

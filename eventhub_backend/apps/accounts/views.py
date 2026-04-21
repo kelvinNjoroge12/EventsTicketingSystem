@@ -479,9 +479,13 @@ class OrganizerProfileView(generics.RetrieveAPIView):
     lookup_url_kwarg = "id"
 
     def get_queryset(self):
-        return User.objects.select_related("organizer_profile").filter(
-            role="organizer",
-            organizer_profile__is_approved=True,
+        return (
+            User.objects.select_related("organizer_profile")
+            .filter(
+                DjangoQ(organizer_profile__is_approved=True)
+                | DjangoQ(events__status__in=["published", "completed"])
+            )
+            .distinct()
         )
 
 
