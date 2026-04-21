@@ -352,6 +352,39 @@ export const fetchRelatedEvents = async (slug) => {
   }
 };
 
+export const mapOrganizerProfile = (organizer) => {
+  const organizerProfile = organizer?.organizer_profile || {};
+  const fallbackContactName = [organizer?.first_name, organizer?.last_name]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const organizationName = organizerProfile.organization_name || fallbackContactName || 'Organizer';
+
+  return {
+    id: organizer?.id,
+    name: organizationName,
+    contactName: fallbackContactName && fallbackContactName !== organizationName ? fallbackContactName : '',
+    bio: organizerProfile.organization_bio || '',
+    website: organizerProfile.website || '',
+    social: {
+      twitter: organizerProfile.twitter || '',
+      linkedin: organizerProfile.linkedin || '',
+      instagram: organizerProfile.instagram || '',
+    },
+    brandColor: organizerProfile.brand_color || '#02338D',
+    isApproved: Boolean(organizerProfile.is_approved),
+    isVerified: Boolean(organizerProfile.is_verified),
+    totalEvents: Number(organizerProfile.total_events || 0),
+    totalAttendees: Number(organizerProfile.total_attendees || 0),
+    avatar: organizerProfile.logo || organizer?.avatar || '',
+  };
+};
+
+export const fetchOrganizerProfile = async (organizerId) => {
+  const data = await api.get(`/api/auth/organizers/${organizerId}/`);
+  return mapOrganizerProfile(data);
+};
+
 export const fetchOrganizerEvents = async (organizerId) => {
   try {
     const data = await api.get(`/api/events/organizers/${organizerId}/`);

@@ -404,6 +404,14 @@ const EventDetailPage = () => {
   const tickets = Array.isArray(event.tickets) ? event.tickets : [];
   const lowestTicketPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => Number(ticket.price || 0))) : Number(event.price || 0);
   const heroDateText = formatDate(event.date);
+  const organizer = event.organizer || {};
+  const organizerName = organizer.name || 'Organizer';
+  const organizerProfileHref = organizer.id ? `/organizers/${organizer.id}` : '';
+  const organizerBio = organizer.bio && organizer.bio !== organizerName ? organizer.bio : '';
+  const organizerStats = [
+    Number(organizer.totalEvents || 0) > 0 ? `${Number(organizer.totalEvents).toLocaleString()} events hosted` : null,
+    Number(organizer.totalAttendees || 0) > 0 ? `${Number(organizer.totalAttendees).toLocaleString()} attendees reached` : null,
+  ].filter(Boolean);
   const ticketRailTop = 'calc(var(--app-navbar-height, 120px) + 20px)';
   const ticketRailRight = 'max(2rem, calc((100vw - 1240px) / 2 + 2rem))';
   const ticketRailHeight = 'calc(100vh - var(--app-navbar-height, 120px) - 36px)';
@@ -607,18 +615,64 @@ const EventDetailPage = () => {
                 </div>
               )}
 
-              {/* Organizer */}
-              <div className="border-t border-[#E2E8F0] px-5 py-5 sm:px-6 lg:px-8">
-                <div className="flex items-start gap-4">
-                  <CustomAvatar src={event.organizer.avatar} name={event.organizer.name} size="lg" fallbackColor={event.organizer.brandColor} />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-[#0F172A]">{event.organizer.name}</h4>
-                    {event.organizer.bio && <p className="mt-1 text-sm text-[#64748B]">{event.organizer.bio}</p>}
-                    <Link to={`/organizers/${event.organizer.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium hover:underline" style={{ color: themeColor }}>
-                      View profile <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </div>
+              {hasSponsors && (
+                <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
+                  <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Sponsors</h2>
+                  {isLoadingSponsors ? <div className="py-6 text-sm text-[#64748B]">Loading sponsors...</div> : sponsors.length > 0 ? <SponsorsGrid sponsors={sponsors} themeColor={themeColor} /> : <p className="text-sm text-[#64748B]">No sponsors listed yet.</p>}
                 </div>
+              )}
+
+              <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
+                <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Organizer Profile</h2>
+
+                {organizerProfileHref ? (
+                  <Link
+                    to={organizerProfileHref}
+                    className="group block rounded-3xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 transition-all duration-200 hover:border-[#CBD5E1] hover:bg-white hover:shadow-md"
+                  >
+                    <div className="flex items-start gap-4">
+                      <CustomAvatar src={organizer.avatar} name={organizerName} size="lg" fallbackColor={organizer.brandColor} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h3 className="font-semibold text-[#0F172A]">{organizerName}</h3>
+                            <p className="mt-1 text-sm text-[#64748B]">
+                              {organizerBio || 'Open the organizer page to see more about the team behind this event.'}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-sm font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: themeColor }}>
+                            View details <ChevronRight className="h-4 w-4" />
+                          </span>
+                        </div>
+
+                        {organizerStats.length > 0 && (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {organizerStats.map((stat) => (
+                              <span
+                                key={stat}
+                                className="rounded-full border border-[#DBEAFE] bg-white px-3 py-1 text-xs font-semibold text-[#1E3A8A]"
+                              >
+                                {stat}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="rounded-3xl border border-[#E2E8F0] bg-[#F8FAFC] p-5">
+                    <div className="flex items-start gap-4">
+                      <CustomAvatar src={organizer.avatar} name={organizerName} size="lg" fallbackColor={organizer.brandColor} />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-[#0F172A]">{organizerName}</h3>
+                        <p className="mt-1 text-sm text-[#64748B]">
+                          {organizerBio || 'Organizer details are not available yet.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {orderedRelatedEvents.length > 0 && (
@@ -629,13 +683,6 @@ const EventDetailPage = () => {
                       <EventCard key={relatedEvent.id} event={relatedEvent} index={index} />
                     ))}
                   </div>
-                </div>
-              )}
-
-              {hasSponsors && (
-                <div className="border-t border-[#E2E8F0] px-5 py-6 sm:px-6 lg:px-8">
-                  <h2 className="mb-4 text-lg font-bold text-[#0F172A]">Sponsors</h2>
-                  {isLoadingSponsors ? <div className="py-6 text-sm text-[#64748B]">Loading sponsors...</div> : sponsors.length > 0 ? <SponsorsGrid sponsors={sponsors} themeColor={themeColor} /> : <p className="text-sm text-[#64748B]">No sponsors listed yet.</p>}
                 </div>
               )}
             </section>
